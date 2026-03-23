@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #0a0a0a;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
+/* ─── BASE GLOBAL ─── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background-color: #ffffff;
+  color: #0a0a0a;
+}
+
+body {
+  background-color: #ffffff;
+  color: #0a0a0a;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Asegura que las fuentes Geist (variables) NO se apliquen por defecto fuera del admin */
+body {
+  font-family: Arial, Helvetica, sans-serif !important;
+}
