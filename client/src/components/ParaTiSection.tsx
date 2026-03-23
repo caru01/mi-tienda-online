@@ -19,6 +19,19 @@ export default function ParaTiSection() {
   const [cantidadTemporal, setCantidadTemporal] = useState<number>(1);
   const [stockMaximo, setStockMaximo] = useState<number>(0);
   const [variantes, setVariantes] = useState<any[]>([]);
+  const [activeActionsId, setActiveActionsId] = useState<string | null>(null);
+
+  // Cerrar acciones al hacer clic fuera
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.product-card-parati')) {
+        setActiveActionsId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   const fetchRandomProducts = async () => {
     try {
@@ -136,7 +149,12 @@ export default function ParaTiSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: (index % 5) * 0.1 }}
-              className="group/item flex flex-col bg-white"
+              className="group/item flex flex-col bg-white product-card-parati"
+              onClick={() => {
+                if (window.innerWidth < 1024) {
+                   setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                }
+              }}
             >
               <div className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-sm mb-5 relative">
                 <img
@@ -145,14 +163,15 @@ export default function ParaTiSection() {
                   className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-700"
                 />
 
-                <div className="absolute inset-0 bg-black/5 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center p-2">
+                <div className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-2 
+                  ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}>
 
                   {seleccionarId === prod.id ? (
                     /* --- MENÚ DE CONFIGURACIÓN IGUAL AL CAROUSEL --- */
                     <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-3 w-full rounded-sm shadow-2xl space-y-2 border-2 border-black">
                       <div className="flex justify-between items-center border-b pb-1 border-gray-100">
                         <span className="text-[8px] font-black uppercase text-black italic">Añadir</span>
-                        <button onClick={() => setSeleccionarId(null)} className="text-black"><X size={12} /></button>
+                        <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black"><X size={12} /></button>
                       </div>
 
                       {variantes.some(v => v.variante_atributos && v.variante_atributos.length > 0) && (
@@ -198,9 +217,10 @@ export default function ParaTiSection() {
                     </motion.div>
                   ) : (
                     /* --- BOTONES INICIALES --- */
-                    <div className="flex items-end justify-center w-full h-full pb-6 gap-3">
+                    <div className={`flex items-end justify-center w-full h-full pb-6 gap-3 transition-opacity ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}>
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setSeleccionarId(prod.id);
                           cargarVariantesProducto(prod.id);
                         }}
@@ -210,6 +230,7 @@ export default function ParaTiSection() {
                       </button>
                       <Link
                         href={`/producto/${prod.id}`}
+                        onClick={(e) => e.stopPropagation()}
                         className="bg-white text-black p-3 rounded-full shadow-xl hover:bg-black hover:text-white transition-colors border-2 border-black"
                       >
                         <Eye size={18} />

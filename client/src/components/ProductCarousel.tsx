@@ -23,8 +23,7 @@ export default function ProductCarousel() {
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 640) setItemsPerPage(1);
-      else if (window.innerWidth < 768) setItemsPerPage(2);
+      if (window.innerWidth < 768) setItemsPerPage(2);
       else setItemsPerPage(4);
     };
     window.addEventListener("resize", handleResize);
@@ -38,6 +37,19 @@ export default function ProductCarousel() {
   const [cantidadTemporal, setCantidadTemporal] = useState<number>(1);
   const [stockMaximo, setStockMaximo] = useState<number>(0);
   const [variantes, setVariantes] = useState<any[]>([]);
+  const [activeActionsId, setActiveActionsId] = useState<string | null>(null);
+
+  // Cerrar acciones abiertas al hacer clic fuera (móvil)
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.product-card-container')) {
+        setActiveActionsId(null);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
 
   const fetchDestacados = async () => {
     try {
@@ -180,7 +192,15 @@ export default function ProductCarousel() {
                 className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-3 md:gap-8"
               >
                 {currentProducts.map((prod) => (
-                  <div key={prod.id} className="group/item flex flex-col bg-white">
+                  <div 
+                    key={prod.id} 
+                    className="group/item flex flex-col bg-white product-card-container relative"
+                    onClick={() => {
+                      if (window.innerWidth < 1024) {
+                        setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                      }
+                    }}
+                  >
                     <div className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-5 relative border border-gray-100">
                       <img
                         src={prod.imagen_principal}
@@ -188,13 +208,14 @@ export default function ProductCarousel() {
                         className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-700"
                       />
 
-                      <div className="absolute inset-0 bg-black/5 opacity-100 md:opacity-0 md:group-hover/item:opacity-100 transition-opacity flex items-center justify-center p-4">
+                      <div className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-4 
+                        ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}>
 
                         {seleccionarId === prod.id ? (
                           <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-4 w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-3 border-2 border-black">
                             <div className="flex justify-between items-center border-b pb-1 border-gray-100">
                               <span className="text-[10px] font-black uppercase text-black italic">Añadir a la bolsa</span>
-                              <button onClick={() => setSeleccionarId(null)} className="text-black"><X size={14} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black"><X size={14} /></button>
                             </div>
 
                             {/* SELECTOR INTELIGENTE: TALLA O COLOR */}
@@ -247,17 +268,22 @@ export default function ProductCarousel() {
                             </button>
                           </motion.div>
                         ) : (
-                          <div className="flex items-center gap-3 opacity-100 md:opacity-0 md:group-hover/item:opacity-100">
+                          <div className={`flex items-center gap-3 transition-opacity ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}>
                             <button
-                              onClick={() => {
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setSeleccionarId(prod.id);
                                 cargarVariantesProducto(prod.id);
                               }}
-                              className="bg-white text-black p-3 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#FCD7DE] transition-colors border-2 border-black"
+                              className="bg-white text-black p-3 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition-colors border-2 border-black"
                             >
                               <ShoppingCart size={18} />
                             </button>
-                            <Link href={`/producto/${prod.id}`} className="bg-white text-black p-3 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-[#FCD7DE] transition-colors border-2 border-black">
+                            <Link 
+                              href={`/producto/${prod.id}`} 
+                              onClick={(e) => e.stopPropagation()}
+                              className="bg-white text-black p-3 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition-colors border-2 border-black"
+                            >
                               <Eye size={18} />
                             </Link>
                           </div>

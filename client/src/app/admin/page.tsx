@@ -60,6 +60,7 @@ export default function AdminDashboard() {
 
   const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: "", slug: "", imagen: "" });
   const [imagenFileCat, setImagenFileCat] = useState<File | null>(null);
+  const [imagenFileProd, setImagenFileProd] = useState<File | null>(null);
   const [nuevoAtributo, setNuevoAtributo] = useState("");
 
   const [nuevoBanner, setNuevoBanner] = useState({
@@ -353,11 +354,32 @@ export default function AdminDashboard() {
     e.preventDefault();
     setLoading(true);
     try {
+      let finalImageUrl = nuevoProducto.imagen_principal.trim();
+
+      // Si se seleccionó un archivo, súbelo a Supabase Storage
+      if (imagenFileProd) {
+        const fileExt = imagenFileProd.name.split('.').pop();
+        const fileName = `prod_${Math.random().toString(36).substring(2, 9)}_${Date.now()}.${fileExt}`;
+        const filePath = `items/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('productos')
+          .upload(filePath, imagenFileProd);
+
+        if (uploadError) throw new Error(`Fallo subiendo imagen: ${uploadError.message}`);
+
+        const { data: publicUrlData } = supabase.storage
+          .from('productos')
+          .getPublicUrl(filePath);
+
+        finalImageUrl = publicUrlData.publicUrl;
+      }
+
       const { data: prod, error } = await supabase.from('productos').insert([{
         nombre: nuevoProducto.nombre,
         precio_base: parseFloat(nuevoProducto.precio_base),
         categoria_id: nuevoProducto.categoria_id,
-        imagen_principal: nuevoProducto.imagen_principal,
+        imagen_principal: finalImageUrl,
         descripcion: nuevoProducto.descripcion,
         es_ropa: nuevoProducto.es_ropa,
         destacado: nuevoProducto.destacado
@@ -373,6 +395,12 @@ export default function AdminDashboard() {
       }
       alert("Producto creado exitosamente");
       setNuevoProducto({ nombre: "", precio_base: "", categoria_id: "", imagen_principal: "", descripcion: "", es_ropa: true, destacado: false });
+      setImagenFileProd(null);
+      
+      // Limpiar el input file si existe
+      const fileInput = document.getElementById("file-upload-prod") as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
+
       cargarProductos();
     } catch (error: any) { alert(error.message); }
     finally { setLoading(false); }
@@ -870,7 +898,16 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div className="space-y-4">
-                    <input required placeholder="URL IMAGEN PRINCIPAL" className="w-full p-3 border-2 border-black font-bold outline-none text-black" value={nuevoProducto.imagen_principal} onChange={e => setNuevoProducto({ ...nuevoProducto, imagen_principal: e.target.value })} />
+                    <div className="bg-gray-50 border-2 border-black p-4 space-y-3">
+                      <p className="text-[9px] font-black uppercase text-gray-500">Imagen Principal (URL o Archivo)</p>
+                      <input placeholder="PEGAR URL DE IMAGEN" className="w-full p-2 border-2 border-black font-bold outline-none text-[10px] text-black" value={nuevoProducto.imagen_principal} onChange={e => setNuevoProducto({ ...nuevoProducto, imagen_principal: e.target.value })} />
+                      <div className="flex items-center gap-4 py-1">
+                        <div className="flex-1 h-[1px] bg-black/10"></div>
+                        <span className="font-black text-[8px] uppercase text-gray-400">Ó</span>
+                        <div className="flex-1 h-[1px] bg-black/10"></div>
+                      </div>
+                      <input id="file-upload-prod" type="file" accept="image/*" onChange={e => setImagenFileProd(e.target.files ? e.target.files[0] : null)} className="w-full text-[9px] font-bold text-black file:mr-4 file:py-1 file:px-3 file:border-2 file:border-black file:text-[9px] file:font-black file:uppercase file:bg-white file:text-black hover:file:bg-black hover:file:text-white cursor-pointer" />
+                    </div>
                     <div className="grid grid-cols-2 gap-2 text-black">
                       <label className="flex items-center gap-2 p-2 border-2 border-black text-[10px] font-black uppercase cursor-pointer">
                         <input type="checkbox" checked={nuevoProducto.es_ropa} onChange={e => setNuevoProducto({ ...nuevoProducto, es_ropa: e.target.checked })} /> ¿Es Ropa?
