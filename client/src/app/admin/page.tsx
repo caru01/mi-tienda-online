@@ -381,19 +381,11 @@ export default function AdminDashboard() {
         categoria_id: nuevoProducto.categoria_id,
         imagen_principal: finalImageUrl,
         descripcion: nuevoProducto.descripcion,
-        es_ropa: nuevoProducto.es_ropa,
         destacado: nuevoProducto.destacado
       }]).select().single();
 
       if (error) throw error;
-      if (!nuevoProducto.es_ropa) {
-        await supabase.from('variantes_producto').insert([{
-          producto_id: prod.id,
-          sku: `GEN-${prod.id.split('-')[0]}`,
-          stock: nuevoProducto.stock
-        }]);
-      }
-      alert("Producto creado exitosamente");
+      alert("Producto maestro creado exitosamente");
       setNuevoProducto({ nombre: "", precio_base: "", categoria_id: "", imagen_principal: "", descripcion: "", es_ropa: true, destacado: false, stock: 0 });
       setImagenFileProd(null);
       
@@ -412,9 +404,13 @@ export default function AdminDashboard() {
 
     setLoading(true);
     try {
+      // GENERACIÓN AUTOMÁTICA DE SKU: GL- + 5 caracteres aleatorios
+      const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
+      const autoSku = `GL-${randomPart}`;
+
       const { data: vData, error } = await supabase.from('variantes_producto').insert([{
         producto_id: productoInventario.id,
-        sku: nuevaVariante.sku || `SKU-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+        sku: autoSku,
         stock: nuevaVariante.stock
       }]).select().single();
 
@@ -908,27 +904,13 @@ export default function AdminDashboard() {
                       </div>
                       <input id="file-upload-prod" type="file" accept="image/*" onChange={e => setImagenFileProd(e.target.files ? e.target.files[0] : null)} className="w-full text-[9px] font-bold text-black file:mr-4 file:py-1 file:px-3 file:border-2 file:border-black file:text-[9px] file:font-black file:uppercase file:bg-white file:text-black hover:file:bg-black hover:file:text-white cursor-pointer" />
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-black">
-                      <label className="flex items-center gap-2 p-2 border-2 border-black text-[10px] font-black uppercase cursor-pointer">
-                        <input type="checkbox" checked={nuevoProducto.es_ropa} onChange={e => setNuevoProducto({ ...nuevoProducto, es_ropa: e.target.checked })} /> ¿Es Ropa?
-                      </label>
-                      <label className="flex items-center gap-2 p-2 border-2 border-black text-[10px] font-black uppercase cursor-pointer">
-                        <input type="checkbox" checked={nuevoProducto.destacado} onChange={e => setNuevoProducto({ ...nuevoProducto, destacado: e.target.checked })} /> Destacado
+                    <div className="flex items-center gap-2 text-black">
+                      <label className="flex-1 flex items-center gap-2 p-3 border-2 border-black text-[10px] font-black uppercase cursor-pointer bg-gray-50 hover:bg-gray-100">
+                        <input type="checkbox" checked={nuevoProducto.destacado} onChange={e => setNuevoProducto({ ...nuevoProducto, destacado: e.target.checked })} /> DESTACAR EN PORTADA
                       </label>
                     </div>
 
-                    {!nuevoProducto.es_ropa && (
-                      <div className="pt-2">
-                        <label className="block text-[10px] font-black uppercase mb-1 text-black italic">Stock Inicial (Disponibilidad)</label>
-                        <input 
-                          type="number" 
-                          placeholder="CANTIDAD DE EXISTENCIAS" 
-                          className="w-full p-3 border-2 border-black font-bold outline-none text-black bg-yellow-50" 
-                          value={nuevoProducto.stock} 
-                          onChange={e => setNuevoProducto({ ...nuevoProducto, stock: parseInt(e.target.value) || 0 })} 
-                        />
-                      </div>
-                    )}
+
                   </div>
                   <button type="submit" disabled={loading} className="md:col-span-2 bg-black text-white font-black py-4 uppercase tracking-widest hover:bg-zinc-800">
                     {loading ? "GUARDANDO..." : "CREAR PRODUCTO BASE"}
@@ -1053,9 +1035,11 @@ export default function AdminDashboard() {
                             </optgroup>
                           ))}
                         </select>
-                        <input placeholder="SKU" className="p-2 border-2 border-black font-bold text-xs outline-none text-black" value={nuevaVariante.sku} onChange={e => setNuevaVariante({ ...nuevaVariante, sku: e.target.value })} />
-                        <input type="number" placeholder="STOCK" className="p-2 border-2 border-black font-bold text-xs outline-none text-black" value={nuevaVariante.stock} onChange={e => setNuevaVariante({ ...nuevaVariante, stock: parseInt(e.target.value) })} />
-                        <button onClick={manejarCrearVariante} className="bg-black text-white font-black uppercase text-[10px]">Añadir</button>
+                        <div className="p-2 border-2 border-black font-bold text-xs bg-gray-100 text-gray-400 flex items-center italic">
+                          SKU AUTO: GL-XXXXX
+                        </div>
+                        <input type="number" placeholder="STOCK INICIAL" className="p-2 border-2 border-black font-bold text-xs outline-none text-black" value={nuevaVariante.stock} onChange={e => setNuevaVariante({ ...nuevaVariante, stock: parseInt(e.target.value) })} />
+                        <button onClick={manejarCrearVariante} className="bg-black text-white font-black uppercase text-[10px] hover:bg-zinc-800 transition-colors">Crear Variante</button>
                       </div>
                     </div>
                     <div className="bg-white border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
@@ -1069,13 +1053,34 @@ export default function AdminDashboard() {
                               <td className="p-3">{v.variante_atributos?.map((va: any) => va.atributo_valores?.valor).join(' / ') || 'Base'}</td>
                               <td className="p-3 text-gray-400 text-center">{v.sku}</td>
                               <td className="p-3 text-center">
-                                <input type="number" defaultValue={v.stock} onBlur={async (e) => {
-                                  const { error } = await supabase.from('variantes_producto').update({ stock: parseInt(e.target.value) }).eq('id', v.id);
-                                  if (error) alert("Error guardando stock: " + error.message);
-                                  else console.log("Stock actualizado en BD");
-                                }} className="w-16 border-2 border-black p-1 text-center font-black text-black" />
+                                <input 
+                                  id={`stock-${v.id}`}
+                                  type="number" 
+                                  defaultValue={v.stock} 
+                                  className="w-20 border-2 border-black p-1 text-center font-black text-black" 
+                                />
                               </td>
-                              <td className="p-3 text-center"><button onClick={() => eliminarVariante(v.id)} className="text-red-600 hover:text-red-800"><Trash2 size={16} /></button></td>
+                              <td className="p-3 text-center flex items-center justify-center gap-3">
+                                <button 
+                                  title="Guardar Stock"
+                                  onClick={async () => {
+                                    const input = document.getElementById(`stock-${v.id}`) as HTMLInputElement;
+                                    const nuevoStock = parseInt(input.value);
+                                    const { error } = await supabase.from('variantes_producto').update({ stock: nuevoStock }).eq('id', v.id);
+                                    if (error) alert("Error: " + error.message);
+                                    else {
+                                      alert("Stock actualizado ✅");
+                                      cargarVariantes(productoInventario.id);
+                                    }
+                                  }}
+                                  className="text-green-600 hover:scale-110 transition-transform flex items-center gap-1 font-black"
+                                >
+                                  <Check size={18} />
+                                </button>
+                                <button onClick={() => eliminarVariante(v.id)} className="text-red-600 hover:text-red-800 transition-colors">
+                                  <Trash2 size={16} />
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
