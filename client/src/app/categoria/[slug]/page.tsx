@@ -8,11 +8,13 @@ import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/context/ToastContext";
+import { useRouter } from "next/navigation";
 
 export default function CategoriaPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params);
   const { addToCart, setIsOpen } = useCart();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [productosDB, setProductosDB] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,18 +35,6 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
   // Estados Interacción Móvil
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
   const [showSortMobile, setShowSortMobile] = useState(false);
-  const [activeActionsId, setActiveActionsId] = useState<string | null>(null);
-
-  // Cerrar acciones al hacer clic fuera
-  useEffect(() => {
-    const handleGlobalClick = (e: any) => {
-      if (!e.target.closest('.product-card-global')) {
-        setActiveActionsId(null);
-      }
-    };
-    document.addEventListener("click", handleGlobalClick);
-    return () => document.removeEventListener("click", handleGlobalClick);
-  }, []);
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -479,8 +469,8 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                     <div 
                       className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-4 relative border border-gray-100 cursor-pointer"
                       onClick={() => {
-                        if (window.innerWidth < 1024) {
-                          setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                        if (!seleccionarId) {
+                          router.push(`/producto/${prod.id}`);
                         }
                       }}
                     >
@@ -491,12 +481,12 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                       />
 
                       <div 
-                        className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-2 
-                        ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
+                        className={`absolute inset-0 transition-all flex items-center justify-center p-2 
+                        ${seleccionarId === prod.id ? 'opacity-100 pointer-events-auto bg-black/5' : 'opacity-100 md:opacity-0 md:group-hover/item:opacity-100 pointer-events-auto md:bg-black/5'}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (!seleccionarId && window.innerWidth < 1024) {
-                            setActiveActionsId(null);
+                          if (!seleccionarId) {
+                            router.push(`/producto/${prod.id}`);
                           }
                         }}
                       >
