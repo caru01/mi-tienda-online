@@ -6,7 +6,6 @@ import {
   ChevronLeft, ChevronRight, ShoppingCart, Eye, X, Plus, Minus
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
 import { SkeletonProductCard } from "@/components/SkeletonCard";
@@ -17,7 +16,6 @@ import { useToast } from "@/context/ToastContext";
 export default function ProductCarousel() {
   const [productos, setProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(4);
   const { addToCart, setIsOpen } = useCart();
@@ -39,6 +37,19 @@ export default function ProductCarousel() {
   const [cantidadTemporal, setCantidadTemporal] = useState<number>(1);
   const [stockMaximo, setStockMaximo] = useState<number>(0);
   const [variantes, setVariantes] = useState<any[]>([]);
+  const [activeActionsId, setActiveActionsId] = useState<string | null>(null);
+
+  // Sistema de cierre al hacer clic fuera (Especial para móviles)
+  useEffect(() => {
+    const handleGlobalClick = (e: any) => {
+      // Si el clic NO es dentro de un contenedor de producto, cerramos acciones
+      if (!e.target.closest('.product-card-global')) {
+        setActiveActionsId(null);
+      }
+    };
+    document.addEventListener("click", handleGlobalClick);
+    return () => document.removeEventListener("click", handleGlobalClick);
+  }, []);
 
   const fetchDestacados = async () => {
     try {
@@ -187,9 +198,10 @@ export default function ProductCarousel() {
                   >
                     <div 
                       className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-5 relative border border-gray-100 cursor-pointer"
-                      onClick={() => {
-                        if (!seleccionarId) {
-                          router.push(`/producto/${prod.id}`);
+                      onClick={(e) => {
+                        // Solo activamos el toggle por clic si es una pantalla pequeña/táctil
+                        if (window.innerWidth < 1024) {
+                          setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
                         }
                       }}
                     >
@@ -200,12 +212,13 @@ export default function ProductCarousel() {
                       />
 
                       <div 
-                        className={`absolute inset-0 transition-all flex items-center justify-center p-4 
-                        ${seleccionarId === prod.id ? 'opacity-100 pointer-events-auto bg-black/5' : 'opacity-100 md:opacity-0 md:group-hover/item:opacity-100 pointer-events-auto md:bg-black/5'}`}
+                        className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-4 
+                        ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (!seleccionarId) {
-                            router.push(`/producto/${prod.id}`);
+                          // Si ya estamos seleccionando talla, no cerramos las acciones por clic en el área vacía del overlay
+                          if (!seleccionarId && window.innerWidth < 1024) {
+                            setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
                           }
                         }}
                       >
@@ -273,7 +286,7 @@ export default function ProductCarousel() {
                             </button>
                           </motion.div>
                         ) : (
-                           <div className="flex items-center gap-3">
+                          <div className={`flex items-center gap-3 transition-opacity ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
