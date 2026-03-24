@@ -61,6 +61,12 @@ export default function ParaTiSection() {
 
   // Cargar variantes cuando se intenta añadir al carrito
   const cargarVariantesProducto = async (productoId: string) => {
+    // Resetear estados previos antes de cargar nuevas variantes
+    setVariantes([]);
+    setStockMaximo(0);
+    setOpcionTemporal("");
+    setCantidadTemporal(1);
+
     const { data } = await supabase
       .from('variantes_producto')
       .select(`
@@ -80,7 +86,7 @@ export default function ParaTiSection() {
     if (data) {
       setVariantes(data);
       const prodActual = productos.find(p => p.id === productoId);
-      if (data.length === 1 && (!data[0].variante_atributos || data[0].variante_atributos.length === 0)) {
+      if (prodActual && !prodActual.es_ropa && data.length === 1 && (!data[0].variante_atributos || data[0].variante_atributos.length === 0)) {
         setStockMaximo(data[0].stock);
       }
     }
@@ -232,14 +238,17 @@ export default function ParaTiSection() {
                         <button onClick={() => setCantidadTemporal(prev => prev < stockMaximo ? prev + 1 : prev)} className="p-1 text-black"><Plus size={10} /></button>
                       </div>
 
-                      <button
-                        disabled={(variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || stockMaximo <= 0}
-                        onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
-                        className={`w-full py-1.5 text-[8px] font-black uppercase tracking-widest transition-all border-2 border-black ${stockMaximo > 0 ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-gray-200"
-                          }`}
-                      >
-                        {stockMaximo <= 0 ? "Agotado" : "Confirmar"}
-                      </button>
+                       <button
+                         disabled={(variantes.length > 0 && variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || (opcionTemporal && stockMaximo <= 0) || (variantes.length === 0)}
+                         onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
+                         className={`w-full py-1.5 text-[8px] font-black uppercase tracking-widest transition-all border-2 border-black ${
+                           (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                         }`}
+                       >
+                         {variantes.length === 0 ? "Cargando..." : 
+                          (variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) ? "Elegir Opción" :
+                          stockMaximo <= 0 ? "Agotado" : "Confirmar"}
+                       </button>
                     </motion.div>
                   ) : (
                     /* --- BOTONES INICIALES --- */

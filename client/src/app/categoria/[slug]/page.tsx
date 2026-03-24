@@ -104,17 +104,34 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
   }, [slug]);
 
   // Cargar variantes cuando se hace clic para añadir
-  const cargarVariantes = async (prodId: string) => {
+  const cargarVariantes = async (productoId: string) => {
+    // Limpiar estados antes de cargar nuevas variantes
+    setVariantes([]);
+    setStockMaximo(0);
+    setOpcionTemporal("");
+    setCantTemp(1);
+
     const { data } = await supabase
       .from('variantes_producto')
-      .select('*, variante_atributos(atributo_valores(valor, atributos(nombre)))')
-      .eq('producto_id', prodId)
+      .select(`
+        id, 
+        stock,
+        sku,
+        variante_atributos (
+          atributo_valores (
+            valor,
+            atributos (nombre)
+          )
+        )
+      `)
+      .eq('producto_id', productoId)
       .eq('activo', true);
     
     if (data) {
       setVariantes(data);
-      const prodActual = productosDB.find(p => p.id === prodId);
-      if (data.length === 1 && (!data[0].variante_atributos || data[0].variante_atributos.length === 0)) {
+      const prodActual = productosDB.find(p => p.id === productoId);
+      // Si no es ropa y tiene una única variante sin atributos (producto simple)
+      if (prodActual && !prodActual.es_ropa && data.length === 1 && !data[0].variante_atributos?.length) {
         setStockMaximo(data[0].stock);
       }
     }
@@ -562,12 +579,16 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                             </div>
 
                             <button
-                              disabled={(variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || stockMaximo <= 0}
+                               disabled={(variantes.length > 0 && variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || (opcionTemporal && stockMaximo <= 0) || (variantes.length === 0)}
                                onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
-                              className={`w-full py-2 text-[9px] font-black uppercase tracking-widest transition-all ${stockMaximo > 0 ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed"}`}
-                            >
-                              {stockMaximo <= 0 ? "Sin existencias" : "Confirmar Selección"}
-                            </button>
+                               className={`w-full py-2 text-[9px] font-black uppercase tracking-widest transition-all ${
+                                 (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed"
+                               }`}
+                             >
+                               {variantes.length === 0 ? "Cargando..." : 
+                                (variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) ? "Elegir Opción" :
+                                stockMaximo <= 0 ? "Sin existencias" : "Confirmar Selección"}
+                             </button>
                           </motion.div>
                         ) : (
                           <div className="flex gap-2">

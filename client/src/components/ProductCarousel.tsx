@@ -72,7 +72,12 @@ export default function ProductCarousel() {
   };
 
   const cargarVariantesProducto = async (productoId: string) => {
-    // Traemos las variantes y el valor del atributo (sea Color, Talla, etc)
+    // Resetear estados previos antes de cargar nuevas variantes
+    setVariantes([]);
+    setStockMaximo(0);
+    setOpcionTemporal("");
+    setCantidadTemporal(1);
+
     const { data } = await supabase
       .from('variantes_producto')
       .select(`
@@ -285,12 +290,15 @@ export default function ProductCarousel() {
                             </div>
 
                             <button
-                               disabled={(variantes.some(v => v.variante_atributos.length > 0) && !opcionTemporal) || stockMaximo <= 0}
-                              onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
-                              className={`w-full py-2.5 text-[9px] font-black uppercase tracking-widest transition-all duration-300 border-2 border-black ${stockMaximo > 0 ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                               disabled={(variantes.length > 0 && variantes.some(v => v.variante_atributos.length > 0) && !opcionTemporal) || (opcionTemporal && stockMaximo <= 0) || (variantes.length === 0)}
+                               onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
+                               className={`w-full py-2.5 text-[9px] font-black uppercase tracking-widest transition-all duration-300 border-2 border-black ${
+                                  (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                 }`}
                             >
-                              {stockMaximo <= 0 ? "Sin existencias" : "Confirmar Selección"}
+                              {variantes.length === 0 ? "Cargando..." : 
+                               (variantes.some(v => v.variante_atributos.length > 0) && !opcionTemporal) ? "Seleccionar Opción" :
+                               stockMaximo <= 0 ? "Sin existencias" : "Confirmar Selección"}
                             </button>
                           </motion.div>
                         ) : (
