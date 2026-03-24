@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import { ShoppingCart, Eye, X, Plus, Minus, ChevronRight, Star } from "lucide-react";
+import { ShoppingCart, Eye, X, Plus, Minus, ChevronRight, Star, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
@@ -213,25 +213,12 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
             Inicio <span className="mx-2 text-gray-300">/</span> <span className="font-black text-black">{categoriaNombre.toUpperCase()}</span>
           </nav>
 
-          {/* CABECERA MÓVIL: NOMBRE + BOTONES */}
-          <div className="w-full md:hidden flex flex-col items-center gap-6 mb-2">
-            <h1 className="text-3xl font-black uppercase text-black italic tracking-tighter text-center">
+          {/* CABECERA MÓVIL: NOMBRE */}
+          <div className="w-full md:hidden flex flex-col items-center gap-2 mb-6 text-center">
+            <h1 className="text-4xl font-black uppercase text-black italic tracking-tighter">
               {categoriaNombre}
             </h1>
-            <div className="grid grid-cols-2 gap-3 w-full">
-              <button 
-                onClick={() => { setShowFiltersMobile(!showFiltersMobile); setShowSortMobile(false); }}
-                className={`flex items-center justify-center gap-2 py-3 border-2 border-black font-black uppercase text-[10px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all ${showFiltersMobile ? 'bg-zinc-100' : 'bg-white'}`}
-              >
-                Filtrar {hayFiltrosActivos && <span className="w-2 h-2 bg-black rounded-full"></span>}
-              </button>
-              <button 
-                onClick={() => { setShowSortMobile(!showSortMobile); setShowFiltersMobile(false); }}
-                className={`flex items-center justify-center gap-2 py-3 border-2 border-black font-black uppercase text-[10px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all ${showSortMobile ? 'bg-zinc-100' : 'bg-white'}`}
-              >
-                Ordenar
-              </button>
-            </div>
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 mt-1">Nuestra Selección de Temporada</p>
           </div>
 
           <div className="hidden md:flex items-center gap-4">
@@ -249,21 +236,70 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
           </div>
         </div>
 
-        {/* POPUP DE ORDENAMIENTO MÓVIL */}
+        {/* BARRA FLOTANTE MÓVIL (MÁS PROFESIONAL) */}
+        <div className="md:hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-[40] w-full px-10 pointer-events-none">
+          <div className="max-w-[280px] mx-auto bg-black text-white rounded-full flex divide-x divide-white/20 shadow-2xl pointer-events-auto border border-white/10 overflow-hidden scale-100 active:scale-95 transition-transform">
+            <button 
+              onClick={() => { setShowFiltersMobile(true); setShowSortMobile(false); }}
+              className={`flex-1 flex items-center justify-center gap-3 py-4 hover:bg-zinc-900 transition-colors ${showFiltersMobile ? 'bg-zinc-800' : ''}`}
+            >
+              <SlidersHorizontal size={14} className="text-white/70" />
+              <span className="text-[10px] font-black uppercase tracking-widest leading-none">
+                Filtrar {hayFiltrosActivos && <span className="ml-1 text-yellow-500">•</span>}
+              </span>
+            </button>
+            <button 
+              onClick={() => { setShowSortMobile(!showSortMobile); setShowFiltersMobile(false); }}
+              className={`flex-1 flex items-center justify-center gap-3 py-4 hover:bg-zinc-900 transition-colors ${showSortMobile ? 'bg-zinc-800' : ''}`}
+            >
+              <ArrowUpDown size={14} className="text-white/70" />
+              <span className="text-[10px] font-black uppercase tracking-widest leading-none">Ordenar</span>
+            </button>
+          </div>
+        </div>
+
+        {/* POPUP DE ORDENAMIENTO MÓVIL (MODERNIZADO) */}
         <AnimatePresence>
           {showSortMobile && (
-            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="md:hidden bg-white border-2 border-black p-4 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
-              <p className="text-[9px] font-black uppercase mb-2 border-b-2 border-black pb-1 italic">Opciones de ordenamiento</p>
-              {["novedad", "precio-menor", "precio-mayor", "a-z"].map((opt) => (
-                <button 
-                  key={opt} 
-                  onClick={() => { setOrden(opt); setShowSortMobile(false); }}
-                  className={`w-full text-left py-2 px-3 text-[10px] font-black uppercase ${orden === opt ? 'bg-black text-white' : 'hover:bg-gray-50 text-black'}`}
-                >
-                  {opt === "novedad" ? "Novedades" : opt === "precio-menor" ? "Menor Precio" : opt === "precio-mayor" ? "Mayor Precio" : "Nombre: A-Z"}
-                </button>
-              ))}
-            </motion.div>
+            <div className="md:hidden fixed inset-0 z-[110] flex items-end">
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+                onClick={() => setShowSortMobile(false)}
+              />
+              <motion.div 
+                initial={{ y: "100%" }} 
+                animate={{ y: 0 }} 
+                exit={{ y: "100%" }} 
+                className="relative w-full bg-white rounded-t-3xl p-8 shadow-2xl space-y-4 border-t-2 border-black"
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              >
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest italic">Opciones de ordenamiento</h3>
+                  <button onClick={() => setShowSortMobile(false)} className="text-black/30 hover:text-black">
+                     <X size={20} />
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { id: "novedad", label: "Novedades de Temporada" },
+                    { id: "precio-menor", label: "Precio: Menor a Mayor" },
+                    { id: "precio-mayor", label: "Precio: Mayor a Menor" },
+                    { id: "a-z", label: "Nombre: ALfabético (A-Z)" }
+                  ].map((opt) => (
+                    <button 
+                      key={opt.id} 
+                      onClick={() => { setOrden(opt.id); setShowSortMobile(false); }}
+                      className={`w-full text-left py-4 px-6 rounded-2xl text-[11px] font-black uppercase tracking-wide transition-all ${orden === opt.id ? 'bg-black text-white shadow-lg' : 'bg-gray-50 text-black active:bg-zinc-100'}`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            </div>
           )}
         </AnimatePresence>
 
