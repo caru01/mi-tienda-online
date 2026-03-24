@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Link from "next/link";
-import { ShoppingCart, Eye, X, Plus, Minus, ChevronRight } from "lucide-react";
+import { ShoppingCart, Eye, X, Plus, Minus, ChevronRight, Star } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
@@ -71,8 +71,12 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                     atributos (nombre)
                   )
                 )
+              ),
+              resenas (
+                calificacion
               )
             `)
+            .eq("resenas.aprobada", true)
             .eq('categoria_id', catData.id)
             .eq('activo', true);
 
@@ -199,7 +203,7 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
   const hayFiltrosActivos = precioInfo.current < precioInfo.max || Object.values(filtrosAtributos).some(val => val !== "");
 
   return (
-    <div className="bg-white min-h-screen" style={{ fontFamily: 'Arial, sans-serif' }}>
+    <div className="bg-white min-h-screen">
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 py-8 text-black">
@@ -263,9 +267,103 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
           )}
         </AnimatePresence>
 
+        {/* DRAWER DE FILTROS MÓVIL (LEFT SIDE) */}
+        <AnimatePresence>
+          {showFiltersMobile && (
+            <>
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }} 
+                exit={{ opacity: 0 }} 
+                onClick={() => setShowFiltersMobile(false)}
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] md:hidden"
+              />
+              <motion.div 
+                initial={{ x: "-100%" }} 
+                animate={{ x: 0 }} 
+                exit={{ x: "-100%" }} 
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="fixed left-0 top-0 h-full w-[85%] max-w-[320px] bg-white z-[101] md:hidden shadow-2xl flex flex-col pt-6 pb-8"
+              >
+                <div className="flex justify-between items-center px-6 mb-6">
+                  <h2 className="text-xl font-black uppercase italic tracking-tighter text-black">Filtrar por</h2>
+                  <button onClick={() => setShowFiltersMobile(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200 transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+
+                <div className="px-6 mb-8">
+                   <button
+                    onClick={() => { 
+                      setPrecioInfo(prev => ({ ...prev, current: prev.max })); 
+                      setFiltrosAtributos({}); 
+                    }}
+                    className="text-red-600 font-bold uppercase text-[10px] tracking-widest border-b border-red-100 hover:border-red-600 transition-all"
+                  >
+                    Restablecer filtros
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-6 space-y-10 custom-scrollbar pb-10">
+                  {/* FILTRO DE PRECIO */}
+                  <div>
+                    <div className="flex justify-between mb-4">
+                      <h3 className="text-[11px] font-black text-black uppercase tracking-widest">Presupuesto</h3>
+                      <span className="text-[11px] font-black text-zinc-600">${precioInfo.current.toLocaleString("es-CO")}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={precioInfo.min}
+                      max={precioInfo.max}
+                      step={5000}
+                      value={precioInfo.current}
+                      onChange={(e) => setPrecioInfo(prev => ({ ...prev, current: parseInt(e.target.value) }))}
+                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
+                    />
+                  </div>
+
+                  {/* FILTROS ATRIBUTOS */}
+                  {Object.entries(atributosDisponibles).map(([nombreAttr, valoresSet]) => (
+                    <div key={nombreAttr}>
+                      <h3 className="text-[11px] font-black text-black uppercase tracking-widest mb-4">{nombreAttr}</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {Array.from(valoresSet as Set<string>).map((valorAttr) => {
+                          const estaSeleccionado = filtrosAtributos[nombreAttr] === valorAttr;
+                          return (
+                            <button
+                              key={valorAttr}
+                              onClick={() => toggleFiltroAtributo(nombreAttr, valorAttr)}
+                              className={`px-3 py-2 min-w-[32px] text-[9px] font-black uppercase border-2 flex items-center justify-center transition-all ${
+                                estaSeleccionado 
+                                  ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' 
+                                  : 'bg-white text-black border-2 border-transparent hover:border-black'
+                              }`}
+                            >
+                              {valorAttr}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="px-6 mt-auto">
+                  <button 
+                    onClick={() => setShowFiltersMobile(false)}
+                    className="w-full bg-black text-white font-black uppercase tracking-[0.2em] text-[11px] py-4 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-zinc-800 transition-all"
+                  >
+                    Aplicar Filtros
+                  </button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
+
         <div className="flex flex-col md:flex-row gap-12">
-          {/* ASIDE DE FILTROS (COLAPSABLE EN MÓVIL) */}
-          <aside className={`w-full md:w-56 space-y-12 flex-shrink-0 ${!showFiltersMobile ? 'hidden md:block' : 'block mb-8 animate-in fade-in slide-in-from-top-4'}`}>
+          {/* ASIDE DE FILTROS DESKTOP */}
+          <aside className="hidden md:block w-56 space-y-12 flex-shrink-0 sticky top-24 h-fit">
             <h2 className="text-sm font-black uppercase tracking-widest text-black border-b-2 border-black pb-2 italic">Filtrar por</h2>
 
             {/* FILTRO DE RANGO DE PRECIO */}
@@ -448,6 +546,27 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                     <div className="text-center">
                       <h3 className="text-[12px] text-black uppercase font-black tracking-tighter mb-1">{prod.nombre}</h3>
                       <p className="font-black text-base text-black">${Number(prod.precio_base).toLocaleString("es-CO")}</p>
+                      
+                      {/* ESTRELLAS DE RESEÑA */}
+                      <div className="flex justify-center items-center gap-1 mt-1">
+                        <div className="flex gap-0.5">
+                          {[1, 2, 3, 4, 5].map((s) => {
+                            const califs = prod.resenas || [];
+                            const promedio = califs.length > 0 ? califs.reduce((acc: any, curr: any) => acc + curr.calificacion, 0) / califs.length : 0;
+                            return (
+                              <Star
+                                key={s}
+                                size={10}
+                                className={s <= Math.round(promedio) ? "text-yellow-400 fill-yellow-400" : "text-gray-200"}
+                              />
+                            );
+                          })}
+                        </div>
+                        {prod.resenas?.length > 0 && (
+                          <span className="text-[9px] font-bold text-gray-400">({prod.resenas.length})</span>
+                        )}
+                      </div>
+
                       <div className="w-8 h-[2px] bg-black mx-auto mt-2 transition-all group-hover/item:w-16" />
                     </div>
                   </div>

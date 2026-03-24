@@ -51,7 +51,6 @@ export default function AnnouncementBar() {
     return (
         <div
             className="w-full bg-black text-white relative overflow-hidden"
-            style={{ fontFamily: "Arial, sans-serif" }}
         >
             {/* Línea de brillo superior */}
             <div className="absolute top-0 left-0 right-0 h-px bg-white/10" />

@@ -364,7 +364,7 @@ export default function CheckoutPage() {
   if (cart.length === 0) return <div className="min-h-screen bg-white"><Navbar /><div className="flex flex-col items-center py-20"><p className="font-bold mb-4 uppercase tracking-[0.2em]">Bolsa vacía</p><Link href="/" className="bg-black text-white px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest">Volver</Link></div><Footer /></div>;
 
   return (
-    <div className="bg-white min-h-screen text-black" style={{ fontFamily: 'Arial, sans-serif' }}>
+    <div className="bg-white min-h-screen text-black">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">

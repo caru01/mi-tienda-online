@@ -94,8 +94,7 @@ export default function ImageCarousel() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
-                className="text-white text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none mb-3"
-                style={{ fontFamily: "Arial, sans-serif" }}
+                className="text-white text-3xl md:text-5xl font-black uppercase italic tracking-tighter leading-none mb-3 shadow-black/20 drop-shadow-sm"
               >
                 {banner.titulo}
               </motion.h2>
@@ -104,8 +103,7 @@ export default function ImageCarousel() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.45 }}
-                  className="text-white/80 text-sm md:text-lg font-bold uppercase tracking-widest"
-                  style={{ fontFamily: "Arial, sans-serif" }}
+                  className="text-white/80 text-sm md:text-lg font-bold uppercase tracking-widest bg-black/5 w-fit px-2 backdrop-blur-sm"
                 >
                   {banner.subtitulo}
                 </motion.p>
@@ -117,7 +115,6 @@ export default function ImageCarousel() {
                   transition={{ delay: 0.6 }}
                   href={banner.enlace}
                   className="mt-5 inline-flex items-center gap-2 bg-white text-black font-black uppercase tracking-widest text-xs px-6 py-3 w-fit border-2 border-black hover:bg-black hover:text-white transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none"
-                  style={{ fontFamily: "Arial, sans-serif" }}
                 >
                   Ver más <ExternalLink size={14} />
                 </motion.a>

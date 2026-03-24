@@ -150,7 +150,7 @@ export default function ProductCarousel() {
 
   if (loading) {
     return (
-      <section className="py-20 bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
+      <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4">
           <div className="h-4 w-48 bg-gray-100 rounded mx-auto mb-16 animate-pulse" />
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
@@ -162,7 +162,7 @@ export default function ProductCarousel() {
   }
 
   return (
-    <section className="py-20 bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
+    <section className="py-20 bg-white">
       <div className="max-w-7xl mx-auto px-4 relative">
 
         <h2 className="text-xs font-black uppercase tracking-[0.3em] text-center mb-16 text-black italic">

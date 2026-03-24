@@ -64,7 +64,7 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="w-full shadow-md relative z-50" style={{ fontFamily: 'Arial, sans-serif' }}>
+    <nav className="w-full shadow-md relative z-50">
       {/* ── BARRA SUPERIOR DE ANUNCIOS ── */}
       <AnnouncementBar />
 

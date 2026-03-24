@@ -58,6 +58,11 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
           .eq("aprobada", true)
           .order("created_at", { ascending: false });
         setResenas(revs ?? []);
+        
+        // Calcular promedio inicial si hay reseñas
+        const sum = (revs ?? []).reduce((acc: any, r: any) => acc + r.calificacion, 0);
+        const avg = revs && revs.length > 0 ? sum / revs.length : 0;
+        // (No necesitamos setPromedio si lo calculamos al vuelo o con un useMemo)
 
         // Traer Variantes
         const { data: vars, error: varsErr } = await supabase
@@ -94,17 +99,21 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
     if (resolvedParams.id) fetchDatosProducto();
   }, [resolvedParams.id]);
 
-  // 2. ACTUALIZAR STOCK AL CAMBIAR OPICIÓN
+  // 2. ACTUALIZAR STOCK AL CAMBIAR OPCIÓN
   useEffect(() => {
     if (tallaSeleccionada) {
       const varianteElegida = variantes.find(v => {
-        const nombreV = v.variante_atributos?.length > 0 
-           ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-           : v.sku || 'Única';
+        const nombreV = v.variante_atributos?.length > 0
+          ? v.variante_atributos.map((va: any) => va.atributo_valores?.valor).join(' / ')
+          : v.sku || 'Única';
         return nombreV === tallaSeleccionada;
       });
       setStockDisponible(varianteElegida?.stock || 0);
       setCantidad(1); // Resetear cantidad al cambiar
+    } else {
+      // Si no hay seleccionada, mostramos el total de stock
+      const total = variantes.reduce((acc, v) => acc + (v.stock || 0), 0);
+      setStockDisponible(total);
     }
   }, [tallaSeleccionada, variantes]);
 
@@ -142,14 +151,14 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
 
   if (!producto) {
     return (
-      <div className="p-10 text-center font-bold text-black" style={{ fontFamily: 'Arial' }}>
+      <div className="p-10 text-center font-bold text-black uppercase tracking-widest text-xs">
         Producto no encontrado
       </div>
     );
   }
 
   return (
-    <div className="bg-white min-h-screen" style={{ fontFamily: 'Arial, sans-serif' }}>
+    <div className="bg-white min-h-screen">
       <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 py-12 text-black">
@@ -201,16 +210,35 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
               <h1 className="text-2xl font-black uppercase tracking-tight text-black mb-1 italic">
                 {producto.nombre}
               </h1>
-              {variantes.length > 0 && (
-                <p className="text-[10px] font-bold uppercase tracking-widest text-[#B0B0B0] mb-4">
-                  SKU: {variantes.find(v => {
-                    const n = v.variante_atributos?.length > 0
-                      ? v.variante_atributos.map((va: any) => va.atributo_valores?.valor).join(' / ')
-                      : (v.sku || 'Única');
-                    return n === tallaSeleccionada;
-                  })?.sku || variantes[0]?.sku || "N / A"}
-                </p>
-              )}
+              <div className="flex items-center gap-4 mb-4">
+                {variantes.length > 0 && (
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#B0B0B0]">
+                    SKU: {variantes.find(v => {
+                      const n = v.variante_atributos?.length > 0
+                        ? v.variante_atributos.map((va: any) => va.atributo_valores?.valor).join(' / ')
+                        : (v.sku || 'Única');
+                      return n === tallaSeleccionada;
+                    })?.sku || variantes[0]?.sku || "N / A"}
+                  </p>
+                )}
+                {resenas.length > 0 && (
+                  <div className="flex items-center gap-1 border-l border-gray-200 pl-4">
+                    <div className="flex">
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const promedio = resenas.reduce((acc, r) => acc + r.calificacion, 0) / resenas.length;
+                        return (
+                          <Star
+                            key={star}
+                            size={12}
+                            className={`${star <= Math.round(promedio) ? "text-yellow-400 fill-yellow-400" : "text-gray-200"}`}
+                          />
+                        );
+                      })}
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-400">({resenas.length})</span>
+                  </div>
+                )}
+              </div>
               <p className="text-xl font-bold text-black">
                 ${Number(producto.precio_base).toLocaleString("es-CO")}
               </p>
@@ -233,14 +261,14 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
                 ).map(([nombreAtributo, opciones]: [string, any]) => (
                   <div key={nombreAtributo}>
                     <h3 className="text-[11px] font-bold text-black uppercase tracking-widest mb-4 italic">
-                      {nombreAtributo} {tallaSeleccionada && opciones.some((o:any) => o.variante_atributos?.[0]?.atributo_valores?.valor === tallaSeleccionada) && <span className="text-black font-black">- Seleccionado</span>}
+                      {nombreAtributo} {tallaSeleccionada && opciones.some((o: any) => o.variante_atributos?.[0]?.atributo_valores?.valor === tallaSeleccionada) && <span className="text-black font-black">- Seleccionado</span>}
                     </h3>
                     <div className="flex gap-3 flex-wrap">
                       {opciones.map((v: any) => {
-                        const nombreVariante = v.variante_atributos?.length > 0 
-                          ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
+                        const nombreVariante = v.variante_atributos?.length > 0
+                          ? v.variante_atributos.map((va: any) => va.atributo_valores?.valor).join(' / ')
                           : v.sku || 'Única';
-                        
+
                         return (
                           <button
                             key={v.id}
@@ -275,9 +303,6 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
             <div className="space-y-4">
               <div className="flex justify-between items-center w-32">
                 <h3 className="text-[11px] font-bold text-black uppercase tracking-widest">Cantidad</h3>
-                {tallaSeleccionada && (
-                  <span className="text-[9px] font-black text-gray-400">Stock: {stockDisponible}</span>
-                )}
               </div>
               <div className="flex items-center border border-black w-32 justify-between rounded-full px-2">
                 <button
@@ -300,9 +325,26 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
                   <Plus size={16} />
                 </button>
               </div>
-              {stockDisponible <= 5 && stockDisponible > 0 && (
-                <p className="text-[10px] text-orange-600 font-bold uppercase">¡Quedan pocas unidades!</p>
-              )}
+
+              {/* DISPONIBILIDAD Y BARRA DE STOCK - SIEMPRE VISIBLE */}
+              <div className="pt-2">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-[11px] font-black uppercase tracking-widest text-black">Disponibilidad</h3>
+                  <span className={`text-[10px] font-black uppercase ${stockDisponible <= 10 ? 'text-red-600 animate-pulse' : 'text-green-600'}`}>
+                    {!tallaSeleccionada 
+                      ? `Stock Total: ${stockDisponible} unidades` 
+                      : stockDisponible <= 10 
+                        ? `¡Sólo quedan ${stockDisponible}. Pídelo pronto!` 
+                        : `Disponible (${stockDisponible} unidades)`}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden border border-gray-200">
+                  <div 
+                    className={`${stockDisponible <= 10 ? 'bg-red-600' : 'bg-green-500'} h-full transition-all duration-1000 ease-out rounded-full`}
+                    style={{ width: `${Math.min((stockDisponible / 15) * 100, 100)}%` }}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* BOTÓN AGREGAR */}
@@ -322,14 +364,14 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
             {/* INFO EXTRA */}
             <div className="pt-8 space-y-6 border-t border-gray-100">
               <div className="flex items-center gap-4 text-[10px] font-bold uppercase text-gray-500">
-                <ShieldCheck size={18} className="text-black" /> Pago 100% seguro
+                <ShieldCheck size={18} className="text-blue-600" /> Pago 100% seguro
               </div>
               <div className="flex items-center gap-4 text-[10px] font-bold uppercase text-gray-500">
-                <Truck size={18} className="text-black" /> Envíos a todo Colombia
+                <Truck size={18} className="text-amber-500" /> Envíos a todo Colombia
               </div>
               <div>
                 <div className="flex items-center gap-4 text-[10px] font-bold uppercase text-gray-500">
-                  <RefreshCw size={18} className="text-black" /> Política de Devolución
+                  <RefreshCw size={18} className="text-green-600" /> Política de Devolución
                 </div>
                 <p className="text-[10px] text-gray-600 leading-normal font-bold">
                   No realizamos devoluciones de dinero. Sin embargo, puedes cambiar tu artículo por otro de igual valor o de mayor valor pagando la diferencia. Los cambios se realizan únicamente el mismo día de la compra.
