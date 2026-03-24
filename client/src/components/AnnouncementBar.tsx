@@ -25,9 +25,9 @@ export default function AnnouncementBar() {
             .from("configuracion")
             .select("valor")
             .eq("clave", "barra_anuncio")
-            .single()
-            .then(({ data }) => {
-                if (data?.valor) setDbTexto(data.valor);
+            .maybeSingle()
+            .then(({ data, error }) => {
+                if (!error && data?.valor) setDbTexto(data.valor);
             });
     }, []);
 

@@ -42,13 +42,19 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
         if (prodErr) throw prodErr;
         setProducto(prod);
 
-        // Traer imágenes adicionales
-        const { data: imgs } = await supabase
-          .from("producto_imagenes")
-          .select("*")
-          .eq("producto_id", resolvedParams.id)
-          .order("orden", { ascending: true });
-        setImagenes(imgs ?? []);
+        // Traer imágenes adicionales (Silencioso se la tabla no existe)
+        try {
+          const { data: imgs, error: imgErr } = await supabase
+            .from("producto_imagenes")
+            .select("*")
+            .eq("producto_id", resolvedParams.id)
+            .order("orden", { ascending: true });
+          
+          if (!imgErr && imgs) setImagenes(imgs);
+          else setImagenes([]);
+        } catch (e) {
+          setImagenes([]);
+        }
 
         // Traer reseñas aprobadas
         const { data: revs } = await supabase
