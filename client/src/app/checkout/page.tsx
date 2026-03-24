@@ -76,6 +76,48 @@ export default function CheckoutPage() {
 
   const subtotal = cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
 
+  // VALIDACIÓN DE STOCK EN TIEMPO REAL AL ENTRAR AL CHECKOUT
+  useEffect(() => {
+    const validarStock = async () => {
+      if (cart.length === 0) return;
+      setIsProcessing(true);
+      
+      const ids = cart.map(item => item.id);
+      const { data: variantes } = await supabase
+        .from('variantes_producto')
+        .select(`
+          producto_id, 
+          stock, 
+          variante_atributos (
+            atributo_valores (
+              valor
+            )
+          )
+        `)
+        .in('producto_id', ids);
+
+      if (variantes) {
+        let stockInsuficiente = false;
+        cart.forEach(item => {
+          const vActual = variantes.find((v: any) => {
+             const nombreV = v.variante_atributos?.map((va: any) => va.atributo_valores?.valor).join(' / ') || 'Única';
+             return v.producto_id === item.id && nombreV === item.talla;
+          });
+
+          if (!vActual || vActual.stock < item.cantidad) {
+            stockInsuficiente = true;
+          }
+        });
+
+        if (stockInsuficiente) {
+          toast("🔥 Algunos productos ya no tienen stock suficiente. Por favor revisa tu bolsa antes de pagar.", "error");
+        }
+      }
+      setIsProcessing(false);
+    };
+    validarStock();
+  }, []);
+
   // Consultar puntos automáticamente al escribir correo válido
   useEffect(() => {
     const fetchPuntos = async () => {

@@ -83,6 +83,15 @@ export default function CartDrawer() {
 
         {/* Lista de productos agregados */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {cart.length > 0 && (
+            <div className="mx-6 mb-6 p-3 bg-yellow-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-3">
+              <span className="text-xl animate-pulse">🔥</span>
+              <p className="text-[9px] font-black uppercase leading-tight">
+                ¡Atención! Los artículos no están reservados. Finaliza tu compra antes de que se agoten.
+              </p>
+            </div>
+          )}
+          
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center space-y-4">
               <ShoppingBag size={40} className="text-gray-200" />
@@ -137,8 +146,26 @@ export default function CartDrawer() {
                           <Plus size={12} className="text-black" />
                         </button>
                       </div>
+                      
+                      {/* ALERTAS DE STOCK BAJO (FOMO) */}
+                      {stocks[`${item.id}-${item.talla}`] < 4 && stocks[`${item.id}-${item.talla}`] > 0 && (
+                        <div className="bg-red-50 px-2 py-0.5 border border-red-200 animate-pulse">
+                          <p className="text-[8px] font-black text-red-600 uppercase">
+                            ¡Sólo quedan {stocks[`${item.id}-${item.talla}`]}!
+                          </p>
+                        </div>
+                      )}
+                      
+                      {stocks[`${item.id}-${item.talla}`] === 0 && (
+                        <div className="bg-black px-2 py-0.5">
+                          <p className="text-[8px] font-black text-white uppercase italic">
+                            Agotado
+                          </p>
+                        </div>
+                      )}
+
                       {/* Indicador visual si está al límite de stock */}
-                      {(stocks[`${item.id}-${item.talla}`] ?? 999) <= item.cantidad && (
+                      {(stocks[`${item.id}-${item.talla}`] ?? 999) <= item.cantidad && stocks[`${item.id}-${item.talla}`] > 0 && (
                         <span className="text-[8px] font-bold text-orange-500 uppercase">Límite alcanzado</span>
                       )}
                     </div>

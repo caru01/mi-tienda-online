@@ -46,10 +46,24 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+      localStorage.setItem(`${CART_STORAGE_KEY}_timestamp`, Date.now().toString());
     } catch {
       // Si hay error (modo privado muy restrictivo), simplemente ignoramos
     }
   }, [cart]);
+
+  // Verificar caducidad del carrito (48 horas)
+  useEffect(() => {
+    const lastSaved = localStorage.getItem(`${CART_STORAGE_KEY}_timestamp`);
+    if (lastSaved) {
+      const diff = Date.now() - parseInt(lastSaved);
+      const hours = diff / (1000 * 60 * 60);
+      if (hours > 48) {
+        setCart([]);
+        localStorage.removeItem(`${CART_STORAGE_KEY}_timestamp`);
+      }
+    }
+  }, []);
 
   // Añade productos: si el ID y Talla ya existen, suma la cantidad
   const addToCart = (newItem: CartItem) => {
