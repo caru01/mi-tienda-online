@@ -28,6 +28,7 @@ export default function AdminDashboard() {
   const [listaConfig, setListaConfig] = useState<any[]>([]);
   const [listaBanners, setListaBanners] = useState<any[]>([]);
   const [listaVisitas, setListaVisitas] = useState<any[]>([]);
+  const [filtroAnalitica, setFiltroAnalitica] = useState('7_dias');
   const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // --- ESTADOS PARA CUPONES ---
@@ -147,8 +148,25 @@ export default function AdminDashboard() {
     if (data) setListaBanners(data);
   };
 
-  const cargarAnalitica = async () => {
-    const { data } = await supabase.from('analitica_visitas').select('*').order('created_at', { ascending: false }).limit(200);
+  const cargarAnalitica = async (filtro = filtroAnalitica) => {
+    let query = supabase.from('analitica_visitas').select('*').order('created_at', { ascending: false });
+
+    const ahora = new Date();
+    if (filtro === 'hoy') {
+      const hoy = new Date(ahora.setHours(0, 0, 0, 0)).toISOString();
+      query = query.gt('created_at', hoy);
+    } else if (filtro === 'ayer') {
+      const ayerInicio = new Date(new Date().setDate(new Date().getDate() - 1));
+      ayerInicio.setHours(0,0,0,0);
+      const ayerFin = new Date(ayerInicio);
+      ayerFin.setHours(23,59,59,999);
+      query = query.gt('created_at', ayerInicio.toISOString()).lt('created_at', ayerFin.toISOString());
+    } else if (filtro === '7_dias') {
+      const semana = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString();
+      query = query.gt('created_at', semana);
+    } // 'mes' es el default con el limit
+
+    const { data } = await query.limit(1000);
     if (data) setListaVisitas(data);
   };
 
@@ -1022,86 +1040,114 @@ export default function AdminDashboard() {
             {/* PESTAÑA ANALITICA (MODERNA Y PREMIUM) */}
             {activeTab === "analitica" && (
               <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2">
-                <header className="flex justify-between items-end border-b-4 border-black pb-4 italic">
+                <header className="flex flex-col md:flex-row justify-between items-start md:items-end border-b-4 border-black pb-6 italic gap-4">
                    <div>
-                     <h3 className="font-black uppercase text-3xl text-black">Analítica en Tiempo Real</h3>
-                     <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mt-1">Monitoreo de Visitantes y Calidad de Sesión</p>
+                     <h3 className="font-black uppercase text-4xl text-black leading-none">Intelligence Hub</h3>
+                     <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mt-2">Métricas de Guerra para Crecimiento de Ventas</p>
                    </div>
-                   <div className="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1 border-2 border-black text-[9px] font-black uppercase animate-pulse">
-                     <span className="w-2 h-2 bg-green-500 rounded-full"></span> Conexión Activa
+                   
+                   <div className="flex flex-wrap items-center gap-2">
+                      <div className="flex bg-gray-100 p-1 border-2 border-black mr-4">
+                         {['hoy', 'ayer', '7_dias', 'mes'].map((f) => (
+                           <button 
+                             key={f}
+                             onClick={() => { setFiltroAnalitica(f); cargarAnalitica(f); }}
+                             className={`px-3 py-1 text-[9px] font-black uppercase transition-all ${filtroAnalitica === f ? 'bg-black text-white shadow-[2px_2px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-200'}`}
+                           >
+                             {f.replace('_', ' ')}
+                           </button>
+                         ))}
+                      </div>
+                      <div className="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-2 border-2 border-black text-[9px] font-black uppercase shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+                        <span className="w-2 h-2 bg-green-500 rounded-full animate-ping"></span> Live
+                      </div>
                    </div>
                 </header>
 
-                {/* KPI CARDS */}
+                {/* KPI CARDS (PESADAS) */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                   <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]">
-                     <div className="flex justify-between mb-4">
-                        <Activity className="text-black" size={24} />
-                        <span className="text-[8px] font-black uppercase bg-black text-white px-2 py-1 italic">Engagement</span>
+                   <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden group">
+                     <div className="flex justify-between mb-4 relative z-10">
+                        <Activity className="text-black" size={32} strokeWidth={3} />
+                        <span className="text-[9px] font-black uppercase bg-black text-white px-3 py-1 italic">Quality</span>
                      </div>
-                     <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Sesiones de Calidad (&gt;10s)</p>
-                     <p className="text-4xl font-black text-black italic">{listaVisitas.filter(v => v.tiempo_s >= 10).length}</p>
-                     <p className="text-[9px] font-black uppercase text-green-600 mt-2 flex items-center gap-1"> <TrendingUp size={10} /> Visitantes que interactuaron realmente</p>
+                     <p className="text-[11px] font-black uppercase text-gray-400 mb-1 relative z-10">Sesiones &gt; 10 seg</p>
+                     <p className="text-5xl font-black text-black italic relative z-10">{listaVisitas.filter(v => v.tiempo_s >= 10).length}</p>
+                     <p className="text-[9px] font-black uppercase text-green-600 mt-3 flex items-center gap-1 bg-green-50 w-fit px-2 py-1 border border-green-200"> <TrendingUp size={12} strokeWidth={3} /> Tráfico con alta retención</p>
+                     <div className="absolute -bottom-4 -right-4 text-black/5 group-hover:text-black/10 transition-colors">
+                        <MousePointer2 size={120} strokeWidth={3} />
+                     </div>
                    </div>
 
-                   <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                     <div className="flex justify-between mb-4">
-                        <MousePointer2 className="text-black" size={24} />
-                        <span className="text-[8px] font-black uppercase bg-yellow-400 text-black px-2 py-1 italic">Intento Compra</span>
+                   <div className="bg-[#FCD7DE] border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden group">
+                     <div className="flex justify-between mb-4 relative z-10">
+                        <ShoppingBag className="text-black" size={32} strokeWidth={3} />
+                        <span className="text-[9px] font-black uppercase bg-black text-white px-3 py-1 italic">Conversion</span>
                      </div>
-                     <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Añadidos al Carrito / Checkout</p>
-                     <p className="text-4xl font-black text-black italic">
+                     <p className="text-[11px] font-black uppercase text-gray-400 mb-1 relative z-10">Intentos de Compra</p>
+                     <p className="text-5xl font-black text-black italic relative z-10">
                        {listaVisitas.filter(v => v.evento === 'add_to_cart' || v.evento === 'checkout_start').length}
                      </p>
-                     <p className="text-[9px] font-black uppercase text-black/40 mt-2 tracking-widest">Conversión potencial detectada</p>
+                     <p className="text-[9px] font-black uppercase text-black/60 mt-3 border border-black/10 px-2 py-1 bg-white/30">Ratio: {listaVisitas.length > 0 ? ((listaVisitas.filter(v => v.evento === 'add_to_cart').length / listaVisitas.length) * 100).toFixed(1) : 0}%</p>
+                     <div className="absolute -bottom-4 -right-4 text-black/5 group-hover:text-black/10 transition-colors">
+                        <TrendingUp size={120} strokeWidth={3} />
+                     </div>
                    </div>
 
-                   <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                     <div className="flex justify-between mb-4">
-                        <Globe className="text-black" size={24} />
-                        <span className="text-[8px] font-black uppercase bg-zinc-100 text-black px-2 py-1 italic">Cobertura</span>
+                   <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden group">
+                     <div className="flex justify-between mb-4 relative z-10">
+                        <MapPin className="text-black" size={32} strokeWidth={3} />
+                        <span className="text-[9px] font-black uppercase bg-zinc-100 text-black px-3 py-1 italic">Reach</span>
                      </div>
-                     <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Ciudades Reach</p>
-                     <p className="text-4xl font-black text-black italic">
+                     <p className="text-[11px] font-black uppercase text-gray-400 mb-1 relative z-10">Ciudades Activas</p>
+                     <p className="text-5xl font-black text-black italic relative z-10">
                         {new Set(listaVisitas.map(v => v.ciudad).filter(Boolean)).size}
                      </p>
-                     <p className="text-[9px] font-black uppercase text-black/40 mt-2 tracking-widest">Procedencia de tus clientes</p>
+                     <p className="text-[9px] font-black uppercase text-gray-400 mt-3 italic tracking-widest">Presencia nacional detectada</p>
+                     <div className="absolute -bottom-4 -right-4 text-black/5 group-hover:text-black/10 transition-colors">
+                        <Globe size={120} strokeWidth={3} />
+                     </div>
                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                   {/* TABLA DE ÚLTIMAS VISITAS */}
-                   <div className="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                     <div className="p-4 border-b-2 border-black flex justify-between items-center bg-zinc-50">
-                        <h4 className="font-black uppercase text-[11px] italic">Registro de Visitantes (IP/Geo)</h4>
-                        <Activity size={14} className="animate-pulse text-red-500" />
+                   {/* TABLA DE ÚLTIMAS VISITAS (MAS DETALLE) */}
+                   <div className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                     <div className="p-4 border-b-4 border-black flex justify-between items-center bg-zinc-50 italic">
+                        <h4 className="font-black uppercase text-xs">Radar de Tráfico en Vivo</h4>
+                        <div className="flex items-center gap-1 text-[8px] font-black uppercase bg-red-500 text-white px-2 py-0.5"> <Wifi size={10} /> Real-time</div>
                      </div>
-                     <div className="overflow-x-auto">
+                     <div className="overflow-x-auto max-h-[500px]">
                         <table className="w-full text-left">
-                          <thead className="text-[9px] font-black uppercase border-b border-black/10">
+                          <thead className="text-[9px] font-black uppercase border-b-2 border-black sticky top-0 bg-white z-10">
                             <tr>
-                              <th className="p-4">Ubicación</th>
-                              <th className="p-4">IP</th>
-                              <th className="p-4">Permanencia</th>
-                              <th className="p-4">Evento</th>
+                              <th className="p-4 bg-gray-50">Localización</th>
+                              <th className="p-4">Página Activa</th>
+                              <th className="p-4 bg-gray-50">Permanencia</th>
+                              <th className="p-4">Acción</th>
                             </tr>
                           </thead>
                           <tbody className="text-[10px] font-bold uppercase">
-                            {listaVisitas.slice(0, 15).map((v, i) => (
-                              <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                                <td className="p-4 flex flex-col">
-                                   <span className="flex items-center gap-1 text-black"><MapPin size={8} /> {v.ciudad || 'Desconocida'}</span>
-                                   <span className="text-[8px] text-gray-400">{v.pais || '---'}</span>
+                            {listaVisitas.slice(0, 20).map((v, i) => (
+                              <tr key={i} className="border-b border-black/5 hover:bg-[#FCD7DE]/20 transition-colors">
+                                <td className="p-4 flex flex-col bg-gray-50/50">
+                                   <span className="flex items-center gap-1 text-black font-black"><MapPin size={10} /> {v.ciudad || 'Desconocida'}</span>
+                                   <span className="text-[8px] text-gray-400 ml-3.5">{v.ip?.slice(0, 12)}...</span>
                                 </td>
-                                <td className="p-4 font-black text-gray-400">{v.ip?.slice(0, 8)}...</td>
                                 <td className="p-4">
-                                   <span className={`px-2 py-0.5 border border-black ${v.tiempo_s >= 10 ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                   <div className="flex flex-col gap-0.5">
+                                      <span className="text-black font-black truncate max-w-[150px]">{v.url === '/' ? 'HOME' : v.url.replace('/producto/', '')}</span>
+                                      <span className="text-[8px] text-gray-400 italic">ID: {v.producto_id?.slice(0, 8) || 'Sitio Global'}</span>
+                                   </div>
+                                </td>
+                                <td className="p-4 bg-gray-50/50 text-center">
+                                   <span className={`px-2 py-1 border-2 border-black font-black ${v.tiempo_s >= 10 ? 'bg-green-400 text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-gray-400'}`}>
                                       {v.tiempo_s}s
                                    </span>
                                 </td>
                                 <td className="p-4">
-                                   <span className={`px-2 py-0.5 italic ${v.evento === 'add_to_cart' ? 'bg-black text-white' : 'text-gray-400'}`}>
-                                      {v.evento || 'Navegación'}
+                                   <span className={`px-2 py-1 border-2 border-black text-[8px] font-black italic ${v.evento === 'add_to_cart' ? 'bg-yellow-400 text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-zinc-100 text-gray-400'}`}>
+                                      {v.evento === 'add_to_cart' ? '🔥 INTENTO COMPRA' : 'NAVEGANDO'}
                                    </span>
                                 </td>
                               </tr>
@@ -1111,52 +1157,105 @@ export default function AdminDashboard() {
                      </div>
                    </div>
 
-                   {/* PRODUCTOS MÁS CALIENTES */}
-                   <div className="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                      <div className="p-4 border-b-2 border-black flex justify-between items-center bg-zinc-50">
-                        <h4 className="font-black uppercase text-[11px] italic">Interés por Producto (Vistas vs Intento)</h4>
-                        <TrendingUp size={14} className="text-black" />
+                   {/* RANKING Y EMBUDO (ESTRATÉGICO) */}
+                   <div className="space-y-8">
+                      {/* EMBUDO DE CONVERSIÓN (SANT COLOMBA) */}
+                      <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                         <h4 className="font-black uppercase text-xs italic border-b-2 border-black pb-2 mb-6">Embudo de Conversión (Sales Funnel)</h4>
+                         <div className="space-y-4">
+                            {[
+                              { label: 'Visitas Totales', val: listaVisitas.length, color: 'bg-black text-white' },
+                              { label: 'Producto Visto', val: listaVisitas.filter(v => v.producto_id).length, color: 'bg-zinc-800 text-white' },
+                              { label: 'Interés Real (>10s)', val: listaVisitas.filter(v => v.tiempo_s >= 10).length, color: 'bg-zinc-600 text-white' },
+                              { label: 'Intento de Compra', val: listaVisitas.filter(v => v.evento === 'add_to_cart').length, color: 'bg-yellow-400 text-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' },
+                            ].map((step, idx) => {
+                               const percentage = listaVisitas.length > 0 ? (step.val / listaVisitas.length) * 100 : 0;
+                               return (
+                                 <div key={idx} className="relative group">
+                                    <div className="flex justify-between items-center mb-1">
+                                      <span className="text-[10px] font-black uppercase tracking-widest">{step.label}</span>
+                                      <span className="text-[10px] font-black italic">{step.val} ({percentage.toFixed(0)}%)</span>
+                                    </div>
+                                    <div className="h-10 border-2 border-black bg-gray-50 relative overflow-hidden">
+                                       <motion.div 
+                                         initial={{ width: 0 }} 
+                                         animate={{ width: `${percentage}%` }} 
+                                         className={`h-full flex items-center px-4 font-black text-[12px] italic transition-all ${step.color}`}
+                                       >
+                                         {percentage > 15 && `${percentage.toFixed(0)}%`}
+                                       </motion.div>
+                                    </div>
+                                 </div>
+                               )
+                            })}
+                         </div>
                       </div>
-                      <div className="p-6 space-y-4">
-                         {listaProductos.slice(0, 6).map(p => {
-                           const vistas = listaVisitas.filter(v => v.producto_id === p.id).length;
-                           const intentos = listaVisitas.filter(v => v.producto_id === p.id && (v.evento === 'add_to_cart' || v.evento === 'checkout_start')).length;
-                           const ratio = vistas > 0 ? (intentos / vistas) * 100 : 0;
-                           
-                           return (
-                             <div key={p.id} className="group">
-                               <div className="flex justify-between items-start mb-2">
-                                  <div className="flex items-center gap-2">
-                                     <img src={p.imagen_principal} className="w-8 h-8 object-cover border border-black" />
-                                     <div>
-                                       <p className="text-[10px] font-black uppercase truncate w-32 md:w-48">{p.nombre}</p>
-                                       <p className="text-[8px] text-gray-400 font-bold">{vistas} Vistas únicas</p>
-                                     </div>
-                                  </div>
-                                  <div className="text-right">
-                                    <p className="text-[10px] font-black italic">{intentos} Intentos</p>
-                                    <p className={`text-[8px] font-black ${ratio > 20 ? 'text-green-600' : 'text-gray-400'}`}>{ratio.toFixed(0)}% Conv.</p>
-                                  </div>
-                               </div>
-                               <div className="w-full h-1.5 bg-gray-100 border border-black/10 overflow-hidden relative">
-                                  <motion.div 
-                                    initial={{ width: 0 }} 
-                                    animate={{ width: `${Math.min(vistas * 5, 100)}%` }} 
-                                    className="h-full bg-black"
-                                  />
-                                  <motion.div 
-                                    initial={{ width: 0 }} 
-                                    animate={{ width: `${Math.min(intentos * 5, 100)}%` }} 
-                                    className="absolute top-0 left-0 h-full bg-yellow-400 border-r border-black"
-                                  />
-                               </div>
-                             </div>
-                           );
-                         })}
+
+                      {/* RANKING DE PRODUCTOS "HOT" (ORDENADO) */}
+                      <div className="bg-white border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                         <div className="p-4 border-b-4 border-black flex justify-between items-center bg-zinc-50 italic">
+                           <h4 className="font-black uppercase text-xs">Ranking de Interés Principal</h4>
+                           <TrendingUp size={16} strokeWidth={3} />
+                         </div>
+                         <div className="p-6 space-y-4">
+                            {listaProductos
+                              .map(p => ({
+                                ...p,
+                                vistas: listaVisitas.filter(v => v.producto_id === p.id).length,
+                                intentos: listaVisitas.filter(v => v.producto_id === p.id && v.evento === 'add_to_cart').length
+                              }))
+                              .sort((a, b) => b.intentos - a.intentos || b.vistas - a.vistas)
+                              .slice(0, 5)
+                              .map((p, idx) => {
+                                 const ratio = p.vistas > 0 ? (p.intentos / p.vistas) * 100 : 0;
+                                 return (
+                                   <div key={p.id} className="relative flex items-center gap-4 border-b border-black/5 pb-4 last:border-0 last:pb-0">
+                                      <div className="text-2xl font-black text-black/10 italic">#{idx + 1}</div>
+                                      <img src={p.imagen_principal} className="w-12 h-12 object-cover border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" />
+                                      <div className="flex-1">
+                                         <p className="text-[10px] font-black uppercase truncate w-32 md:w-48 leading-none mb-1">{p.nombre}</p>
+                                         <div className="flex gap-4">
+                                            <span className="text-[8px] font-black uppercase text-gray-400 italic">{p.vistas} Vistas</span>
+                                            <span className="text-[8px] font-black uppercase text-black bg-yellow-400 px-1 border border-black">{p.intentos} Intentos</span>
+                                         </div>
+                                      </div>
+                                      <div className={`text-xl font-black italic ${ratio > 15 ? 'text-green-600' : 'text-black'}`}>
+                                         {ratio.toFixed(0)}%
+                                      </div>
+                                   </div>
+                                 )
+                              })}
+                         </div>
                       </div>
-                      <div className="p-4 border-t border-black/10 bg-gray-50 flex gap-4 text-[8px] font-black uppercase tracking-widest text-gray-400">
-                         <div className="flex items-center gap-1"><span className="w-2 h-2 bg-black"></span> Vistas</div>
-                         <div className="flex items-center gap-1"><span className="w-2 h-2 bg-yellow-400 border border-black"></span> Intento Compra</div>
+
+                      {/* CIUDADES TOP (HEATMAP ANALOG) */}
+                      <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                         <h4 className="font-black uppercase text-xs italic border-b-2 border-black pb-2 mb-4 flex items-center gap-2"> <MapPin size={14} /> Penetración por Ciudad</h4>
+                         <div className="space-y-3">
+                            {Array.from(new Set(listaVisitas.map(v => v.ciudad).filter(Boolean)))
+                              .map(city => ({
+                                ciudad: city,
+                                count: listaVisitas.filter(v => v.ciudad === city).length
+                              }))
+                              .sort((a, b) => b.count - a.count)
+                              .slice(0, 5)
+                              .map((c, i) => (
+                                <div key={i} className="space-y-1">
+                                   <div className="flex justify-between text-[9px] font-black uppercase">
+                                      <span>{c.ciudad}</span>
+                                      <span>{c.count} Visitas</span>
+                                   </div>
+                                   <div className="h-3 border border-black bg-gray-50 overflow-hidden">
+                                      <motion.div 
+                                        initial={{ width: 0 }} 
+                                        animate={{ width: `${Math.min((c.count / listaVisitas.length) * 100 * 2, 100)}%` }} 
+                                        className="h-full bg-black italic"
+                                      />
+                                   </div>
+                                </div>
+                              ))
+                            }
+                         </div>
                       </div>
                    </div>
                 </div>
