@@ -222,20 +222,14 @@ export default function ProductCarousel() {
                       />
 
                       <div 
-                        className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-4 
+                        className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-2 
                         ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
                         onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.innerWidth < 1024) {
-                            if (activeActionsId === prod.id) {
-                              router.push(`/producto/${prod.id}`);
-                            } else {
-                              setActiveActionsId(prod.id);
-                            }
+                          if (e.target === e.currentTarget && window.innerWidth < 1024) {
+                            router.push(`/producto/${prod.id}`);
                           }
                         }}
                       >
-
                         {seleccionarId === prod.id ? (
                           <motion.div 
                             initial={{ scale: 0.9, opacity: 0 }} 
