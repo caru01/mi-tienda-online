@@ -26,26 +26,26 @@ export default function ContactosPage() {
                         href="https://wa.me/573022461068"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group flex flex-col items-center gap-4 border-2 border-black p-8 hover:bg-[#FCD7DE] transition-all"
+                        className="group flex flex-col items-center gap-4 border-2 border-black p-8 hover:bg-black transition-all"
                     >
-                        <MessageCircle size={36} className="text-black group-hover:scale-110 transition-transform" />
+                        <MessageCircle size={36} className="text-black group-hover:text-white group-hover:scale-110 transition-all" />
                         <div className="text-center">
-                            <h2 className="text-sm font-black uppercase tracking-widest mb-1">WhatsApp</h2>
-                            <p className="text-gray-600 text-sm">+57 302 246 1068</p>
-                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">Haz clic para chatear</p>
+                            <h2 className="text-sm font-black uppercase tracking-widest mb-1 group-hover:text-white">WhatsApp</h2>
+                            <p className="text-gray-600 text-sm group-hover:text-white/80">+57 302 246 1068</p>
+                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold group-hover:text-white/60">Haz clic para chatear</p>
                         </div>
                     </a>
 
                     {/* Correo */}
                     <a
                         href="mailto:contacto@galushop.com"
-                        className="group flex flex-col items-center gap-4 border-2 border-black p-8 hover:bg-[#FCD7DE] transition-all"
+                        className="group flex flex-col items-center gap-4 border-2 border-black p-8 hover:bg-black transition-all"
                     >
-                        <Mail size={36} className="text-black group-hover:scale-110 transition-transform" />
+                        <Mail size={36} className="text-black group-hover:text-white group-hover:scale-110 transition-all" />
                         <div className="text-center">
-                            <h2 className="text-sm font-black uppercase tracking-widest mb-1">Correo Electrónico</h2>
-                            <p className="text-gray-600 text-sm">contacto@galushop.com</p>
-                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold">Te respondemos en 24h</p>
+                            <h2 className="text-sm font-black uppercase tracking-widest mb-1 group-hover:text-white">Correo Electrónico</h2>
+                            <p className="text-gray-600 text-sm group-hover:text-white/80">contacto@galushop.com</p>
+                            <p className="text-[10px] text-gray-400 mt-1 uppercase font-bold group-hover:text-white/60">Te respondemos en 24h</p>
                         </div>
                     </a>
 

@@ -55,7 +55,7 @@ export default function AdminDashboard() {
 
   const [nuevoProducto, setNuevoProducto] = useState({
     nombre: "", precio_base: "", categoria_id: "", imagen_principal: "",
-    descripcion: "", es_ropa: true, destacado: false
+    descripcion: "", es_ropa: true, destacado: false, stock: 0
   });
 
   const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: "", slug: "", imagen: "" });
@@ -390,11 +390,11 @@ export default function AdminDashboard() {
         await supabase.from('variantes_producto').insert([{
           producto_id: prod.id,
           sku: `GEN-${prod.id.split('-')[0]}`,
-          stock: 0
+          stock: nuevoProducto.stock
         }]);
       }
       alert("Producto creado exitosamente");
-      setNuevoProducto({ nombre: "", precio_base: "", categoria_id: "", imagen_principal: "", descripcion: "", es_ropa: true, destacado: false });
+      setNuevoProducto({ nombre: "", precio_base: "", categoria_id: "", imagen_principal: "", descripcion: "", es_ropa: true, destacado: false, stock: 0 });
       setImagenFileProd(null);
       
       // Limpiar el input file si existe
@@ -916,6 +916,19 @@ export default function AdminDashboard() {
                         <input type="checkbox" checked={nuevoProducto.destacado} onChange={e => setNuevoProducto({ ...nuevoProducto, destacado: e.target.checked })} /> Destacado
                       </label>
                     </div>
+
+                    {!nuevoProducto.es_ropa && (
+                      <div className="pt-2">
+                        <label className="block text-[10px] font-black uppercase mb-1 text-black italic">Stock Inicial (Disponibilidad)</label>
+                        <input 
+                          type="number" 
+                          placeholder="CANTIDAD DE EXISTENCIAS" 
+                          className="w-full p-3 border-2 border-black font-bold outline-none text-black bg-yellow-50" 
+                          value={nuevoProducto.stock} 
+                          onChange={e => setNuevoProducto({ ...nuevoProducto, stock: parseInt(e.target.value) || 0 })} 
+                        />
+                      </div>
+                    )}
                   </div>
                   <button type="submit" disabled={loading} className="md:col-span-2 bg-black text-white font-black py-4 uppercase tracking-widest hover:bg-zinc-800">
                     {loading ? "GUARDANDO..." : "CREAR PRODUCTO BASE"}

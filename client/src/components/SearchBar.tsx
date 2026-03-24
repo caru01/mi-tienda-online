@@ -131,7 +131,7 @@ export default function SearchBar({ onClose }: SearchBarProps) {
                                         <Link
                                             href={`/producto/${prod.id}`}
                                             onClick={handleSelect}
-                                            className="flex items-center gap-4 px-4 py-3 hover:bg-[#FCD7DE]/30 transition-colors group"
+                                            className="flex items-center gap-4 px-4 py-3 hover:bg-zinc-100 transition-colors group"
                                         >
                                             <div className="w-10 h-12 bg-gray-50 rounded-sm overflow-hidden flex-shrink-0">
                                                 <img
@@ -141,7 +141,7 @@ export default function SearchBar({ onClose }: SearchBarProps) {
                                                 />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-[11px] font-black uppercase text-black truncate group-hover:text-pink-500 transition-colors">
+                                                <p className="text-[11px] font-black uppercase text-black truncate group-hover:underline decoration-2 underline-offset-4 transition-all">
                                                     {prod.nombre}
                                                 </p>
                                                 <p className="text-[11px] font-bold text-gray-500 mt-0.5">
@@ -156,7 +156,7 @@ export default function SearchBar({ onClose }: SearchBarProps) {
                                 <Link
                                     href={`/buscar?q=${encodeURIComponent(query)}`}
                                     onClick={handleSelect}
-                                    className="text-[10px] font-black uppercase tracking-widest text-black hover:text-pink-500 transition-colors"
+                                    className="text-[10px] font-black uppercase tracking-widest text-black hover:underline decoration-2 underline-offset-4 transition-all"
                                 >
                                     Ver todos los resultados →
                                 </Link>

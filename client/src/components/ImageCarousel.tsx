@@ -54,7 +54,7 @@ export default function ImageCarousel() {
   const next = () => setCurrent(p => (p + 1) % banners.length);
 
   if (loading || banners.length === 0) {
-    return <div className="w-full aspect-[16/6] md:aspect-[16/5] bg-[#FCD7DE] animate-pulse" />;
+    return <div className="w-full aspect-[16/6] md:aspect-[16/5] bg-zinc-100 animate-pulse" />;
   }
 
   const banner = banners[current];
@@ -116,7 +116,7 @@ export default function ImageCarousel() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.6 }}
                   href={banner.enlace}
-                  className="mt-5 inline-flex items-center gap-2 bg-[#FCD7DE] text-black font-black uppercase tracking-widest text-xs px-6 py-3 w-fit hover:bg-white transition-colors"
+                  className="mt-5 inline-flex items-center gap-2 bg-white text-black font-black uppercase tracking-widest text-xs px-6 py-3 w-fit border-2 border-black hover:bg-black hover:text-white transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none"
                   style={{ fontFamily: "Arial, sans-serif" }}
                 >
                   Ver más <ExternalLink size={14} />

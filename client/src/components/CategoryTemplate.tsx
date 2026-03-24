@@ -37,14 +37,14 @@ export default function CategoryTemplate({ title, products }: { title: string, p
             <div className="mb-8">
               <h3 className="font-bold mb-4">Color</h3>
               <div className="space-y-3">
-                {["Blanco", "Negro", "Rosado", "Lila", "Verde"].map((color) => (
+                {["Blanco", "Negro", "Crema", "Lila", "Verde"].map((color) => (
                   <label key={color} className="flex items-center justify-between cursor-pointer group">
                     <div className="flex items-center gap-3">
                       <div className="w-4 h-4 border rounded shadow-sm group-hover:border-black" />
                       <span className="text-gray-600">{color}</span>
                     </div>
-                    <div className={`w-3 h-3 rounded-full border border-gray-200 bg-${color === 'Blanco' ? 'white' : color === 'Rosado' ? 'pink-300' : color === 'Lila' ? 'purple-300' : color.toLowerCase() + '-500'}`} 
-                         style={{backgroundColor: color === 'Lila' ? '#d8b4fe' : color === 'Rosado' ? '#f9a8d4' : ''}}/>
+                    <div className={`w-3 h-3 rounded-full border border-gray-200 bg-${color === 'Blanco' ? 'white' : color === 'Crema' ? 'orange-50' : color === 'Lila' ? 'purple-300' : color.toLowerCase() + '-500'}`} 
+                         style={{backgroundColor: color === 'Lila' ? '#d8b4fe' : color === 'Crema' ? '#fff7ed' : ''}}/>
                   </label>
                 ))}
               </div>

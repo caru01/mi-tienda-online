@@ -375,8 +375,8 @@ export default function CheckoutPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div className="flex flex-col gap-2"><label className="text-[11px] font-black uppercase">Nombre Completo</label><input required name="nombre" value={datos.nombre} onChange={handleChange} className="border-b border-black py-2 text-sm outline-none focus:border-[#FCD7DE] uppercase font-bold text-black" /></div>
-              <div className="flex flex-col gap-2"><label className="text-[11px] font-black uppercase">Cédula o NIT</label><input required name="cedula" value={datos.cedula} onChange={handleChange} className="border-b border-black py-2 text-sm outline-none focus:border-[#FCD7DE] font-bold text-black" /></div>
+              <div className="flex flex-col gap-2"><label className="text-[11px] font-black uppercase">Nombre Completo</label><input required name="nombre" value={datos.nombre} onChange={handleChange} className="border-b border-black py-2 text-sm outline-none focus:border-black font-bold text-black" /></div>
+              <div className="flex flex-col gap-2"><label className="text-[11px] font-black uppercase">Cédula o NIT</label><input required name="cedula" value={datos.cedula} onChange={handleChange} className="border-b border-black py-2 text-sm outline-none focus:border-black font-bold text-black" /></div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -504,7 +504,7 @@ export default function CheckoutPage() {
             <div className="space-y-4 pt-4 border-t-2 border-black border-dashed">
                 <div className="flex justify-between items-center text-sm font-bold uppercase"><span className="text-gray-400">Subtotal</span><span className="text-black">${subtotal.toLocaleString("es-CO")}</span></div>
                 <div className="flex justify-between items-center text-sm font-bold uppercase"><span className="text-gray-400">Envío ({textoEnvio})</span><span className="text-black">${envio.toLocaleString("es-CO")}</span></div>
-                {descuentoValor > 0 && <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-[#FCD7DE]"><span className="text-green-600 px-2 py-1 bg-green-100">Descuento ({cuponData?.codigo})</span><span className="text-green-600">-${descuentoValor.toLocaleString("es-CO")}</span></div>}
+                {descuentoValor > 0 && <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest"><span className="text-green-600 px-2 py-1 bg-green-100">Descuento ({cuponData?.codigo})</span><span className="text-green-600">-${descuentoValor.toLocaleString("es-CO")}</span></div>}
                 {descuentoReferido > 0 && <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest"><span className="text-blue-600 px-2 py-1 bg-blue-100">Cód. Regalo Amigo</span><span className="text-blue-600">-${descuentoReferido.toLocaleString("es-CO")}</span></div>}
                 {usarPuntos && <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest"><span className="text-purple-600 px-2 py-1 bg-purple-100 border border-purple-200"><Star size={10} className="inline mr-1" /> Puntos Canjeados</span><span className="text-purple-600">-${Math.min(puntosDisponibles, subtotal + envio - descuentoValor - descuentoReferido).toLocaleString("es-CO")}</span></div>}
               </div>
@@ -520,8 +520,8 @@ export default function CheckoutPage() {
 
             {/* AVISO ANIMADO DE PUNTOS DISPONIBLES */}
             {puntosDisponibles > 0 && (
-              <div className="bg-[#FCD7DE] border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-in slide-in-from-bottom-2 fade-in duration-500 relative overflow-hidden">
-                <div className="absolute -right-4 -top-4 opacity-20">
+              <div className="bg-zinc-100 border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-in slide-in-from-bottom-2 fade-in duration-500 relative overflow-hidden">
+                <div className="absolute -right-4 -top-4 opacity-10">
                   <Star size={100} className="fill-black" />
                 </div>
                 <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -538,7 +538,7 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            <button type="submit" form="checkout-form" disabled={isProcessing} className={`w-full bg-black text-white font-black uppercase tracking-[0.2em] py-5 rounded-full transition-all flex items-center justify-center gap-3 text-[11px] shadow-xl ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-[#FCD7DE] hover:text-black'}`}>
+            <button type="submit" form="checkout-form" disabled={isProcessing} className={`w-full bg-black text-white font-black uppercase tracking-[0.2em] py-5 rounded-full transition-all flex items-center justify-center gap-3 text-[11px] shadow-xl ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-zinc-800'}`}>
               {isProcessing ? <>Procesando... <Loader2 className="animate-spin" size={16} /></> : <>Finalizar Pedido por WhatsApp <Send size={16} /></>}
             </button>
           </div>

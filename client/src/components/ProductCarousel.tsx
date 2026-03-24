@@ -39,16 +39,16 @@ export default function ProductCarousel() {
   const [variantes, setVariantes] = useState<any[]>([]);
   const [activeActionsId, setActiveActionsId] = useState<string | null>(null);
 
-  // Cerrar acciones abiertas al hacer clic fuera (móvil)
+  // Sistema de cierre al hacer clic fuera (Especial para móviles)
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.product-card-container')) {
+    const handleGlobalClick = (e: any) => {
+      // Si el clic NO es dentro de un contenedor de producto, cerramos acciones
+      if (!e.target.closest('.product-card-global')) {
         setActiveActionsId(null);
       }
     };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("click", handleGlobalClick);
+    return () => document.removeEventListener("click", handleGlobalClick);
   }, []);
 
   const fetchDestacados = async () => {
@@ -194,25 +194,42 @@ export default function ProductCarousel() {
                 {currentProducts.map((prod) => (
                   <div 
                     key={prod.id} 
-                    className="group/item flex flex-col bg-white product-card-container relative"
-                    onClick={() => {
-                      if (window.innerWidth < 1024) {
-                        setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
-                      }
-                    }}
+                    className="group/item flex flex-col bg-white product-card-global relative"
                   >
-                    <div className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-5 relative border border-gray-100">
+                    <div 
+                      className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-5 relative border border-gray-100 cursor-pointer"
+                      onClick={(e) => {
+                        // Solo activamos el toggle por clic si es una pantalla pequeña/táctil
+                        if (window.innerWidth < 1024) {
+                          setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                        }
+                      }}
+                    >
                       <img
                         src={prod.imagen_principal}
                         alt={prod.nombre}
                         className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-700"
                       />
 
-                      <div className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-4 
-                        ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}>
+                      <div 
+                        className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-4 
+                        ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Si ya estamos seleccionando talla, no cerramos las acciones por clic en el área vacía del overlay
+                          if (!seleccionarId && window.innerWidth < 1024) {
+                            setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                          }
+                        }}
+                      >
 
                         {seleccionarId === prod.id ? (
-                          <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-4 w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-3 border-2 border-black">
+                          <motion.div 
+                            initial={{ scale: 0.9, opacity: 0 }} 
+                            animate={{ scale: 1, opacity: 1 }} 
+                            className="bg-white p-4 w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-3 border-2 border-black"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex justify-between items-center border-b pb-1 border-gray-100">
                               <span className="text-[10px] font-black uppercase text-black italic">Añadir a la bolsa</span>
                               <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black"><X size={14} /></button>
@@ -226,7 +243,8 @@ export default function ProductCarousel() {
                                 </label>
                                 <select
                                   value={opcionTemporal}
-                                  onChange={(e) => setOpcionTemporal(e.target.value)}
+                                  onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
+                                  onClick={(e) => e.stopPropagation()}
                                   className="w-full border-2 border-black p-2 text-[10px] font-black text-black bg-white outline-none cursor-pointer"
                                 >
                                   <option value="">Seleccionar...</option>
@@ -260,7 +278,7 @@ export default function ProductCarousel() {
 
                             <button
                                disabled={(variantes.some(v => v.variante_atributos.length > 0) && !opcionTemporal) || stockMaximo <= 0}
-                              onClick={() => handleConfirmarAdd(prod)}
+                              onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
                               className={`w-full py-2.5 text-[9px] font-black uppercase tracking-widest transition-all duration-300 border-2 border-black ${stockMaximo > 0 ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                 }`}
                             >
@@ -280,7 +298,7 @@ export default function ProductCarousel() {
                               <ShoppingCart size={18} />
                             </button>
                             <Link 
-                              href={`/producto/${prod.id}`} 
+                              href={`/producto/${prod.id}`}
                               onClick={(e) => e.stopPropagation()}
                               className="bg-white text-black p-3 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-black hover:text-white transition-colors border-2 border-black"
                             >

@@ -233,7 +233,7 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
                 ).map(([nombreAtributo, opciones]: [string, any]) => (
                   <div key={nombreAtributo}>
                     <h3 className="text-[11px] font-bold text-black uppercase tracking-widest mb-4 italic">
-                      {nombreAtributo} {tallaSeleccionada && opciones.some((o:any) => o.variante_atributos?.[0]?.atributo_valores?.valor === tallaSeleccionada) && <span className="text-pink-600 font-black">- Seleccionado</span>}
+                      {nombreAtributo} {tallaSeleccionada && opciones.some((o:any) => o.variante_atributos?.[0]?.atributo_valores?.valor === tallaSeleccionada) && <span className="text-black font-black">- Seleccionado</span>}
                     </h3>
                     <div className="flex gap-3 flex-wrap">
                       {opciones.map((v: any) => {
@@ -282,7 +282,7 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
               <div className="flex items-center border border-black w-32 justify-between rounded-full px-2">
                 <button
                   onClick={() => setCantidad(Math.max(1, cantidad - 1))}
-                  className="p-2 hover:bg-[#FCD7DE] rounded-full transition-colors text-black"
+                  className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-black"
                 >
                   <Minus size={16} />
                 </button>
@@ -295,7 +295,7 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
                       toast(`Solo hay ${stockDisponible} unidades disponibles`, "warning");
                     }
                   }}
-                  className="p-2 hover:bg-[#FCD7DE] rounded-full transition-colors text-black"
+                  className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-black"
                 >
                   <Plus size={16} />
                 </button>

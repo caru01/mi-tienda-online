@@ -30,6 +30,22 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
   const [variantes, setVariantes] = useState<any[]>([]);
   const [stockMaximo, setStockMaximo] = useState(0);
 
+  // Estados Interacción Móvil
+  const [showFiltersMobile, setShowFiltersMobile] = useState(false);
+  const [showSortMobile, setShowSortMobile] = useState(false);
+  const [activeActionsId, setActiveActionsId] = useState<string | null>(null);
+
+  // Cerrar acciones al hacer clic fuera
+  useEffect(() => {
+    const handleGlobalClick = (e: any) => {
+      if (!e.target.closest('.product-card-global')) {
+        setActiveActionsId(null);
+      }
+    };
+    document.addEventListener("click", handleGlobalClick);
+    return () => document.removeEventListener("click", handleGlobalClick);
+  }, []);
+
   useEffect(() => {
     const cargarDatos = async () => {
       setLoading(true);
@@ -189,11 +205,32 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
       <div className="max-w-7xl mx-auto px-4 py-8 text-black">
         {/* BREADCRUMB */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-4 border-b pb-4 border-gray-100">
-          <nav className="text-black uppercase tracking-widest text-[11px] font-medium">
+          <nav className="hidden md:block text-black uppercase tracking-widest text-[11px] font-medium">
             Inicio <span className="mx-2 text-gray-300">/</span> <span className="font-black text-black">{categoriaNombre.toUpperCase()}</span>
           </nav>
 
-          <div className="flex items-center gap-2">
+          {/* CABECERA MÓVIL: NOMBRE + BOTONES */}
+          <div className="w-full md:hidden flex flex-col items-center gap-6 mb-2">
+            <h1 className="text-3xl font-black uppercase text-black italic tracking-tighter text-center">
+              {categoriaNombre}
+            </h1>
+            <div className="grid grid-cols-2 gap-3 w-full">
+              <button 
+                onClick={() => { setShowFiltersMobile(!showFiltersMobile); setShowSortMobile(false); }}
+                className={`flex items-center justify-center gap-2 py-3 border-2 border-black font-black uppercase text-[10px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all ${showFiltersMobile ? 'bg-zinc-100' : 'bg-white'}`}
+              >
+                Filtrar {hayFiltrosActivos && <span className="w-2 h-2 bg-black rounded-full"></span>}
+              </button>
+              <button 
+                onClick={() => { setShowSortMobile(!showSortMobile); setShowFiltersMobile(false); }}
+                className={`flex items-center justify-center gap-2 py-3 border-2 border-black font-black uppercase text-[10px] shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all ${showSortMobile ? 'bg-zinc-100' : 'bg-white'}`}
+              >
+                Ordenar
+              </button>
+            </div>
+          </div>
+
+          <div className="hidden md:flex items-center gap-4">
             <span className="text-[10px] font-black uppercase text-black">Ordenar por:</span>
             <select
               value={orden}
@@ -208,16 +245,34 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
           </div>
         </div>
 
+        {/* POPUP DE ORDENAMIENTO MÓVIL */}
+        <AnimatePresence>
+          {showSortMobile && (
+            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="md:hidden bg-white border-2 border-black p-4 mb-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-2">
+              <p className="text-[9px] font-black uppercase mb-2 border-b-2 border-black pb-1 italic">Opciones de ordenamiento</p>
+              {["novedad", "precio-menor", "precio-mayor", "a-z"].map((opt) => (
+                <button 
+                  key={opt} 
+                  onClick={() => { setOrden(opt); setShowSortMobile(false); }}
+                  className={`w-full text-left py-2 px-3 text-[10px] font-black uppercase ${orden === opt ? 'bg-black text-white' : 'hover:bg-gray-50 text-black'}`}
+                >
+                  {opt === "novedad" ? "Novedades" : opt === "precio-menor" ? "Menor Precio" : opt === "precio-mayor" ? "Mayor Precio" : "Nombre: A-Z"}
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex flex-col md:flex-row gap-12">
-          {/* ASIDE DE FILTROS */}
-          <aside className="w-full md:w-56 space-y-12 flex-shrink-0">
+          {/* ASIDE DE FILTROS (COLAPSABLE EN MÓVIL) */}
+          <aside className={`w-full md:w-56 space-y-12 flex-shrink-0 ${!showFiltersMobile ? 'hidden md:block' : 'block mb-8 animate-in fade-in slide-in-from-top-4'}`}>
             <h2 className="text-sm font-black uppercase tracking-widest text-black border-b-2 border-black pb-2 italic">Filtrar por</h2>
 
             {/* FILTRO DE RANGO DE PRECIO */}
             <div>
               <div className="flex justify-between mb-4 mt-2">
                 <h3 className="text-[11px] font-black text-black uppercase tracking-widest">Presupuesto</h3>
-                <span className="text-[11px] font-black text-pink-600">${precioInfo.current.toLocaleString("es-CO")}</span>
+                <span className="text-[11px] font-black text-zinc-600">${precioInfo.current.toLocaleString("es-CO")}</span>
               </div>
               
               <div className="relative pt-1">
@@ -281,22 +336,46 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
             {loading ? (
               <p className="text-center py-20 text-[10px] font-black uppercase tracking-widest text-black">Cargando Galu Shop...</p>
             ) : productosProcesados.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-12">
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-2 md:gap-x-6 gap-y-8 md:gap-y-12">
                 {productosProcesados.map((prod) => (
-                  <div key={prod.id} className="group flex flex-col">
-                    <div className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-4 relative border border-gray-100">
+                  <div 
+                    key={prod.id} 
+                    className="group/item flex flex-col bg-white product-card-global relative"
+                  >
+                    <div 
+                      className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-4 relative border border-gray-100 cursor-pointer"
+                      onClick={() => {
+                        if (window.innerWidth < 1024) {
+                          setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                        }
+                      }}
+                    >
                       <img
                         src={prod.imagen_principal}
                         alt={prod.nombre}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                        className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-700"
                       />
 
-                      <div className="absolute inset-0 bg-black/5 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                      <div 
+                        className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-2 
+                        ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!seleccionarId && window.innerWidth < 1024) {
+                            setActiveActionsId(null);
+                          }
+                        }}
+                      >
                         {seleccionarId === prod.id ? (
-                          <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} className="bg-white p-3 w-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-2">
+                          <motion.div 
+                            initial={{ scale: 0.9 }} 
+                            animate={{ scale: 1 }} 
+                            className="bg-white p-3 w-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex justify-between border-b pb-1 border-gray-100">
                               <span className="text-[9px] font-black uppercase text-black italic">Añadir</span>
-                              <button onClick={() => setSeleccionarId(null)} className="text-black"><X size={14} /></button>
+                              <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black"><X size={14} /></button>
                             </div>
 
                             {variantes.some(v => v.variante_atributos?.length > 0) && (
@@ -306,7 +385,8 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                                 </label>
                                 <select
                                   value={opcionTemporal}
-                                  onChange={(e) => setOpcionTemporal(e.target.value)}
+                                  onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
+                                  onClick={(e) => e.stopPropagation()}
                                   className="w-full border-2 border-black p-1 text-[10px] font-black bg-white text-black outline-none"
                                 >
                                   <option value="">Selecciona...</option>
@@ -339,7 +419,7 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
 
                             <button
                               disabled={(variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || stockMaximo <= 0}
-                              onClick={() => handleConfirmarAdd(prod)}
+                               onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
                               className={`w-full py-2 text-[9px] font-black uppercase tracking-widest transition-all ${stockMaximo > 0 ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed"}`}
                             >
                               {stockMaximo <= 0 ? "Sin existencias" : "Confirmar Selección"}
@@ -347,15 +427,19 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                           </motion.div>
                         ) : (
                           <div className="flex gap-2">
-                            <button
-                              onClick={() => { setSeleccionarId(prod.id); cargarVariantes(prod.id); }}
-                              className="bg-white text-black p-3 rounded-full shadow-md hover:bg-black hover:text-white transition-colors border-2 border-black"
-                            >
-                              <ShoppingCart size={18} />
-                            </button>
-                            <Link href={`/producto/${prod.id}`} className="bg-white text-black p-3 rounded-full shadow-md hover:bg-black hover:text-white transition-colors border-2 border-black">
-                              <Eye size={18} />
-                            </Link>
+                             <button
+                                onClick={(e) => { e.stopPropagation(); setSeleccionarId(prod.id); cargarVariantes(prod.id); }}
+                                className="bg-white text-black p-3 rounded-full shadow-md hover:bg-black hover:text-white transition-colors border-2 border-black"
+                              >
+                                <ShoppingCart size={18} />
+                              </button>
+                              <Link 
+                                href={`/producto/${prod.id}`} 
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-white text-black p-3 rounded-full shadow-md hover:bg-black hover:text-white transition-colors border-2 border-black"
+                              >
+                                <Eye size={18} />
+                              </Link>
                           </div>
                         )}
                       </div>
@@ -364,7 +448,7 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                     <div className="text-center">
                       <h3 className="text-[12px] text-black uppercase font-black tracking-tighter mb-1">{prod.nombre}</h3>
                       <p className="font-black text-base text-black">${Number(prod.precio_base).toLocaleString("es-CO")}</p>
-                      <div className="w-8 h-[2px] bg-black mx-auto mt-2 transition-all group-hover:w-16" />
+                      <div className="w-8 h-[2px] bg-black mx-auto mt-2 transition-all group-hover/item:w-16" />
                     </div>
                   </div>
                 ))}

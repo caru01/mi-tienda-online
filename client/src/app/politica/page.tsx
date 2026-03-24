@@ -63,7 +63,7 @@ export default function PoliticaPage() {
                     ))}
                 </div>
 
-                <div className="mt-12 p-6 bg-[#FCD7DE]/30 border border-[#FCD7DE] text-center">
+                <div className="mt-12 p-6 bg-zinc-50 border border-black text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                     <p className="text-[11px] font-bold uppercase tracking-widest text-black">
                         ¿Tienes preguntas sobre nuestra política?
                     </p>

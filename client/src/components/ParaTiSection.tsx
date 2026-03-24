@@ -21,16 +21,16 @@ export default function ParaTiSection() {
   const [variantes, setVariantes] = useState<any[]>([]);
   const [activeActionsId, setActiveActionsId] = useState<string | null>(null);
 
-  // Cerrar acciones al hacer clic fuera
+  // Sistema de cierre al hacer clic fuera (Especial para móviles)
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('.product-card-parati')) {
+    const handleGlobalClick = (e: any) => {
+      // Si el clic NO es dentro de un contenedor de producto, cerramos acciones
+      if (!e.target.closest('.product-card-global')) {
         setActiveActionsId(null);
       }
     };
-    document.addEventListener("mousedown", handleOutsideClick);
-    return () => document.removeEventListener("mousedown", handleOutsideClick);
+    document.addEventListener("click", handleGlobalClick);
+    return () => document.removeEventListener("click", handleGlobalClick);
   }, []);
 
   const fetchRandomProducts = async () => {
@@ -149,26 +149,44 @@ export default function ParaTiSection() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: (index % 5) * 0.1 }}
-              className="group/item flex flex-col bg-white product-card-parati"
-              onClick={() => {
-                if (window.innerWidth < 1024) {
-                   setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
-                }
-              }}
+              className="group/item flex flex-col bg-white product-card-global relative"
             >
-              <div className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-sm mb-5 relative">
+              <div 
+                className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-sm mb-5 relative cursor-pointer"
+                onClick={(e) => {
+                  // Solo activamos el toggle por clic si es una pantalla pequeña/táctil
+                  if (window.innerWidth < 1024) {
+                     setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                  }
+                }}
+              >
                 <img
                   src={prod.imagen_principal}
                   alt={prod.nombre}
                   className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-700"
                 />
 
-                <div className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-2 
-                  ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}>
+                <div 
+                  className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-2 
+                  ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
+                  onClick={(e) => {
+                    // Detenemos que el clic llegue a la imagen si hacemos clic en la capa de botones/menú
+                    e.stopPropagation();
+                    // Pero si NO estamos en un menú, cerramos las acciones
+                    if (!seleccionarId && window.innerWidth < 1024) {
+                      setActiveActionsId(null);
+                    }
+                  }}
+                >
 
                   {seleccionarId === prod.id ? (
                     /* --- MENÚ DE CONFIGURACIÓN IGUAL AL CAROUSEL --- */
-                    <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="bg-white p-3 w-full rounded-sm shadow-2xl space-y-2 border-2 border-black">
+                    <motion.div 
+                      initial={{ scale: 0.9, opacity: 0 }} 
+                      animate={{ scale: 1, opacity: 1 }} 
+                      className="bg-white p-3 w-full rounded-sm shadow-2xl space-y-2 border-2 border-black"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <div className="flex justify-between items-center border-b pb-1 border-gray-100">
                         <span className="text-[8px] font-black uppercase text-black italic">Añadir</span>
                         <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black"><X size={12} /></button>
@@ -177,7 +195,8 @@ export default function ParaTiSection() {
                       {variantes.some(v => v.variante_atributos && v.variante_atributos.length > 0) && (
                         <select
                           value={opcionTemporal}
-                          onChange={(e) => setOpcionTemporal(e.target.value)}
+                          onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
+                          onClick={(e) => e.stopPropagation()}
                           className="w-full border-2 border-black p-1 text-[10px] font-bold text-black bg-white outline-none"
                         >
                           <option value="">{variantes[0]?.variante_atributos?.[0]?.atributo_valores?.atributos?.nombre || "Opción"}...</option>
@@ -208,7 +227,7 @@ export default function ParaTiSection() {
 
                       <button
                         disabled={(variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || stockMaximo <= 0}
-                        onClick={() => handleConfirmarAdd(prod)}
+                        onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
                         className={`w-full py-1.5 text-[8px] font-black uppercase tracking-widest transition-all border-2 border-black ${stockMaximo > 0 ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-gray-200"
                           }`}
                       >

@@ -44,7 +44,7 @@ export default function EnviosPage() {
                     </div>
 
                     {/* Resto de Colombia */}
-                    <div className="border-2 border-black p-6 space-y-4 bg-[#FCD7DE]/20">
+                    <div className="border-2 border-black p-6 space-y-4 bg-zinc-50 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                         <div className="flex items-center gap-3">
                             <Truck size={22} className="text-black flex-shrink-0" />
                             <h2 className="text-[12px] font-black uppercase tracking-widest">Resto de Colombia</h2>
@@ -92,7 +92,7 @@ export default function EnviosPage() {
                             { num: "04", title: "Seguimiento", desc: "Te notificaremos por WhatsApp cuando tu pedido sea despachado, junto con el número de guía (aplica para envíos nacionales)." },
                         ].map((paso) => (
                             <div key={paso.num} className="flex gap-6 items-start">
-                                <span className="text-3xl font-black text-[#FCD7DE] leading-none flex-shrink-0">{paso.num}</span>
+                                <span className="text-3xl font-black text-gray-200 leading-none flex-shrink-0">{paso.num}</span>
                                 <div>
                                     <h3 className="text-[11px] font-black uppercase tracking-widest mb-1">{paso.title}</h3>
                                     <p className="text-sm text-gray-600 font-medium leading-relaxed">{paso.desc}</p>

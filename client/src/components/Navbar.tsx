@@ -139,7 +139,7 @@ export default function Navbar() {
                 <div key={cat.id} className="relative group/sub">
                   <Link
                     href={`/categoria/${cat.slug}`}
-                    className="flex justify-between items-center px-4 py-3 text-[10px] font-bold hover:bg-[#FCD7DE] transition-colors border-b border-gray-50 uppercase text-black"
+                    className="flex justify-between items-center px-4 py-3 text-[10px] font-bold hover:bg-zinc-100 transition-colors border-b border-gray-50 uppercase text-black"
                   >
                     {cat.nombre}
                     <ChevronRight size={12} className="text-gray-400" />
@@ -160,7 +160,7 @@ export default function Navbar() {
                             <div className="w-10 h-12 bg-gray-100 overflow-hidden rounded-sm">
                               <img src={prod.imagen_principal} className="w-full h-full object-cover" alt={prod.nombre} />
                             </div>
-                            <span className="text-[10px] font-bold text-black group-hover/prod:text-pink-500 truncate uppercase">
+                            <span className="text-[10px] font-bold text-black group-hover/prod:underline decoration-2 underline-offset-4 truncate uppercase">
                               {prod.nombre}
                             </span>
                           </Link>
@@ -215,7 +215,7 @@ export default function Navbar() {
               <Link
                 href="/"
                 onClick={closeMobile}
-                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-[#FCD7DE]/40 transition-colors border-b border-gray-50"
+                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-zinc-100 transition-colors border-b border-gray-50"
               >
                 Inicio
               </Link>
@@ -224,7 +224,7 @@ export default function Navbar() {
               <div className="border-b border-gray-50">
                 <button
                   onClick={() => setCatExpandida(catExpandida === "categorias" ? null : "categorias")}
-                  className="w-full flex justify-between items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-[#FCD7DE]/40 transition-colors"
+                  className="w-full flex justify-between items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-zinc-100 transition-colors"
                 >
                   Categorías
                   <ChevronDown
@@ -240,7 +240,7 @@ export default function Navbar() {
                         key={cat.id}
                         href={`/categoria/${cat.slug}`}
                         onClick={closeMobile}
-                        className="flex items-center px-8 py-3 text-[11px] font-bold uppercase tracking-widest text-black hover:bg-[#FCD7DE]/40 transition-colors"
+                        className="flex items-center px-8 py-3 text-[11px] font-bold uppercase tracking-widest text-black hover:bg-zinc-100 transition-colors"
                       >
                         <ChevronRight size={12} className="mr-2 text-gray-400" />
                         {cat.nombre}
@@ -253,14 +253,14 @@ export default function Navbar() {
               <Link
                 href="/contactos"
                 onClick={closeMobile}
-                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-[#FCD7DE]/40 transition-colors border-b border-gray-50"
+                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-zinc-100 transition-colors border-b border-gray-50"
               >
                 Contactos
               </Link>
               <Link
                 href="/politica"
                 onClick={closeMobile}
-                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-[#FCD7DE]/40 transition-colors border-b border-gray-50"
+                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-zinc-100 transition-colors border-b border-gray-50"
               >
                 Política
               </Link>
@@ -281,14 +281,14 @@ export default function Navbar() {
               <Link
                 href="/terminos"
                 onClick={closeMobile}
-                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-[#FCD7DE]/40 transition-colors border-b border-gray-50"
+                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-zinc-100 transition-colors border-b border-gray-50"
               >
                 Términos
               </Link>
               <Link
                 href="/envios"
                 onClick={closeMobile}
-                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-[#FCD7DE]/40 transition-colors"
+                className="flex items-center px-6 py-4 text-[12px] font-black uppercase tracking-widest text-black hover:bg-zinc-100 transition-colors"
               >
                 Envíos
               </Link>
@@ -300,7 +300,7 @@ export default function Navbar() {
                 href="https://wa.me/573022461068"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-3 bg-black text-white py-4 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-[#FCD7DE] hover:text-black transition-all"
+                className="w-full flex items-center justify-center gap-3 bg-black text-white py-4 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-zinc-800 transition-all"
               >
                 <HelpCircle size={16} />
                 ¿Necesitas Ayuda?
