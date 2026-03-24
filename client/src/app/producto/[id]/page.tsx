@@ -139,6 +139,10 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
 
     toast(`¡${producto.nombre} agregado a tu bolsa!`, "success");
     setIsOpen(true);
+    // DISPARAR EVENTO DE ANALITICA (INTENTO DE COMPRA)
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("track-purchase-intent", { detail: { productoId: producto.id } }));
+    }
   };
 
   if (loading) {
