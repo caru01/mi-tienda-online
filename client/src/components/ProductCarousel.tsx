@@ -6,6 +6,7 @@ import {
   ChevronLeft, ChevronRight, ShoppingCart, Eye, X, Plus, Minus
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
 import { SkeletonProductCard } from "@/components/SkeletonCard";
@@ -16,6 +17,7 @@ import { useToast } from "@/context/ToastContext";
 export default function ProductCarousel() {
   const [productos, setProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(4);
   const { addToCart, setIsOpen } = useCart();
@@ -198,10 +200,13 @@ export default function ProductCarousel() {
                   >
                     <div 
                       className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-5 relative border border-gray-100 cursor-pointer"
-                      onClick={(e) => {
-                        // Solo activamos el toggle por clic si es una pantalla pequeña/táctil
+                      onClick={() => {
                         if (window.innerWidth < 1024) {
-                          setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                           if (activeActionsId === prod.id) {
+                            router.push(`/producto/${prod.id}`);
+                          } else {
+                            setActiveActionsId(prod.id);
+                          }
                         }
                       }}
                     >
@@ -216,9 +221,12 @@ export default function ProductCarousel() {
                         ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Si ya estamos seleccionando talla, no cerramos las acciones por clic en el área vacía del overlay
-                          if (!seleccionarId && window.innerWidth < 1024) {
-                            setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                          if (window.innerWidth < 1024) {
+                            if (activeActionsId === prod.id) {
+                              router.push(`/producto/${prod.id}`);
+                            } else {
+                              setActiveActionsId(prod.id);
+                            }
                           }
                         }}
                       >

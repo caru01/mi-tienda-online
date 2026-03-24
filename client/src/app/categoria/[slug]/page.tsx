@@ -8,11 +8,13 @@ import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
 import { motion, AnimatePresence } from "framer-motion";
 import { useToast } from "@/context/ToastContext";
+import { useRouter } from "next/navigation";
 
 export default function CategoriaPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params);
   const { addToCart, setIsOpen } = useCart();
   const { toast } = useToast();
+  const router = useRouter();
 
   const [productosDB, setProductosDB] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -480,7 +482,11 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                       className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-4 relative border border-gray-100 cursor-pointer"
                       onClick={() => {
                         if (window.innerWidth < 1024) {
-                          setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                          if (activeActionsId === prod.id) {
+                            router.push(`/producto/${prod.id}`);
+                          } else {
+                            setActiveActionsId(prod.id);
+                          }
                         }
                       }}
                     >
@@ -495,8 +501,12 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                         ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (!seleccionarId && window.innerWidth < 1024) {
-                            setActiveActionsId(null);
+                          if (window.innerWidth < 1024) {
+                            if (activeActionsId === prod.id) {
+                              router.push(`/producto/${prod.id}`);
+                            } else {
+                              setActiveActionsId(prod.id);
+                            }
                           }
                         }}
                       >

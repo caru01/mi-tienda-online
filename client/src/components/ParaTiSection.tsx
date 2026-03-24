@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Eye, X, Plus, Minus } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
 import { SkeletonProductCard } from "@/components/SkeletonCard";
@@ -12,6 +13,7 @@ export default function ParaTiSection() {
   const [productos, setProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const { addToCart, setIsOpen } = useCart();
+  const router = useRouter();
 
   // --- ESTADOS PARA SELECCIÓN INTERACTIVA ---
   const [seleccionarId, setSeleccionarId] = useState<string | null>(null);
@@ -153,10 +155,13 @@ export default function ParaTiSection() {
             >
               <div 
                 className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-sm mb-5 relative cursor-pointer"
-                onClick={(e) => {
-                  // Solo activamos el toggle por clic si es una pantalla pequeña/táctil
-                  if (window.innerWidth < 1024) {
-                     setActiveActionsId(activeActionsId === prod.id ? null : prod.id);
+                onClick={() => {
+                   if (window.innerWidth < 1024) {
+                    if (activeActionsId === prod.id) {
+                      router.push(`/producto/${prod.id}`);
+                    } else {
+                      setActiveActionsId(prod.id);
+                    }
                   }
                 }}
               >
@@ -170,11 +175,13 @@ export default function ParaTiSection() {
                   className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-2 
                   ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
                   onClick={(e) => {
-                    // Detenemos que el clic llegue a la imagen si hacemos clic en la capa de botones/menú
                     e.stopPropagation();
-                    // Pero si NO estamos en un menú, cerramos las acciones
-                    if (!seleccionarId && window.innerWidth < 1024) {
-                      setActiveActionsId(null);
+                    if (window.innerWidth < 1024) {
+                      if (activeActionsId === prod.id) {
+                        router.push(`/producto/${prod.id}`);
+                      } else {
+                        setActiveActionsId(prod.id);
+                      }
                     }
                   }}
                 >
