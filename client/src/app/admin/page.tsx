@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Package, Tag, Plus, Save, Hash, Wifi, WifiOff, ListOrdered, Star, ExternalLink,
   Pencil, Check, X, Layers, Settings, Trash2, Search, ChevronLeft, Ticket, ShoppingBag,
-  Image as ImageIcon, Menu
+  Image as ImageIcon, Menu, Activity, MapPin, TrendingUp, BarChart3, Globe, MousePointer2
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -27,6 +27,7 @@ export default function AdminDashboard() {
   const [listaResenas, setListaResenas] = useState<any[]>([]);
   const [listaConfig, setListaConfig] = useState<any[]>([]);
   const [listaBanners, setListaBanners] = useState<any[]>([]);
+  const [listaVisitas, setListaVisitas] = useState<any[]>([]);
   const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
   // --- ESTADOS PARA CUPONES ---
@@ -77,7 +78,8 @@ export default function AdminDashboard() {
       cargarPedidos(),
       cargarResenas(),
       cargarConfig(),
-      cargarBanners()
+      cargarBanners(),
+      cargarAnalitica()
     ]);
     setLoading(false);
   };
@@ -143,6 +145,11 @@ export default function AdminDashboard() {
   const cargarBanners = async () => {
     const { data } = await supabase.from('banners').select('*').order('orden', { ascending: true });
     if (data) setListaBanners(data);
+  };
+
+  const cargarAnalitica = async () => {
+    const { data } = await supabase.from('analitica_visitas').select('*').order('created_at', { ascending: false }).limit(200);
+    if (data) setListaVisitas(data);
   };
 
   const alternarAprobacionResena = async (id: string, actual: boolean) => {
@@ -563,6 +570,7 @@ export default function AdminDashboard() {
               <button onClick={() => setActiveTab("stock")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'stock' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Hash size={18} /> Inventario PRO</button>
               <button onClick={() => setActiveTab("resenas")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'resenas' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Star size={18} /> Reseñas{listaResenas.filter(r => !r.aprobada).length > 0 && <span className="bg-red-500 text-white rounded-full px-2 text-[8px]">{listaResenas.filter(r => !r.aprobada).length}</span>}</button>
               <button onClick={() => setActiveTab("banners")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'banners' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><ImageIcon size={18} /> Banners</button>
+              <button onClick={() => setActiveTab("analitica")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'analitica' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Activity size={18} /> Analítica en Vivo</button>
               <button onClick={() => setActiveTab("cupones")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'cupones' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Ticket size={18} /> Cupones</button>
               <button onClick={() => setActiveTab("categorias")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'categorias' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Tag size={18} /> Categorías</button>
               <button onClick={() => setActiveTab("atributos")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'atributos' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Layers size={18} /> Atributos</button>
@@ -589,6 +597,12 @@ export default function AdminDashboard() {
                     <p className="text-[9px] md:text-[10px] uppercase font-black tracking-widest text-[#B0B0B0] mb-2">Ventas Brutas</p>
                     <p className="text-sm sm:text-lg md:text-2xl font-black text-black leading-tight break-all">
                       ${listaPedidos.filter(p => p.estado !== 'cancelado').reduce((acc, p) => acc + Number(p.total_final), 0).toLocaleString("es-CO")}
+                    </p>
+                  </div>
+                  <div className="bg-white border-2 border-black p-4 md:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center flex flex-col justify-center min-h-[100px] cursor-pointer hover:bg-zinc-50 transition-colors" onClick={() => setActiveTab("analitica")}>
+                    <p className="text-[9px] md:text-[10px] uppercase font-black tracking-widest text-[#B0B0B0] mb-2">Visitantes Reales</p>
+                    <p className="text-lg md:text-2xl font-black text-black">
+                      {listaVisitas.filter(v => v.tiempo_s >= 10).length}+
                     </p>
                   </div>
                   <div className="bg-white border-2 border-black p-4 md:p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center flex flex-col justify-center min-h-[100px]">
@@ -1001,6 +1015,150 @@ export default function AdminDashboard() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            )}
+
+            {/* PESTAÑA ANALITICA (MODERNA Y PREMIUM) */}
+            {activeTab === "analitica" && (
+              <div className="space-y-10 animate-in fade-in slide-in-from-bottom-2">
+                <header className="flex justify-between items-end border-b-4 border-black pb-4 italic">
+                   <div>
+                     <h3 className="font-black uppercase text-3xl text-black">Analítica en Tiempo Real</h3>
+                     <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.2em] mt-1">Monitoreo de Visitantes y Calidad de Sesión</p>
+                   </div>
+                   <div className="flex items-center gap-2 bg-green-100 text-green-700 px-3 py-1 border-2 border-black text-[9px] font-black uppercase animate-pulse">
+                     <span className="w-2 h-2 bg-green-500 rounded-full"></span> Conexión Activa
+                   </div>
+                </header>
+
+                {/* KPI CARDS */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]">
+                     <div className="flex justify-between mb-4">
+                        <Activity className="text-black" size={24} />
+                        <span className="text-[8px] font-black uppercase bg-black text-white px-2 py-1 italic">Engagement</span>
+                     </div>
+                     <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Sesiones de Calidad (&gt;10s)</p>
+                     <p className="text-4xl font-black text-black italic">{listaVisitas.filter(v => v.tiempo_s >= 10).length}</p>
+                     <p className="text-[9px] font-black uppercase text-green-600 mt-2 flex items-center gap-1"> <TrendingUp size={10} /> Visitantes que interactuaron realmente</p>
+                   </div>
+
+                   <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                     <div className="flex justify-between mb-4">
+                        <MousePointer2 className="text-black" size={24} />
+                        <span className="text-[8px] font-black uppercase bg-yellow-400 text-black px-2 py-1 italic">Intento Compra</span>
+                     </div>
+                     <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Añadidos al Carrito / Checkout</p>
+                     <p className="text-4xl font-black text-black italic">
+                       {listaVisitas.filter(v => v.evento === 'add_to_cart' || v.evento === 'checkout_start').length}
+                     </p>
+                     <p className="text-[9px] font-black uppercase text-black/40 mt-2 tracking-widest">Conversión potencial detectada</p>
+                   </div>
+
+                   <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                     <div className="flex justify-between mb-4">
+                        <Globe className="text-black" size={24} />
+                        <span className="text-[8px] font-black uppercase bg-zinc-100 text-black px-2 py-1 italic">Cobertura</span>
+                     </div>
+                     <p className="text-[10px] font-black uppercase text-gray-400 mb-1">Ciudades Reach</p>
+                     <p className="text-4xl font-black text-black italic">
+                        {new Set(listaVisitas.map(v => v.ciudad).filter(Boolean)).size}
+                     </p>
+                     <p className="text-[9px] font-black uppercase text-black/40 mt-2 tracking-widest">Procedencia de tus clientes</p>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                   {/* TABLA DE ÚLTIMAS VISITAS */}
+                   <div className="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                     <div className="p-4 border-b-2 border-black flex justify-between items-center bg-zinc-50">
+                        <h4 className="font-black uppercase text-[11px] italic">Registro de Visitantes (IP/Geo)</h4>
+                        <Activity size={14} className="animate-pulse text-red-500" />
+                     </div>
+                     <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                          <thead className="text-[9px] font-black uppercase border-b border-black/10">
+                            <tr>
+                              <th className="p-4">Ubicación</th>
+                              <th className="p-4">IP</th>
+                              <th className="p-4">Permanencia</th>
+                              <th className="p-4">Evento</th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-[10px] font-bold uppercase">
+                            {listaVisitas.slice(0, 15).map((v, i) => (
+                              <tr key={i} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
+                                <td className="p-4 flex flex-col">
+                                   <span className="flex items-center gap-1 text-black"><MapPin size={8} /> {v.ciudad || 'Desconocida'}</span>
+                                   <span className="text-[8px] text-gray-400">{v.pais || '---'}</span>
+                                </td>
+                                <td className="p-4 font-black text-gray-400">{v.ip?.slice(0, 8)}...</td>
+                                <td className="p-4">
+                                   <span className={`px-2 py-0.5 border border-black ${v.tiempo_s >= 10 ? 'bg-green-100' : 'bg-gray-100'}`}>
+                                      {v.tiempo_s}s
+                                   </span>
+                                </td>
+                                <td className="p-4">
+                                   <span className={`px-2 py-0.5 italic ${v.evento === 'add_to_cart' ? 'bg-black text-white' : 'text-gray-400'}`}>
+                                      {v.evento || 'Navegación'}
+                                   </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                     </div>
+                   </div>
+
+                   {/* PRODUCTOS MÁS CALIENTES */}
+                   <div className="bg-white border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <div className="p-4 border-b-2 border-black flex justify-between items-center bg-zinc-50">
+                        <h4 className="font-black uppercase text-[11px] italic">Interés por Producto (Vistas vs Intento)</h4>
+                        <TrendingUp size={14} className="text-black" />
+                      </div>
+                      <div className="p-6 space-y-4">
+                         {listaProductos.slice(0, 6).map(p => {
+                           const vistas = listaVisitas.filter(v => v.producto_id === p.id).length;
+                           const intentos = listaVisitas.filter(v => v.producto_id === p.id && (v.evento === 'add_to_cart' || v.evento === 'checkout_start')).length;
+                           const ratio = vistas > 0 ? (intentos / vistas) * 100 : 0;
+                           
+                           return (
+                             <div key={p.id} className="group">
+                               <div className="flex justify-between items-start mb-2">
+                                  <div className="flex items-center gap-2">
+                                     <img src={p.imagen_principal} className="w-8 h-8 object-cover border border-black" />
+                                     <div>
+                                       <p className="text-[10px] font-black uppercase truncate w-32 md:w-48">{p.nombre}</p>
+                                       <p className="text-[8px] text-gray-400 font-bold">{vistas} Vistas únicas</p>
+                                     </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[10px] font-black italic">{intentos} Intentos</p>
+                                    <p className={`text-[8px] font-black ${ratio > 20 ? 'text-green-600' : 'text-gray-400'}`}>{ratio.toFixed(0)}% Conv.</p>
+                                  </div>
+                               </div>
+                               <div className="w-full h-1.5 bg-gray-100 border border-black/10 overflow-hidden relative">
+                                  <motion.div 
+                                    initial={{ width: 0 }} 
+                                    animate={{ width: `${Math.min(vistas * 5, 100)}%` }} 
+                                    className="h-full bg-black"
+                                  />
+                                  <motion.div 
+                                    initial={{ width: 0 }} 
+                                    animate={{ width: `${Math.min(intentos * 5, 100)}%` }} 
+                                    className="absolute top-0 left-0 h-full bg-yellow-400 border-r border-black"
+                                  />
+                               </div>
+                             </div>
+                           );
+                         })}
+                      </div>
+                      <div className="p-4 border-t border-black/10 bg-gray-50 flex gap-4 text-[8px] font-black uppercase tracking-widest text-gray-400">
+                         <div className="flex items-center gap-1"><span className="w-2 h-2 bg-black"></span> Vistas</div>
+                         <div className="flex items-center gap-1"><span className="w-2 h-2 bg-yellow-400 border border-black"></span> Intento Compra</div>
+                      </div>
+                   </div>
                 </div>
               </div>
             )}

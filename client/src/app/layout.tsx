@@ -4,6 +4,7 @@ import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { ToastProvider } from "@/context/ToastContext";
 import CartDrawer from "@/components/CartDrawer";
+import AnalyticsTracker from "@/components/AnalyticsTracker";
 
 const outfit = Outfit({ 
   subsets: ["latin"],
@@ -26,6 +27,7 @@ export default function RootLayout({
       <body className={`${outfit.className} antialiased`}>
         <ToastProvider>
           <CartProvider>
+            <AnalyticsTracker />
             {children}
             <CartDrawer />
           </CartProvider>
