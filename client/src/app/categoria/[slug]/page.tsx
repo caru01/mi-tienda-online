@@ -518,32 +518,34 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                         ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
                         onClick={(e) => {
                           if (e.target === e.currentTarget && window.innerWidth < 1024) {
-                            router.push(`/producto/${prod.id}`);
+                             router.push(`/producto/${prod.id}`);
                           }
                         }}
                       >
                         {seleccionarId === prod.id ? (
+                          /* --- MENÚ DE CONFIGURACIÓN PREMIUM --- */
                           <motion.div 
-                            initial={{ scale: 0.9 }} 
-                            animate={{ scale: 1 }} 
-                            className="bg-white p-3 w-full border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] space-y-2"
+                            initial={{ y: 20, opacity: 0 }} 
+                            animate={{ y: 0, opacity: 1 }} 
+                            exit={{ y: 20, opacity: 0 }}
+                            className="bg-white/95 backdrop-blur-xl p-4 w-[95%] border-[3px] border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] space-y-3 z-50 transform -translate-y-2"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="flex justify-between border-b pb-1 border-gray-100">
-                              <span className="text-[9px] font-black uppercase text-black italic">Añadir</span>
-                              <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black"><X size={14} /></button>
+                            <div className="flex justify-between items-center border-b-2 border-black/10 pb-1.5">
+                              <span className="text-[10px] font-black uppercase text-black italic">Personalizar</span>
+                              <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black hover:rotate-90 transition-transform"><X size={16} strokeWidth={3} /></button>
                             </div>
 
                             {variantes.some(v => v.variante_atributos?.length > 0) && (
-                              <div className="text-left w-full space-y-1 mb-2">
-                                <label className="text-[9px] font-black text-black uppercase">
+                              <div className="text-left w-full space-y-1">
+                                <label className="text-[9px] font-black text-black/50 uppercase pl-1 tracking-widest leading-none">
                                   {variantes[0]?.variante_atributos?.[0]?.atributo_valores?.atributos?.nombre || "Opciones"}:
                                 </label>
                                 <select
                                   value={opcionTemporal}
                                   onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="w-full border-2 border-black p-1 text-[10px] font-black bg-white text-black outline-none"
+                                  className="w-full border-2 border-black p-2 text-[10px] font-black bg-white text-black outline-none appearance-none cursor-pointer"
                                 >
                                   <option value="">Selecciona...</option>
                                   {variantes.map((v: any) => {
@@ -560,27 +562,32 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                               </div>
                             )}
 
-                            <div className="flex justify-between items-center w-full px-1">
-                               <span className="text-[9px] font-black uppercase italic text-black">CANTIDAD:</span>
+                            <div className="flex justify-between items-end w-full px-1">
+                               <label className="text-[9px] font-black text-black/50 uppercase tracking-widest leading-none">CANTIDAD:</label>
                                {(opcionTemporal || !variantes.some(v => v.variante_atributos?.length > 0)) && (
-                                 <span className={`text-[8px] font-black uppercase italic ${stockMaximo > 5 ? "text-green-600" : stockMaximo > 0 ? "text-orange-600" : "text-red-500"}`}>Stock disp: {stockMaximo}</span>
+                                 <div className="flex items-center gap-1">
+                                   <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${stockMaximo > 3 ? "bg-green-500" : "bg-orange-500"}`}></span>
+                                   <span className={`text-[8px] font-black uppercase italic ${stockMaximo > 5 ? "text-green-600" : stockMaximo > 0 ? "text-orange-600" : "text-red-500"}`}>Stock: {stockMaximo}</span>
+                                 </div>
                                )}
                             </div>
 
-                            <div className="flex items-center justify-between border-2 border-black p-1 bg-white">
-                              <button onClick={() => setCantTemp(prev => Math.max(1, prev - 1))} className="text-black p-1"><Minus size={12} /></button>
-                              <span className="text-[10px] font-black text-black">{cantTemp}</span>
-                              <button onClick={() => setCantTemp(prev => prev < stockMaximo ? prev + 1 : prev)} className="text-black p-1"><Plus size={12} /></button>
+                            <div className="flex items-center justify-between border-2 border-black p-0.5 bg-white">
+                              <button onClick={() => setCantTemp(prev => Math.max(1, prev - 1))} className="text-black p-1.5 hover:bg-zinc-50"><Minus size={12} strokeWidth={3} /></button>
+                              <span className="text-[11px] font-black text-black">{cantTemp}</span>
+                              <button onClick={() => setCantTemp(prev => prev < stockMaximo ? prev + 1 : prev)} className="text-black p-1.5 hover:bg-zinc-50"><Plus size={12} strokeWidth={3} /></button>
                             </div>
 
                             <button
                                disabled={(variantes.length > 0 && variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || (opcionTemporal && stockMaximo <= 0) || (variantes.length === 0)}
-                               onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
-                               className={`w-full py-2 text-[9px] font-black uppercase tracking-widest transition-all ${
-                                 (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed"
+                                onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
+                               className={`w-full py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 border-black ${
+                                 (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) 
+                                 ? "bg-black text-white hover:bg-[#FCD7DE] hover:text-black hover:translate-x-1 hover:-translate-y-1 hover:shadow-[-4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-none" 
+                                 : "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed"
                                }`}
                              >
-                               {variantes.length === 0 ? "Cargando..." : 
+                               {variantes.length === 0 ? "Buscando..." : 
                                 (variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) ? "Elegir Opción" :
                                 stockMaximo <= 0 ? "Sin existencias" : "Confirmar Selección"}
                              </button>

@@ -188,60 +188,69 @@ export default function ParaTiSection() {
                 >
 
                   {seleccionarId === prod.id ? (
-                    /* --- MENÚ DE CONFIGURACIÓN IGUAL AL CAROUSEL --- */
+                    /* --- MENÚ DE CONFIGURACIÓN PREMIUM --- */
                     <motion.div 
-                      initial={{ scale: 0.9, opacity: 0 }} 
-                      animate={{ scale: 1, opacity: 1 }} 
-                      className="bg-white p-3 w-full rounded-sm shadow-2xl space-y-2 border-2 border-black"
+                      initial={{ y: 20, opacity: 0 }} 
+                      animate={{ y: 0, opacity: 1 }} 
+                      exit={{ y: 20, opacity: 0 }}
+                      className="bg-white/95 backdrop-blur-xl p-4 w-[95%] rounded-none shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] space-y-3 border-[3px] border-black relative z-50 transform -translate-y-2"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <div className="flex justify-between items-center border-b pb-1 border-gray-100">
-                        <span className="text-[8px] font-black uppercase text-black italic">Añadir</span>
-                        <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black"><X size={12} /></button>
+                      <div className="flex justify-between items-center border-b-2 border-black/10 pb-1.5">
+                        <span className="text-[10px] font-black uppercase text-black italic">Personalizar</span>
+                        <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black hover:rotate-90 transition-transform"><X size={16} strokeWidth={3} /></button>
                       </div>
 
                       {variantes.some(v => v.variante_atributos && v.variante_atributos.length > 0) && (
-                        <select
-                          value={opcionTemporal}
-                          onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-full border-2 border-black p-1 text-[10px] font-bold text-black bg-white outline-none"
-                        >
-                          <option value="">{variantes[0]?.variante_atributos?.[0]?.atributo_valores?.atributos?.nombre || "Opción"}...</option>
-                          {variantes.map((v: any) => {
-                             const nombreOpcion = v.variante_atributos?.length > 0 
-                               ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-                               : v.sku || 'Única';
-                             return (
-                               <option key={v.id} value={nombreOpcion} disabled={v.stock <= 0}>
-                                 {nombreOpcion} {v.stock <= 0 ? '(Agotado)' : ''}
-                               </option>
-                             );
-                          })}
-                        </select>
+                        <div className="space-y-1">
+                          <label className="text-[8px] font-black text-black/50 uppercase tracking-widest pl-1">Variante:</label>
+                          <select
+                            value={opcionTemporal}
+                            onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full border-2 border-black p-1.5 text-[10px] font-black text-black bg-white outline-none appearance-none cursor-pointer"
+                          >
+                            <option value="">{variantes[0]?.variante_atributos?.[0]?.atributo_valores?.atributos?.nombre || "Opción"}...</option>
+                            {variantes.map((v: any) => {
+                               const nombreOpcion = v.variante_atributos?.length > 0 
+                                 ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
+                                 : v.sku || 'Única';
+                               return (
+                                 <option key={v.id} value={nombreOpcion} disabled={v.stock <= 0}>
+                                   {nombreOpcion} {v.stock <= 0 ? '(AGOTADO)' : ''}
+                                 </option>
+                               );
+                            })}
+                          </select>
+                        </div>
                       )}
 
-                      <div className="flex justify-between items-center px-1 pt-1">
+                      <div className="flex justify-between items-center px-1">
                          {(opcionTemporal || !variantes.some(v => v.variante_atributos && v.variante_atributos.length > 0)) && (
-                           <span className={`text-[8px] font-black uppercase italic ${stockMaximo > 5 ? "text-green-600" : stockMaximo > 0 ? "text-orange-600" : "text-red-500"}`}>Stock disp: {stockMaximo}</span>
+                           <div className="flex items-center gap-1">
+                              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${stockMaximo > 3 ? "bg-green-500" : "bg-orange-500"}`}></span>
+                              <span className={`text-[8px] font-black uppercase italic ${stockMaximo > 5 ? "text-green-600" : stockMaximo > 0 ? "text-orange-500" : "text-red-500"}`}>Stock: {stockMaximo}</span>
+                           </div>
                          )}
                       </div>
 
-                      <div className="flex items-center justify-between border-2 border-black p-1 bg-white">
-                        <button onClick={() => setCantidadTemporal(prev => Math.max(1, prev - 1))} className="p-1 text-black"><Minus size={10} /></button>
-                        <span className="text-[10px] font-black text-black">{cantidadTemporal}</span>
-                        <button onClick={() => setCantidadTemporal(prev => prev < stockMaximo ? prev + 1 : prev)} className="p-1 text-black"><Plus size={10} /></button>
+                      <div className="flex items-center justify-between border-2 border-black p-0.5 bg-white">
+                        <button onClick={() => setCantidadTemporal(prev => Math.max(1, prev - 1))} className="p-1.5 text-black hover:bg-zinc-50 transition-colors"><Minus size={12} strokeWidth={3} /></button>
+                        <span className="text-[11px] font-black text-black px-2">{cantidadTemporal}</span>
+                        <button onClick={() => setCantidadTemporal(prev => prev < stockMaximo ? prev + 1 : prev)} className="p-1.5 text-black hover:bg-zinc-50 transition-colors"><Plus size={12} strokeWidth={3} /></button>
                       </div>
 
                        <button
                          disabled={(variantes.length > 0 && variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || (opcionTemporal && stockMaximo <= 0) || (variantes.length === 0)}
                          onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
-                         className={`w-full py-1.5 text-[8px] font-black uppercase tracking-widest transition-all border-2 border-black ${
-                           (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                         className={`w-full py-3 text-[9px] font-black uppercase tracking-widest transition-all border-2 border-black ${
+                           (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) 
+                           ? "bg-black text-white hover:bg-[#FCD7DE] hover:text-black hover:translate-x-1 hover:-translate-y-1 hover:shadow-[-3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-none" 
+                           : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                          }`}
                        >
-                         {variantes.length === 0 ? "Cargando..." : 
-                          (variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) ? "Elegir Opción" :
+                         {variantes.length === 0 ? "Buscando..." : 
+                          (variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) ? "Elejir Opción" :
                           stockMaximo <= 0 ? "Agotado" : "Confirmar"}
                        </button>
                     </motion.div>

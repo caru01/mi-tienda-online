@@ -232,67 +232,87 @@ export default function ProductCarousel() {
                       >
                         {seleccionarId === prod.id ? (
                           <motion.div 
-                            initial={{ scale: 0.9, opacity: 0 }} 
-                            animate={{ scale: 1, opacity: 1 }} 
-                            className="bg-white p-4 w-full shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] space-y-3 border-2 border-black"
+                            initial={{ y: 20, opacity: 0 }} 
+                            animate={{ y: 0, opacity: 1 }} 
+                            exit={{ y: 20, opacity: 0 }}
+                            className="bg-white/95 backdrop-blur-xl p-5 w-[92%] sm:w-full max-w-[280px] shadow-[12px_12px_0px_0px_rgba(0,0,0,1)] space-y-4 border-[3px] border-black relative z-50 transform -translate-y-2"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <div className="flex justify-between items-center border-b pb-1 border-gray-100">
-                              <span className="text-[10px] font-black uppercase text-black italic">Añadir a la bolsa</span>
-                              <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black"><X size={14} /></button>
+                            <div className="flex justify-between items-center border-b-2 border-black/10 pb-2">
+                              <span className="text-[11px] font-black uppercase text-black italic tracking-tighter">Personaliza tu orden</span>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} 
+                                className="text-black hover:rotate-90 transition-transform duration-300"
+                              >
+                                <X size={18} strokeWidth={3} />
+                              </button>
                             </div>
-
+    
                             {/* SELECTOR INTELIGENTE: TALLA O COLOR */}
                             {variantes.some(v => v.variante_atributos.length > 0) && (
-                              <div className="space-y-1">
-                                <label className="text-[9px] font-black text-black uppercase">
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] font-black text-black/60 uppercase tracking-widest leading-none">
                                   {variantes[0]?.variante_atributos?.[0]?.atributo_valores?.atributos?.nombre || "Opciones"}:
                                 </label>
-                                <select
-                                  value={opcionTemporal}
-                                  onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-full border-2 border-black p-2 text-[10px] font-black text-black bg-white outline-none cursor-pointer"
-                                >
-                                  <option value="">Seleccionar...</option>
-                                  {variantes.map((v: any) => {
-                                    const nombreOpcion = v.variante_atributos?.length > 0 
-                                      ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-                                      : v.sku;
-                                    return (
-                                      <option key={v.id} value={nombreOpcion} disabled={v.stock <= 0}>
-                                        {nombreOpcion} {v.stock <= 0 ? '(Agotado)' : ''}
-                                      </option>
-                                    );
-                                  })}
-                                </select>
+                                <div className="relative group/sel">
+                                  <select
+                                    value={opcionTemporal}
+                                    onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="w-full border-2 border-black p-2.5 text-[11px] font-black text-black bg-white outline-none cursor-pointer hover:bg-zinc-50 transition-colors appearance-none"
+                                  >
+                                    <option value="">Elegir variante...</option>
+                                    {variantes.map((v: any) => {
+                                      const nombreOpcion = v.variante_atributos?.length > 0 
+                                        ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
+                                        : v.sku;
+                                      return (
+                                        <option key={v.id} value={nombreOpcion} disabled={v.stock <= 0}>
+                                          {nombreOpcion} {v.stock <= 0 ? '(AGOTADO)' : ''}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                                    <Plus size={12} className="text-black" />
+                                  </div>
+                                </div>
                               </div>
                             )}
-
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-center">
-                                <label className="text-[9px] font-black text-black uppercase">Cantidad:</label>
+    
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-end">
+                                <label className="text-[10px] font-black text-black/60 uppercase tracking-widest leading-none">Cantidades:</label>
                                 {(opcionTemporal || !variantes.some(v => v.variante_atributos.length > 0)) && (
-                                  <span className={`text-[8px] font-black uppercase italic ${stockMaximo > 5 ? "text-green-600" : stockMaximo > 0 ? "text-orange-600" : "text-red-500"}`}>Stock disp: {stockMaximo}</span>
+                                  <div className="flex items-center gap-1.5">
+                                     <span className={`w-2 h-2 rounded-full animate-pulse ${stockMaximo > 3 ? "bg-green-500" : "bg-orange-500"}`}></span>
+                                     <span className={`text-[9px] font-black uppercase italic ${stockMaximo > 5 ? "text-green-600" : stockMaximo > 0 ? "text-orange-500" : "text-red-500"}`}>
+                                       Disp: {stockMaximo}
+                                     </span>
+                                  </div>
                                 )}
                               </div>
-                              <div className="flex items-center justify-between border-2 border-black p-1 bg-white">
-                                <button onClick={() => setCantidadTemporal(prev => Math.max(1, prev - 1))} className="p-1 text-black hover:text-gray-500 transition-colors"><Minus size={12} /></button>
-                                <span className="text-xs font-black text-black">{cantidadTemporal}</span>
-                                <button onClick={() => setCantidadTemporal(prev => prev < stockMaximo ? prev + 1 : prev)} className="p-1 text-black hover:text-gray-500 transition-colors"><Plus size={12} /></button>
+                              <div className="flex items-center justify-between border-2 border-black p-1 bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,0.1)]">
+                                <button onClick={() => setCantidadTemporal(prev => Math.max(1, prev - 1))} className="p-2 text-black hover:bg-zinc-100 transition-colors"><Minus size={14} strokeWidth={3} /></button>
+                                <span className="text-sm font-black text-black px-4">{cantidadTemporal}</span>
+                                <button onClick={() => setCantidadTemporal(prev => prev < stockMaximo ? prev + 1 : prev)} className="p-2 text-black hover:bg-zinc-100 transition-colors"><Plus size={14} strokeWidth={3} /></button>
                               </div>
                             </div>
-
+    
                             <button
                                disabled={(variantes.length > 0 && variantes.some(v => v.variante_atributos.length > 0) && !opcionTemporal) || (opcionTemporal && stockMaximo <= 0) || (variantes.length === 0)}
                                onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
-                               className={`w-full py-2.5 text-[9px] font-black uppercase tracking-widest transition-all duration-300 border-2 border-black ${
-                                  (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) ? "bg-black text-white hover:bg-zinc-800" : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                               className={`w-full py-4 text-[10px] font-black uppercase tracking-[0.2em] transition-all duration-300 border-2 border-black relative overflow-hidden group/btn ${
+                                  (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) 
+                                  ? "bg-black text-white hover:bg-[#FCD7DE] hover:text-black hover:translate-x-1 hover:-translate-y-1 hover:shadow-[-4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-none" 
+                                  : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                                 }`}
                             >
-                              {variantes.length === 0 ? "Cargando..." : 
-                               (variantes.some(v => v.variante_atributos.length > 0) && !opcionTemporal) ? "Seleccionar Opción" :
-                               stockMaximo <= 0 ? "Sin existencias" : "Confirmar Selección"}
+                              <span className="relative z-10">
+                                {variantes.length === 0 ? "Buscando stock..." : 
+                                 (variantes.some(v => v.variante_atributos.length > 0) && !opcionTemporal) ? "Elegir Opción" :
+                                 stockMaximo <= 0 ? "Sin existencias" : "Confirmar Selección"}
+                              </span>
                             </button>
                           </motion.div>
                         ) : (
