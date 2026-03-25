@@ -258,17 +258,35 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                     >
                       <img src={prod.imagen_principal} alt={prod.nombre} className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-700" />
                       
-                      <div className="absolute inset-0 transition-opacity flex items-center justify-center pointer-events-none p-4">
-                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setQuickViewId(prod.id);
-                          }}
-                          className={`absolute top-3 right-3 bg-white text-black p-2.5 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black hover:bg-black hover:text-white hover:translate-x-1 hover:-translate-y-1 hover:shadow-[-2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-none transition-all pointer-events-auto flex items-center justify-center group ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}
-                        >
-                          <Plus size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
-                        </button>
-                      </div>
+                        <div className="absolute inset-0 transition-opacity flex items-center justify-center p-4">
+                          {/* BOTÓN + MOVILES */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setQuickViewId(prod.id);
+                            }}
+                            className={`flex md:hidden absolute top-3 right-3 bg-white text-black p-2.5 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black active:translate-y-0.5 active:shadow-none transition-all pointer-events-auto items-center justify-center group ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0'}`}
+                          >
+                            <Plus size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+                          </button>
+
+                          {/* ICONOS ESCRITORIO */}
+                          <div className="hidden md:flex gap-3 scale-90 group-hover/item:scale-100 transition-all duration-300 opacity-0 group-hover/item:opacity-100 pointer-events-none group-hover/item:pointer-events-auto">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setQuickViewId(prod.id); }}
+                                className="bg-white text-black p-3 rounded-full shadow-xl hover:bg-black hover:text-white transition-all border-2 border-black transform hover:-translate-y-1"
+                              >
+                                <ShoppingCart size={18} strokeWidth={2.5} />
+                              </button>
+                              <Link 
+                                href={`/producto/${prod.id}`} 
+                                onClick={(e) => e.stopPropagation()}
+                                className="bg-white text-black p-3 rounded-full shadow-xl hover:bg-black hover:text-white transition-all border-2 border-black transform hover:-translate-y-1"
+                              >
+                                <Eye size={18} strokeWidth={2.5} />
+                              </Link>
+                          </div>
+                        </div>
                     </div>
 
                     <div className="text-center">
