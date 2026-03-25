@@ -76,40 +76,71 @@ export default function QuickView() {
     fetchDetail();
   }, [quickViewId]);
 
-  // Actualizar stock basado en color y talla
-  useEffect(() => {
-    if (variantes.length > 0) {
-      if (colorSeleccionado && tallaSeleccionada) {
-        const v = variantes.find(v => {
-          const tieneColor = v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado));
-          const tieneTalla = v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === tallaSeleccionada);
-          return tieneColor && tieneTalla;
-        });
-        setStockMaximo(v ? v.stock : 0);
-      } else {
-        setStockMaximo(0);
-      }
-    }
-  }, [colorSeleccionado, tallaSeleccionada, variantes]);
+   // Detectar qué atributos existen realmente
+   const tieneColor = variantes.some(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.atributos?.nombre.toLowerCase().includes('color')));
+   const tieneTalla = variantes.some(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.atributos?.nombre.toLowerCase().includes('talla')));
 
-  const handleAddToCart = () => {
-    if (variantes.length > 0 && (!colorSeleccionado || !tallaSeleccionada)) {
-      toast("Elige color y talla antes de continuar", "warning");
-      return;
-    }
+   // Actualizar stock basado en lo que el producto tenga
+   useEffect(() => {
+     if (variantes.length > 0) {
+       // Caso 1: Tiene Color y Talla
+       if (tieneColor && tieneTalla) {
+         if (colorSeleccionado && tallaSeleccionada) {
+           const v = variantes.find(v => 
+             v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado)) &&
+             v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === tallaSeleccionada)
+           );
+           setStockMaximo(v ? v.stock : 0);
+         } else {
+           setStockMaximo(0);
+         }
+       } 
+       // Caso 2: Solo Color (ej. Vaso)
+       else if (tieneColor && !tieneTalla) {
+         if (colorSeleccionado) {
+            const v = variantes.find(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado)));
+            setStockMaximo(v ? v.stock : 0);
+         } else {
+            setStockMaximo(0);
+         }
+       }
+       // Caso 3: Solo Talla
+       else if (!tieneColor && tieneTalla) {
+         if (tallaSeleccionada) {
+            const v = variantes.find(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === tallaSeleccionada));
+            setStockMaximo(v ? v.stock : 0);
+         } else {
+            setStockMaximo(0);
+         }
+       }
+     } else {
+        // Si no hay variantes, el stock es el del producto base
+        setStockMaximo(producto?.stock_total || 0);
+     }
+   }, [colorSeleccionado, tallaSeleccionada, variantes, tieneColor, tieneTalla, producto?.stock_total]);
 
-    addToCart({
-      id: producto.id,
-      nombre: producto.nombre,
-      precio: producto.precio_base,
-      cantidad: cantidad,
-      talla: `${colorSeleccionado} / ${tallaSeleccionada}` || "Única",
-      imagen: producto.imagen_principal
-    });
+   const handleAddToCart = () => {
+     // Validación inteligente
+     const faltaColor = tieneColor && !colorSeleccionado;
+     const faltaTalla = tieneTalla && !tallaSeleccionada;
 
-    toast("¡Agregado al carrito!", "success");
-    setQuickViewId(null);
-  };
+     if (variantes.length > 0 && (faltaColor || faltaTalla)) {
+       toast(`Elige ${faltaColor ? 'color' : ''}${faltaColor && faltaTalla ? ' y ' : ''}${faltaTalla ? 'talla' : ''} antes de continuar`, "warning");
+       return;
+     }
+
+     addToCart({
+       id: producto.id,
+       nombre: producto.nombre,
+       precio: producto.precio_base,
+       cantidad: cantidad,
+       talla: `${colorSeleccionado || ''} ${tallaSeleccionada || ''}`.trim() || "Única",
+       imagen: producto.imagen_principal
+     });
+
+     toast("¡Agregado al carrito!", "success");
+     setQuickViewId(null);
+   };
 
   if (!quickViewId) return null;
 
@@ -126,19 +157,19 @@ export default function QuickView() {
 
         {/* Modal / Bottom Sheet - Diseño Sencillo y Familiar */}
         <motion.div
-          initial={{ y: "100%", opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "spring", damping: 30, stiffness: 300 }}
-          className="relative z-10 bg-white w-full max-w-5xl h-[92vh] md:h-auto md:max-h-[90vh] overflow-hidden border-t md:border border-gray-100 flex flex-col md:grid md:grid-cols-2 rounded-t-[2.5rem] md:rounded-lg shadow-2xl"
+           initial={{ y: "100%", opacity: 0 }}
+           animate={{ y: 0, opacity: 1 }}
+           exit={{ y: "100%", opacity: 0 }}
+           transition={{ type: "spring", damping: 30, stiffness: 300 }}
+           className="relative z-10 bg-white w-full max-w-5xl h-[92vh] md:h-[85vh] overflow-hidden border-t md:border border-gray-100 flex flex-col md:grid md:grid-cols-2 rounded-t-[2.5rem] md:rounded-2xl shadow-2xl"
         >
-          {/* CERRAR */}
-          <button 
-            onClick={() => setQuickViewId(null)}
-            className="absolute top-5 right-5 z-40 bg-white/80 backdrop-blur-sm md:bg-gray-50 text-black p-2 md:p-2.5 rounded-full shadow-lg hover:bg-black hover:text-white transition-all active:scale-95"
-          >
-            <X size={20} strokeWidth={2} />
-          </button>
+           {/* CERRAR */}
+           <button 
+             onClick={() => setQuickViewId(null)}
+             className="absolute top-5 right-5 z-40 bg-white/80 backdrop-blur-sm md:bg-gray-50 text-black p-2 md:p-2.5 rounded-full shadow-lg hover:bg-black hover:text-white transition-all active:scale-95 border md:border-transparent border-gray-100"
+           >
+             <X size={20} strokeWidth={2} />
+           </button>
 
           {loading ? (
              <div className="flex-1 col-span-2 flex items-center justify-center h-[500px]">
@@ -191,6 +222,8 @@ export default function QuickView() {
                      <div className="space-y-8">
                         {/* PASO 1: COLOR (SOLO TEXTO) */}
                         {(() => {
+                           if (!tieneColor) return null; // Skip if no color attribute exists
+
                            const mapaColores = new Map();
                            variantes.forEach(v => {
                               v.variante_atributos?.forEach((va:any) => {
@@ -233,6 +266,8 @@ export default function QuickView() {
 
                         {/* PASO 2: TALLA */}
                         {(() => {
+                           if (!tieneTalla) return null; // Skip if no size attribute exists
+
                            const todasLasTallas = new Set<string>();
                            variantes.forEach(v => {
                               v.variante_atributos?.forEach((va:any) => {
@@ -248,29 +283,29 @@ export default function QuickView() {
                               <div className="space-y-4 animate-in fade-in slide-in-from-top-1">
                                  <div className="flex justify-between items-end">
                                     <label className="text-[11px] font-black uppercase tracking-widest text-black italic">2. Elige tu Talla</label>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase italic">{tallaSeleccionada || 'Selecciona un color primero'}</span>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase italic">{tallaSeleccionada || (tieneColor && !colorSeleccionado ? 'Selecciona un color primero' : 'Sin seleccionar')}</span>
                                  </div>
                                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                                     {Array.from(todasLasTallas).map((t) => {
                                        const varianteParaColorYTalla = variantes.find(v => {
-                                          const tieneColor = !colorSeleccionado || v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado));
-                                          const tieneTalla = v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === t);
-                                          return tieneColor && tieneTalla;
+                                          const tieneColorMatch = !tieneColor || !colorSeleccionado || v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado));
+                                          const tieneTallaMatch = !tieneTalla || v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === t);
+                                          return tieneColorMatch && tieneTallaMatch;
                                        });
 
                                        const isAgotado = !varianteParaColorYTalla || varianteParaColorYTalla.stock <= 0;
                                        const isSelected = tallaSeleccionada === t;
-                                       const isOculta = colorSeleccionado && !varianteParaColorYTalla; 
+                                       const isOculta = tieneColor && colorSeleccionado && !varianteParaColorYTalla; 
 
                                        return (
                                           <button
                                              key={t}
-                                             disabled={isAgotado || !colorSeleccionado}
+                                             disabled={isAgotado || (tieneColor && !colorSeleccionado)}
                                              onClick={() => setTallaSeleccionada(t)}
                                              className={`relative py-3 border-2 font-black text-[11px] uppercase transition-all tracking-tighter ${
                                                 isOculta ? "hidden" :
                                                 isAgotado ? "opacity-20 border-gray-100 bg-gray-50 text-gray-300 line-through cursor-not-allowed" :
-                                                !colorSeleccionado ? "opacity-30 border-gray-100 text-gray-300 cursor-not-allowed" :
+                                                (tieneColor && !colorSeleccionado) ? "opacity-30 border-gray-100 text-gray-300 cursor-not-allowed" :
                                                 isSelected ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]" : 
                                                 "bg-white text-black border-black hover:bg-zinc-50 active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]"
                                              }`}
@@ -308,19 +343,19 @@ export default function QuickView() {
 
                 {/* ACCIONES FINALES: Botón de compra profesional y limpio */}
                 <div className="p-6 md:p-10 bg-white border-t border-gray-50 md:border-t-2 flex-shrink-0 space-y-4">
-                   <button
-                     disabled={stockMaximo <= 0 || (variantes.length > 0 && (!colorSeleccionado || !tallaSeleccionada))}
-                     onClick={handleAddToCart}
-                     className={`w-full py-5 text-[12px] md:text-[14px] font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all rounded-sm ${
-                       (stockMaximo > 0 && colorSeleccionado && tallaSeleccionada) 
-                       ? "bg-black text-white hover:bg-zinc-900 shadow-xl active:scale-[0.98]" 
-                       : (variantes.length === 0 && stockMaximo > 0)
-                       ? "bg-black text-white hover:bg-zinc-900 shadow-xl active:scale-[0.98]"
-                       : "bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed"
-                     }`}
-                   >
-                     Añadir al Carrito <ShoppingCart size={22} strokeWidth={2} />
-                   </button>
+                    <button
+                      disabled={stockMaximo <= 0 || (tieneColor && !colorSeleccionado) || (tieneTalla && !tallaSeleccionada)}
+                      onClick={handleAddToCart}
+                      className={`w-full py-5 text-[12px] md:text-[14px] font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all rounded-sm ${
+                        (stockMaximo > 0 && (!tieneColor || colorSeleccionado) && (!tieneTalla || tallaSeleccionada)) 
+                        ? "bg-black text-white hover:bg-zinc-900 shadow-xl active:scale-[0.98]" 
+                        : (variantes.length === 0 && stockMaximo > 0)
+                        ? "bg-black text-white hover:bg-zinc-900 shadow-xl active:scale-[0.98]"
+                        : "bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed"
+                      }`}
+                    >
+                      Añadir al Carrito <ShoppingCart size={22} strokeWidth={2} />
+                    </button>
                    
                    <Link 
                      href={`/producto/${producto?.id}`}
