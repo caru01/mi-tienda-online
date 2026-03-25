@@ -60,6 +60,12 @@ export default function AdminDashboard() {
     descripcion: "", es_ropa: true, destacado: false, stock: 0
   });
 
+  // --- ESTADOS PARA ATRIBUTOS VISUALES ---
+  const [nuevoHexAtributo, setNuevoHexAtributo] = useState("#000000");
+  const [seleccionMultipleColores, setSeleccionMultipleColores] = useState<string[]>([]);
+  const [seleccionMultipleTallas, setSeleccionMultipleTallas] = useState<string[]>([]);
+  const [isMatrixGenerating, setIsMatrixGenerating] = useState(false);
+
   const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: "", slug: "", imagen: "" });
   const [imagenFileCat, setImagenFileCat] = useState<File | null>(null);
   const [imagenFileProd, setImagenFileProd] = useState<File | null>(null);
@@ -475,14 +481,74 @@ export default function AdminDashboard() {
   // --- LÓGICA MODAL ATRIBUTOS ---
   const manejarGuardarValorAtributo = async () => {
     if (!nuevoValorAtributo || !atributoSeleccionado) return;
+    
+    // Si es un atributo de color, guardamos el formato NOMBRE|#HEX
+    let valorFinal = nuevoValorAtributo.toUpperCase();
+    if (atributoSeleccionado.nombre.toLowerCase().includes('color')) {
+      valorFinal = `${nuevoValorAtributo.toUpperCase()}|${nuevoHexAtributo}`;
+    }
+
     const { error } = await supabase.from('atributo_valores').insert([{
       atributo_id: atributoSeleccionado.id,
-      valor: nuevoValorAtributo.toUpperCase()
+      valor: valorFinal
     }]);
+    
     if (!error) {
       setNuevoValorAtributo("");
+      setNuevoHexAtributo("#000000");
       setIsModalOpen(false);
       cargarAtributos();
+    }
+  };
+
+  // --- NUEVA FUNCIÓN: GENERADOR DE MATRIZ DE VARIANTES ---
+  const generarMatrizVariantes = async () => {
+    if (!productoInventario || seleccionMultipleColores.length === 0 || seleccionMultipleTallas.length === 0) {
+      return alert("Selecciona al menos un color y una talla para generar la matriz");
+    }
+
+    setIsMatrixGenerating(true);
+    let creadas = 0;
+    
+    try {
+      for (const colorId of seleccionMultipleColores) {
+        for (const tallaId of seleccionMultipleTallas) {
+          // 1. Generar SKU automático
+          const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
+          const autoSku = `GL-${randomPart}`;
+
+          // 2. Insertar Variante Maestra
+          const { data: vData, error: vError } = await supabase.from('variantes_producto').insert([{
+            producto_id: productoInventario.id,
+            sku: autoSku,
+            stock: 0 // Inicia en 0 para que el admin lo llene
+          }]).select().single();
+
+          if (vError) throw vError;
+
+          if (vData) {
+            // 3. Insertar Relación con Color
+            await supabase.from('variante_atributos').insert([{
+              variante_id: vData.id,
+              atributo_valor_id: colorId
+            }]);
+            // 4. Insertar Relación con Talla
+            await supabase.from('variante_atributos').insert([{
+              variante_id: vData.id,
+              atributo_valor_id: tallaId
+            }]);
+            creadas++;
+          }
+        }
+      }
+      alert(`¡Éxito! Se generaron ${creadas} variantes automáticas. Ahora puedes asignarles stock en la tabla.`);
+      cargarVariantes(productoInventario.id);
+      setSeleccionMultipleColores([]);
+      setSeleccionMultipleTallas([]);
+    } catch (err: any) {
+      alert("Error generando matriz: " + err.message);
+    } finally {
+      setIsMatrixGenerating(false);
     }
   };
 
@@ -1281,23 +1347,58 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="space-y-4">
                     <button onClick={() => setProductoInventario(null)} className="flex items-center gap-2 text-[10px] font-black uppercase hover:underline text-black"> <ChevronLeft size={14} /> Volver</button>
-                    <div className="bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                      <h3 className="font-black uppercase italic text-sm mb-4 text-black">Nueva Variante: {productoInventario.nombre}</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                        <select className="p-2 border-2 border-black font-bold text-xs bg-white outline-none text-black" value={nuevaVariante.valor_id} onChange={e => setNuevaVariante({ ...nuevaVariante, valor_id: e.target.value })}>
-                          <option value="">Elegir Talla/Color...</option>
-                          {listaAtributos.map(attr => (
-                            <optgroup key={attr.id} label={attr.nombre}>
-                              {attr.atributo_valores?.map((v: any) => <option key={v.id} value={v.id}>{v.valor}</option>)}
-                            </optgroup>
-                          ))}
-                        </select>
-                        <div className="p-2 border-2 border-black font-bold text-xs bg-gray-100 text-gray-400 flex items-center italic">
-                          SKU AUTO: GL-XXXXX
+                    <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+                      <h3 className="font-black uppercase italic text-sm mb-4 border-b-2 border-black pb-2">Generador Automático de Matriz</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        {/* Selector de Colores */}
+                        <div className="space-y-3">
+                           <p className="text-[10px] font-black uppercase text-gray-500">Paso 1: Elige los Colores</p>
+                           <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-2 border-dashed border-black/10">
+                              {listaAtributos.find(a => a.nombre.toLowerCase().includes('color'))?.atributo_valores?.map((v: any) => (
+                                <button 
+                                  key={v.id} 
+                                  onClick={() => setSeleccionMultipleColores(p => p.includes(v.id) ? p.filter(id => id !== v.id) : [...p, v.id])}
+                                  className={`px-3 py-1.5 text-[9px] font-black uppercase border-2 transition-all ${seleccionMultipleColores.includes(v.id) ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(252,215,222,1)]' : 'bg-white border-gray-200'}`}
+                                >
+                                  {v.valor.split('|')[0]}
+                                </button>
+                              ))}
+                           </div>
                         </div>
-                        <input type="number" placeholder="STOCK INICIAL" className="p-2 border-2 border-black font-bold text-xs outline-none text-black" value={nuevaVariante.stock} onChange={e => setNuevaVariante({ ...nuevaVariante, stock: parseInt(e.target.value) })} />
-                        <button onClick={manejarCrearVariante} className="bg-black text-white font-black uppercase text-[10px] hover:bg-zinc-800 transition-colors">Crear Variante</button>
+
+                        {/* Selector de Tallas */}
+                        <div className="space-y-3">
+                           <p className="text-[10px] font-black uppercase text-gray-500">Paso 2: Elige las Tallas</p>
+                           <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-2 border-dashed border-black/10">
+                              {listaAtributos.find(a => a.nombre.toLowerCase().includes('talla'))?.atributo_valores?.map((v: any) => (
+                                <button 
+                                  key={v.id} 
+                                  onClick={() => setSeleccionMultipleTallas(p => p.includes(v.id) ? p.filter(id => id !== v.id) : [...p, v.id])}
+                                  className={`px-3 py-1.5 text-[9px] font-black uppercase border-2 transition-all ${seleccionMultipleTallas.includes(v.id) ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(252,215,222,1)]' : 'bg-white border-gray-200'}`}
+                                >
+                                  {v.valor}
+                                </button>
+                              ))}
+                           </div>
+                        </div>
+
                       </div>
+
+                      <button 
+                        onClick={generarMatrizVariantes}
+                        disabled={isMatrixGenerating}
+                        className="w-full mt-6 bg-black text-white font-black uppercase py-4 shadow-[4px_4px_0px_0px_rgba(252,215,222,1)] hover:bg-[#FCD7DE] hover:text-black transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                      >
+                        {isMatrixGenerating ? "Generando..." : "Sincronizar Combinaciones y Generar Variantes"}
+                        <Plus size={18} />
+                      </button>
+                    </div>
+
+                    <div className="bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-t-0 bg-yellow-50">
+                       <p className="text-[9px] font-black uppercase text-black/50 italic flex items-center gap-2">
+                          <Activity size={12} /> Selecciona los colores y tallas que deseas activar para este producto y el sistema creará las variantes por ti.
+                       </p>
                     </div>
                     <div className="bg-white border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                       <table className="w-full text-[10px] font-bold text-black">
@@ -1369,10 +1470,18 @@ export default function AdminDashboard() {
                         {attr.nombre} <Settings size={14} />
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {attr.atributo_valores?.map((v: any) => (
-                          <span key={v.id} className="px-2 py-1 bg-black text-white font-black text-[9px] uppercase">{v.valor}</span>
-                        ))}
-                        <button onClick={() => { setAtributoSeleccionado(attr); setIsModalOpen(true); }} className="px-3 py-1 border-2 border-black border-dashed font-black text-[10px] hover:bg-black hover:text-white transition-colors">+</button>
+                        {attr.atributo_valores?.map((v: any) => {
+                          const parts = v.valor.split('|');
+                          const name = parts[0];
+                          const hex = parts[1];
+                          return (
+                            <span key={v.id} className="flex items-center gap-2 pl-1 pr-3 py-1 bg-black text-white font-black text-[9px] uppercase rounded-full">
+                               {hex && <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: hex }} />}
+                               {name}
+                            </span>
+                          );
+                        })}
+                        <button onClick={() => { setAtributoSeleccionado(attr); setIsModalOpen(true); }} className="px-3 py-1 border-2 border-black border-dashed font-black text-[10px] hover:bg-black hover:text-white transition-colors">{attr.atributo_valores?.length > 0 ? '+' : 'Añadir Valores'}</button>
                       </div>
                     </div>
                   ))}
@@ -1386,8 +1495,35 @@ export default function AdminDashboard() {
                           <h4 className="font-black uppercase italic text-xl">Añadir a {atributoSeleccionado?.nombre}</h4>
                           <button onClick={() => setIsModalOpen(false)}><X size={24} /></button>
                         </div>
-                        <input autoFocus placeholder="VALOR" className="w-full p-4 border-2 border-black font-black uppercase mb-6 outline-none text-black" value={nuevoValorAtributo} onChange={e => setNuevoValorAtributo(e.target.value)} onKeyDown={e => e.key === 'Enter' && manejarGuardarValorAtributo()} />
-                        <button onClick={manejarGuardarValorAtributo} className="w-full bg-black text-white py-3 font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-1 active:shadow-none transition-all">Guardar</button>
+                        <div className="space-y-4 mb-8">
+                           <div>
+                             <label className="text-[10px] font-black uppercase text-gray-400 mb-1 block">Nombre del {atributoSeleccionado?.nombre}</label>
+                             <input autoFocus placeholder="EJ: ROJO" className="w-full p-4 border-2 border-black font-black uppercase outline-none text-black" value={nuevoValorAtributo} onChange={e => setNuevoValorAtributo(e.target.value)} />
+                           </div>
+
+                           {atributoSeleccionado?.nombre.toLowerCase().includes('color') && (
+                             <div className="bg-zinc-50 p-4 border-2 border-black border-dashed">
+                               <label className="text-[10px] font-black uppercase text-black mb-2 block italic">🎨 Selección Visual del Color</label>
+                               <div className="flex gap-4 items-center">
+                                 <input 
+                                   type="color" 
+                                   className="w-16 h-12 border-2 border-black cursor-pointer bg-white p-1"
+                                   value={nuevoHexAtributo} 
+                                   onChange={e => setNuevoHexAtributo(e.target.value)} 
+                                 />
+                                 <div className="flex-1">
+                                    <input 
+                                      className="w-full bg-white border-b-2 border-black p-2 font-mono text-xs font-black uppercase text-black" 
+                                      value={nuevoHexAtributo} 
+                                      onChange={e => setNuevoHexAtributo(e.target.value)} 
+                                    />
+                                    <p className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Este tono es el que el cliente verá en los círculos del producto.</p>
+                                 </div>
+                               </div>
+                             </div>
+                           )}
+                        </div>
+                        <button onClick={manejarGuardarValorAtributo} className="w-full bg-black text-white py-4 font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(252,215,222,1)] active:translate-y-1 active:shadow-none transition-all border-2 border-black">Guardar Valor</button>
                       </motion.div>
                     </div>
                   )}

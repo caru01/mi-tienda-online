@@ -18,6 +18,7 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
   const [imgActual, setImgActual] = useState(0);
   const [loading, setLoading] = useState(true);
   const [tallaSeleccionada, setTallaSeleccionada] = useState("");
+  const [colorSeleccionado, setColorSeleccionado] = useState("");
   const [cantidad, setCantidad] = useState(1);
   const [stockDisponible, setStockDisponible] = useState(0);
   // Form reseña
@@ -105,23 +106,29 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
     if (resolvedParams.id) fetchDatosProducto();
   }, [resolvedParams.id]);
 
-  // 2. ACTUALIZAR STOCK AL CAMBIAR OPCIÓN
+  // 2. ACTUALIZAR STOCK AL CAMBIAR COLOR O TALLA
   useEffect(() => {
-    if (tallaSeleccionada) {
-      const varianteElegida = variantes.find(v => {
-        const nombreV = v.variante_atributos?.length > 0
-          ? v.variante_atributos.map((va: any) => va.atributo_valores?.valor).join(' / ')
-          : v.sku || 'Única';
-        return nombreV === tallaSeleccionada;
-      });
-      setStockDisponible(varianteElegida?.stock || 0);
-      setCantidad(1); // Resetear cantidad al cambiar
-    } else {
-      // Si no hay seleccionada, mostramos el total de stock
-      const total = variantes.reduce((acc, v) => acc + (v.stock || 0), 0);
-      setStockDisponible(total);
+    if (variantes.length > 0) {
+      if (colorSeleccionado && tallaSeleccionada) {
+        const varianteElegida = variantes.find(v => {
+          const tieneColor = v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado));
+          const tieneTalla = v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === tallaSeleccionada);
+          return tieneColor && tieneTalla;
+        });
+        setStockDisponible(varianteElegida?.stock || 0);
+        setCantidad(1);
+      } else if (colorSeleccionado) {
+        // Si solo hay color, mostrar el stock total de ese color
+        const totalColor = variantes
+          .filter(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado)))
+          .reduce((acc, v) => acc + (v.stock || 0), 0);
+        setStockDisponible(totalColor);
+      } else {
+        const total = variantes.reduce((acc, v) => acc + (v.stock || 0), 0);
+        setStockDisponible(total);
+      }
     }
-  }, [tallaSeleccionada, variantes]);
+  }, [colorSeleccionado, tallaSeleccionada, variantes]);
 
   const handleAddToCart = () => {
     if (variantes.length > 0 && !tallaSeleccionada) {
@@ -139,7 +146,7 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
       nombre: producto.nombre,
       precio: producto.precio_base,
       cantidad: cantidad,
-      talla: tallaSeleccionada || "Única",
+      talla: `${colorSeleccionado} / ${tallaSeleccionada}` || "Única",
       imagen: producto.imagen_principal,
     });
 
@@ -258,54 +265,105 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
               {producto.descripcion}
             </p>
 
-            {/* SELECCIÓN DE VARIANTE (DINÁMICA AGRUPADA) */}
+            {/* SELECCIÓN DE VARIANTE (PASOS FIJOS) */}
             {variantes.length > 0 && (
-              <div className="pb-4 space-y-6">
-                {Object.entries(
-                  variantes.reduce((acc: any, v: any) => {
-                    const nombreAtributo = v.variante_atributos?.[0]?.atributo_valores?.atributos?.nombre || "OPCIÓN";
-                    if (!acc[nombreAtributo]) acc[nombreAtributo] = [];
-                    acc[nombreAtributo].push(v);
-                    return acc;
-                  }, {})
-                ).map(([nombreAtributo, opciones]: [string, any]) => (
-                  <div key={nombreAtributo}>
-                    <h3 className="text-[11px] font-bold text-black uppercase tracking-widest mb-4 italic">
-                      {nombreAtributo} {tallaSeleccionada && opciones.some((o: any) => o.variante_atributos?.[0]?.atributo_valores?.valor === tallaSeleccionada) && <span className="text-black font-black">- Seleccionado</span>}
-                    </h3>
-                    <div className="flex gap-3 flex-wrap">
-                      {opciones.map((v: any) => {
-                        const nombreVariante = v.variante_atributos?.length > 0
-                          ? v.variante_atributos.map((va: any) => va.atributo_valores?.valor).join(' / ')
-                          : v.sku || 'Única';
+              <div className="pb-4 space-y-10">
+                
+                {/* 1. SELECCIÓN DE COLOR (SOLO TEXTO) */}
+                {(() => {
+                   const mapaColores = new Map();
+                   variantes.forEach(v => {
+                      v.variante_atributos?.forEach((va:any) => {
+                         if (va.atributo_valores?.atributos?.nombre.toLowerCase().includes('color')) {
+                            const val = va.atributo_valores.valor;
+                            const [nombre] = val.split('|');
+                            mapaColores.set(nombre, { nombre });
+                         }
+                      });
+                   });
 
-                        return (
-                          <button
-                            key={v.id}
-                            disabled={v.stock <= 0}
-                            onClick={() => setTallaSeleccionada(nombreVariante)}
-                            className={`px-4 py-2 text-xs font-bold border transition-all ${tallaSeleccionada === nombreVariante
-                              ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
-                              : v.stock <= 0
-                                ? 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
-                                : 'bg-white text-black border-2 border-transparent hover:border-black'
-                              }`}
-                          >
-                            {nombreVariante}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ))}
+                   if (mapaColores.size === 0) return null;
 
-                {tallaSeleccionada && (
-                  <div className="mt-4 p-3 bg-gray-50 border border-gray-200 inline-block">
-                    <p className="text-xs font-black uppercase text-gray-600">
-                      Unidades en stock: <span className={stockDisponible > 5 ? "text-green-600" : "text-orange-600"}>{stockDisponible}</span>
-                    </p>
-                  </div>
-                )}
+                   return (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-end">
+                           <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-black italic">1. Elige tu Color</h3>
+                           <span className="text-[10px] font-black uppercase text-gray-400 italic">{colorSeleccionado || 'Selecciona uno'}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-3">
+                           {Array.from(mapaColores.values()).map((c: any) => (
+                              <button
+                                 key={c.nombre}
+                                 onClick={() => {
+                                    setColorSeleccionado(c.nombre);
+                                    setTallaSeleccionada(""); 
+                                 }}
+                                 className={`px-6 py-4 border-2 font-black text-[12px] uppercase transition-all tracking-tighter rounded-sm ${
+                                    colorSeleccionado === c.nombre ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]" : 
+                                    "bg-white text-black border-black hover:bg-zinc-50 active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]"
+                                 }`}
+                              >
+                                 {c.nombre}
+                              </button>
+                           ))}
+                        </div>
+                      </div>
+                   );
+                })()}
+
+                {/* 2. SELECCIÓN DE TALLA */}
+                {(() => {
+                   const todasLasTallas = new Set<string>();
+                   variantes.forEach(v => {
+                      v.variante_atributos?.forEach((va:any) => {
+                         if (va.atributo_valores?.atributos?.nombre.toLowerCase().includes('talla')) {
+                            todasLasTallas.add(va.atributo_valores.valor);
+                         }
+                      });
+                   });
+
+                   if (todasLasTallas.size === 0) return null;
+
+                   return (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-end">
+                           <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-black italic">2. Elige tu Talla</h3>
+                           <span className="text-[10px] font-black uppercase text-gray-400 italic">{tallaSeleccionada || (colorSeleccionado ? 'Selecciona talla' : 'Espera...')}</span>
+                        </div>
+                        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
+                           {Array.from(todasLasTallas).map((t) => {
+                              const varianteParaColorYTalla = variantes.find(v => {
+                                 const tieneColor = !colorSeleccionado || v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado));
+                                 const tieneTalla = v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === t);
+                                 return tieneColor && tieneTalla;
+                              });
+
+                              const isAgotado = !varianteParaColorYTalla || varianteParaColorYTalla.stock <= 0;
+                              const isSelected = tallaSeleccionada === t;
+                              const isOculta = colorSeleccionado && !varianteParaColorYTalla;
+
+                              return (
+                                <button
+                                  key={t}
+                                  disabled={isAgotado || !colorSeleccionado}
+                                  onClick={() => setTallaSeleccionada(t)}
+                                  className={`relative py-4 border-2 font-black text-[12px] uppercase transition-all tracking-tighter rounded-sm ${
+                                    isOculta ? "hidden" :
+                                    isAgotado ? "opacity-20 border-gray-100 bg-gray-50 text-gray-300 line-through cursor-not-allowed" :
+                                    !colorSeleccionado ? "opacity-30 border-gray-100 text-gray-300 cursor-not-allowed" :
+                                    isSelected ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)] -translate-y-1" : 
+                                    "bg-white text-black border-black hover:bg-zinc-50 active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]"
+                                  }`}
+                                >
+                                  {t}
+                                </button>
+                              );
+                           })}
+                        </div>
+                      </div>
+                   );
+                })()}
+
               </div>
             )}
 
@@ -336,16 +394,14 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
                 </button>
               </div>
 
-              {/* DISPONIBILIDAD Y BARRA DE STOCK - SIEMPRE VISIBLE */}
+              {/* DISPONIBILIDAD Y BARRA DE STOCK */}
               <div className="pt-2">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-[11px] font-black uppercase tracking-widest text-black">Disponibilidad</h3>
-                  <span className={`text-[10px] font-black uppercase ${stockDisponible <= 10 ? 'text-red-600 animate-pulse' : 'text-green-600'}`}>
-                    {!tallaSeleccionada 
-                      ? `Stock Total: ${stockDisponible} unidades` 
-                      : stockDisponible <= 10 
-                        ? `¡Sólo quedan ${stockDisponible}. Pídelo pronto!` 
-                        : `Disponible (${stockDisponible} unidades)`}
+                  <span className={`text-[10px] font-black uppercase ${stockDisponible <= 10 && stockDisponible > 0 ? 'text-red-600 animate-pulse' : 'text-green-600'}`}>
+                    {stockDisponible > 0 
+                      ? (stockDisponible <= 10 ? `¡Sólo quedan ${stockDisponible}!` : `Disponible (${stockDisponible} uds)`)
+                      : "Sin existencias"}
                   </span>
                 </div>
                 <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden border border-gray-200">
@@ -359,16 +415,25 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
 
             {/* BOTÓN AGREGAR */}
             <div className="flex flex-col gap-4 pt-4">
-              <button
-                onClick={handleAddToCart}
-                disabled={stockDisponible <= 0 || (variantes.length > 0 && !tallaSeleccionada)}
-                className={`w-full font-black uppercase tracking-[0.2em] text-[12px] py-4 rounded-full transition-all flex items-center justify-center gap-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${stockDisponible <= 0 || (variantes.length > 0 && !tallaSeleccionada)
-                  ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
-                  : "bg-black text-white hover:bg-zinc-800"
-                  }`}
-              >
-                {stockDisponible <= 0 && (tallaSeleccionada || variantes.length === 0) ? "Producto Agotado" : <><ShoppingBag size={18} /> Agregar al Carrito</>}
-              </button>
+               {(() => {
+                  const tieneColor = variantes.some(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.atributos?.nombre.toLowerCase().includes('color')));
+                  const tieneTalla = variantes.some(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.atributos?.nombre.toLowerCase().includes('talla')));
+                  
+                  const seleccionIncompleta = (tieneColor && !colorSeleccionado) || (tieneTalla && !tallaSeleccionada);
+
+                  return (
+                    <button
+                      onClick={handleAddToCart}
+                      disabled={stockDisponible <= 0 || seleccionIncompleta}
+                      className={`w-full font-black uppercase tracking-[0.2em] text-[12px] py-4 rounded-full transition-all flex items-center justify-center gap-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] ${stockDisponible <= 0 || seleccionIncompleta
+                        ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                        : "bg-black text-white hover:bg-zinc-800"
+                        }`}
+                    >
+                      {stockDisponible <= 0 && !seleccionIncompleta ? "Agotado" : <><ShoppingBag size={18} /> Agregar al Carrito</>}
+                    </button>
+                  );
+               })()}
             </div>
 
             {/* INFO EXTRA - BADGES DE CONFIANZA PREMIUM */}

@@ -17,6 +17,10 @@ export default function QuickView() {
   const [cantidad, setCantidad] = useState(1);
   const [stockMaximo, setStockMaximo] = useState(0);
 
+  // Estados para variantes avanzadas
+  const [colorSeleccionado, setColorSeleccionado] = useState("");
+  const [tallaSeleccionada, setTallaSeleccionada] = useState("");
+
   // Cargar datos cuando se abre
   useEffect(() => {
     if (!quickViewId) {
@@ -72,22 +76,25 @@ export default function QuickView() {
     fetchDetail();
   }, [quickViewId]);
 
-  // Actualizar stock
+  // Actualizar stock basado en color y talla
   useEffect(() => {
-    if (opcionSeleccionada && variantes.length > 0) {
-      const v = variantes.find(v => {
-        const nombre = v.variante_atributos?.length > 0 
-          ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-          : v.sku;
-        return nombre === opcionSeleccionada;
-      });
-      setStockMaximo(v ? v.stock : 0);
+    if (variantes.length > 0) {
+      if (colorSeleccionado && tallaSeleccionada) {
+        const v = variantes.find(v => {
+          const tieneColor = v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado));
+          const tieneTalla = v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === tallaSeleccionada);
+          return tieneColor && tieneTalla;
+        });
+        setStockMaximo(v ? v.stock : 0);
+      } else {
+        setStockMaximo(0);
+      }
     }
-  }, [opcionSeleccionada, variantes]);
+  }, [colorSeleccionado, tallaSeleccionada, variantes]);
 
   const handleAddToCart = () => {
-    if (variantes.length > 0 && !opcionSeleccionada) {
-      toast("Elige una opción antes de continuar", "warning");
+    if (variantes.length > 0 && (!colorSeleccionado || !tallaSeleccionada)) {
+      toast("Elige color y talla antes de continuar", "warning");
       return;
     }
 
@@ -96,7 +103,7 @@ export default function QuickView() {
       nombre: producto.nombre,
       precio: producto.precio_base,
       cantidad: cantidad,
-      talla: opcionSeleccionada || "Única",
+      talla: `${colorSeleccionado} / ${tallaSeleccionada}` || "Única",
       imagen: producto.imagen_principal
     });
 
@@ -179,32 +186,103 @@ export default function QuickView() {
                       </p>
                    </div>
 
-                   {/* Variantes: Botones limpios sin bordes neobrutalistas pesados */}
+                   {/* Variantes: Paso 1 (Color) y Paso 2 (Talla) */}
                    {variantes.length > 0 && (
-                     <div className="space-y-4">
-                        <label className="text-[11px] md:text-[12px] font-bold uppercase tracking-widest text-gray-400 italic">Opciones Disponibles</label>
-                        <div className="flex flex-wrap gap-2 md:grid md:grid-cols-2 md:gap-3">
-                           {variantes.map((v:any) => {
-                              const nombre = v.variante_atributos?.length > 0 
-                                ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-                                : v.sku;
-                              const isSelected = opcionSeleccionada === nombre;
-                              const isAgotado = v.stock <= 0;
-                              return (
-                                <button
-                                  key={v.id}
-                                  disabled={isAgotado}
-                                  onClick={() => setOpcionSeleccionada(nombre)}
-                                  className={`px-4 py-3 text-[10px] md:text-[11px] font-bold uppercase border transition-all rounded-sm ${
-                                    isAgotado ? "opacity-20 cursor-not-allowed bg-gray-50 border-gray-100" : 
-                                    isSelected ? "bg-black text-white border-black shadow-lg" : "bg-white text-black border-gray-200 hover:border-black active:scale-95"
-                                  }`}
-                                >
-                                  {nombre}
-                                </button>
-                              );
-                           })}
-                        </div>
+                     <div className="space-y-8">
+                        {/* PASO 1: COLOR (SOLO TEXTO) */}
+                        {(() => {
+                           const mapaColores = new Map();
+                           variantes.forEach(v => {
+                              v.variante_atributos?.forEach((va:any) => {
+                                 if (va.atributo_valores?.atributos?.nombre.toLowerCase().includes('color')) {
+                                    const val = va.atributo_valores.valor;
+                                    const [nombre] = val.split('|');
+                                    mapaColores.set(nombre, { nombre });
+                                 }
+                              });
+                           });
+
+                           if (mapaColores.size === 0) return null;
+
+                           return (
+                              <div className="space-y-4">
+                                 <div className="flex justify-between items-end">
+                                    <label className="text-[11px] font-black uppercase tracking-widest text-black italic">1. Elige tu Color</label>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase italic">{colorSeleccionado || 'Sin seleccionar'}</span>
+                                 </div>
+                                 <div className="flex flex-wrap gap-2">
+                                    {Array.from(mapaColores.values()).map((c: any) => (
+                                       <button
+                                          key={c.nombre}
+                                          onClick={() => {
+                                             setColorSeleccionado(c.nombre);
+                                             setTallaSeleccionada(""); 
+                                          }}
+                                          className={`px-4 py-3 border-2 font-black text-[11px] uppercase transition-all min-w-[60px] ${
+                                             colorSeleccionado === c.nombre ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]" : 
+                                             "bg-white text-black border-black hover:bg-zinc-50 active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]"
+                                          }`}
+                                       >
+                                          {c.nombre}
+                                       </button>
+                                    ))}
+                                 </div>
+                              </div>
+                           );
+                        })()}
+
+                        {/* PASO 2: TALLA */}
+                        {(() => {
+                           const todasLasTallas = new Set<string>();
+                           variantes.forEach(v => {
+                              v.variante_atributos?.forEach((va:any) => {
+                                 if (va.atributo_valores?.atributos?.nombre.toLowerCase().includes('talla')) {
+                                    todasLasTallas.add(va.atributo_valores.valor);
+                                 }
+                              });
+                           });
+
+                           if (todasLasTallas.size === 0) return null;
+
+                           return (
+                              <div className="space-y-4 animate-in fade-in slide-in-from-top-1">
+                                 <div className="flex justify-between items-end">
+                                    <label className="text-[11px] font-black uppercase tracking-widest text-black italic">2. Elige tu Talla</label>
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase italic">{tallaSeleccionada || 'Selecciona un color primero'}</span>
+                                 </div>
+                                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                                    {Array.from(todasLasTallas).map((t) => {
+                                       const varianteParaColorYTalla = variantes.find(v => {
+                                          const tieneColor = !colorSeleccionado || v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado));
+                                          const tieneTalla = v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === t);
+                                          return tieneColor && tieneTalla;
+                                       });
+
+                                       const isAgotado = !varianteParaColorYTalla || varianteParaColorYTalla.stock <= 0;
+                                       const isSelected = tallaSeleccionada === t;
+                                       const isOculta = colorSeleccionado && !varianteParaColorYTalla; 
+
+                                       return (
+                                          <button
+                                             key={t}
+                                             disabled={isAgotado || !colorSeleccionado}
+                                             onClick={() => setTallaSeleccionada(t)}
+                                             className={`relative py-3 border-2 font-black text-[11px] uppercase transition-all tracking-tighter ${
+                                                isOculta ? "hidden" :
+                                                isAgotado ? "opacity-20 border-gray-100 bg-gray-50 text-gray-300 line-through cursor-not-allowed" :
+                                                !colorSeleccionado ? "opacity-30 border-gray-100 text-gray-300 cursor-not-allowed" :
+                                                isSelected ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]" : 
+                                                "bg-white text-black border-black hover:bg-zinc-50 active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]"
+                                             }`}
+                                          >
+                                             {t}
+                                          </button>
+                                       );
+                                    })}
+                                 </div>
+                              </div>
+                           );
+                        })()}
                      </div>
                    )}
 
@@ -231,11 +309,13 @@ export default function QuickView() {
                 {/* ACCIONES FINALES: Botón de compra profesional y limpio */}
                 <div className="p-6 md:p-10 bg-white border-t border-gray-50 md:border-t-2 flex-shrink-0 space-y-4">
                    <button
-                     disabled={stockMaximo <= 0 || (variantes.length > 0 && !opcionSeleccionada)}
+                     disabled={stockMaximo <= 0 || (variantes.length > 0 && (!colorSeleccionado || !tallaSeleccionada))}
                      onClick={handleAddToCart}
                      className={`w-full py-5 text-[12px] md:text-[14px] font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all rounded-sm ${
-                       (stockMaximo > 0 && (variantes.length === 0 || opcionSeleccionada)) 
+                       (stockMaximo > 0 && colorSeleccionado && tallaSeleccionada) 
                        ? "bg-black text-white hover:bg-zinc-900 shadow-xl active:scale-[0.98]" 
+                       : (variantes.length === 0 && stockMaximo > 0)
+                       ? "bg-black text-white hover:bg-zinc-900 shadow-xl active:scale-[0.98]"
                        : "bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed"
                      }`}
                    >
