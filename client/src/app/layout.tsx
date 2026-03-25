@@ -4,6 +4,7 @@ import "./globals.css";
 import { CartProvider } from "@/context/CartContext";
 import { ToastProvider } from "@/context/ToastContext";
 import CartDrawer from "@/components/CartDrawer";
+import QuickView from "@/components/QuickView";
 import AnalyticsTracker from "@/components/AnalyticsTracker";
 
 const outfit = Outfit({ 
@@ -30,6 +31,7 @@ export default function RootLayout({
             <AnalyticsTracker />
             {children}
             <CartDrawer />
+            <QuickView />
           </CartProvider>
         </ToastProvider>
       </body>

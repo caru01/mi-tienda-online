@@ -1,9 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Eye, X, Plus, Minus } from "lucide-react";
-import Link from "next/link";
+import { motion } from "framer-motion";
+import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
@@ -12,21 +11,13 @@ import { SkeletonProductCard } from "@/components/SkeletonCard";
 export default function ParaTiSection() {
   const [productos, setProductos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { addToCart, setIsOpen } = useCart();
+  const { setQuickViewId } = useCart();
   const router = useRouter();
-
-  // --- ESTADOS PARA SELECCIÓN INTERACTIVA ---
-  const [seleccionarId, setSeleccionarId] = useState<string | null>(null);
-  const [opcionTemporal, setOpcionTemporal] = useState<string>("");
-  const [cantidadTemporal, setCantidadTemporal] = useState<number>(1);
-  const [stockMaximo, setStockMaximo] = useState<number>(0);
-  const [variantes, setVariantes] = useState<any[]>([]);
   const [activeActionsId, setActiveActionsId] = useState<string | null>(null);
 
   // Sistema de cierre al hacer clic fuera (Especial para móviles)
   useEffect(() => {
     const handleGlobalClick = (e: any) => {
-      // Si el clic NO es dentro de un contenedor de producto, cerramos acciones
       if (!e.target.closest('.product-card-global')) {
         setActiveActionsId(null);
       }
@@ -59,74 +50,9 @@ export default function ParaTiSection() {
     }
   };
 
-  // Cargar variantes cuando se intenta añadir al carrito
-  const cargarVariantesProducto = async (productoId: string) => {
-    // Resetear estados previos antes de cargar nuevas variantes
-    setVariantes([]);
-    setStockMaximo(0);
-    setOpcionTemporal("");
-    setCantidadTemporal(1);
-
-    const { data } = await supabase
-      .from('variantes_producto')
-      .select(`
-        id, 
-        stock,
-        sku,
-        variante_atributos (
-          atributo_valores (
-            valor,
-            atributos (nombre)
-          )
-        )
-      `)
-      .eq('producto_id', productoId)
-      .eq('activo', true);
-
-    if (data) {
-      setVariantes(data);
-      const prodActual = productos.find(p => p.id === productoId);
-      if (prodActual && !prodActual.es_ropa && data.length === 1 && (!data[0].variante_atributos || data[0].variante_atributos.length === 0)) {
-        setStockMaximo(data[0].stock);
-      }
-    }
-  };
-
   useEffect(() => {
     fetchRandomProducts();
   }, []);
-
-  // Sincronizar stock cuando cambia la opción elegida
-  useEffect(() => {
-    if (opcionTemporal && variantes.length > 0) {
-      const varianteElegida = variantes.find(v => {
-        const nombreV = v.variante_atributos?.length > 0 
-          ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-          : v.sku || 'Única';
-        return nombreV === opcionTemporal;
-      });
-      setStockMaximo(varianteElegida?.stock || 0);
-    }
-  }, [opcionTemporal, variantes]);
-
-  const handleConfirmarAdd = (prod: any) => {
-    const tieneOpciones = variantes.some(v => v.variante_atributos && v.variante_atributos.length > 0);
-    if (tieneOpciones && !opcionTemporal) return;
-
-    addToCart({
-      id: prod.id,
-      nombre: prod.nombre,
-      precio: prod.precio_base,
-      cantidad: cantidadTemporal,
-      talla: opcionTemporal || "Única",
-      imagen: prod.imagen_principal
-    });
-
-    setSeleccionarId(null);
-    setOpcionTemporal("");
-    setCantidadTemporal(1);
-    setIsOpen(true);
-  };
 
   if (loading) {
     return (
@@ -168,6 +94,8 @@ export default function ParaTiSection() {
                     } else {
                       setActiveActionsId(prod.id);
                     }
+                  } else {
+                    router.push(`/producto/${prod.id}`);
                   }
                 }}
               >
@@ -178,104 +106,17 @@ export default function ParaTiSection() {
                 />
 
                 <div 
-                  className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-2 
-                  ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
-                  onClick={(e) => {
-                    if (e.target === e.currentTarget && window.innerWidth < 1024) {
-                      router.push(`/producto/${prod.id}`);
-                    }
-                  }}
+                  className={`absolute inset-0 transition-opacity flex items-center justify-center pointer-events-none p-4`}
                 >
-
-                  {seleccionarId === prod.id ? (
-                    /* --- MENÚ DE CONFIGURACIÓN PREMIUM --- */
-                    <motion.div 
-                      initial={{ y: 20, opacity: 0 }} 
-                      animate={{ y: 0, opacity: 1 }} 
-                      exit={{ y: 20, opacity: 0 }}
-                      className="bg-white/95 backdrop-blur-xl p-4 w-[95%] rounded-none shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] space-y-3 border-[3px] border-black relative z-50 transform -translate-y-2"
-                      onClick={(e) => e.stopPropagation()}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setQuickViewId(prod.id);
+                      }}
+                      className={`absolute top-3 right-3 bg-white text-black p-2.5 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black hover:bg-black hover:text-white hover:translate-x-1 hover:-translate-y-1 hover:shadow-[-2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-none transition-all pointer-events-auto flex items-center justify-center group ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}
                     >
-                      <div className="flex justify-between items-center border-b-2 border-black/10 pb-1.5">
-                        <span className="text-[10px] font-black uppercase text-black italic">Personalizar</span>
-                        <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black hover:rotate-90 transition-transform"><X size={16} strokeWidth={3} /></button>
-                      </div>
-
-                      {variantes.some(v => v.variante_atributos && v.variante_atributos.length > 0) && (
-                        <div className="space-y-1">
-                          <label className="text-[8px] font-black text-black/50 uppercase tracking-widest pl-1">Variante:</label>
-                          <select
-                            value={opcionTemporal}
-                            onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full border-2 border-black p-1.5 text-[10px] font-black text-black bg-white outline-none appearance-none cursor-pointer"
-                          >
-                            <option value="">{variantes[0]?.variante_atributos?.[0]?.atributo_valores?.atributos?.nombre || "Opción"}...</option>
-                            {variantes.map((v: any) => {
-                               const nombreOpcion = v.variante_atributos?.length > 0 
-                                 ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-                                 : v.sku || 'Única';
-                               return (
-                                 <option key={v.id} value={nombreOpcion} disabled={v.stock <= 0}>
-                                   {nombreOpcion} {v.stock <= 0 ? '(AGOTADO)' : ''}
-                                 </option>
-                               );
-                            })}
-                          </select>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between items-center px-1">
-                         {(opcionTemporal || !variantes.some(v => v.variante_atributos && v.variante_atributos.length > 0)) && (
-                           <div className="flex items-center gap-1">
-                              <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${stockMaximo > 3 ? "bg-green-500" : "bg-orange-500"}`}></span>
-                              <span className={`text-[8px] font-black uppercase italic ${stockMaximo > 5 ? "text-green-600" : stockMaximo > 0 ? "text-orange-500" : "text-red-500"}`}>Stock: {stockMaximo}</span>
-                           </div>
-                         )}
-                      </div>
-
-                      <div className="flex items-center justify-between border-2 border-black p-0.5 bg-white">
-                        <button onClick={() => setCantidadTemporal(prev => Math.max(1, prev - 1))} className="p-1.5 text-black hover:bg-zinc-50 transition-colors"><Minus size={12} strokeWidth={3} /></button>
-                        <span className="text-[11px] font-black text-black px-2">{cantidadTemporal}</span>
-                        <button onClick={() => setCantidadTemporal(prev => prev < stockMaximo ? prev + 1 : prev)} className="p-1.5 text-black hover:bg-zinc-50 transition-colors"><Plus size={12} strokeWidth={3} /></button>
-                      </div>
-
-                       <button
-                         disabled={(variantes.length > 0 && variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || (opcionTemporal && stockMaximo <= 0) || (variantes.length === 0)}
-                         onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
-                         className={`w-full py-3 text-[9px] font-black uppercase tracking-widest transition-all border-2 border-black ${
-                           (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) 
-                           ? "bg-black text-white hover:bg-[#FCD7DE] hover:text-black hover:translate-x-1 hover:-translate-y-1 hover:shadow-[-3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-none" 
-                           : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                         }`}
-                       >
-                         {variantes.length === 0 ? "Buscando..." : 
-                          (variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) ? "Elejir Opción" :
-                          stockMaximo <= 0 ? "Agotado" : "Confirmar"}
-                       </button>
-                    </motion.div>
-                  ) : (
-                    /* --- BOTONES INICIALES --- */
-                    <div className={`flex items-end justify-center w-full h-full pb-6 gap-3 transition-opacity ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSeleccionarId(prod.id);
-                          cargarVariantesProducto(prod.id);
-                        }}
-                        className="bg-white text-black p-3 rounded-full shadow-xl hover:bg-black hover:text-white transition-colors border-2 border-black"
-                      >
-                        <ShoppingCart size={18} />
-                      </button>
-                      <Link
-                        href={`/producto/${prod.id}`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="bg-white text-black p-3 rounded-full shadow-xl hover:bg-black hover:text-white transition-colors border-2 border-black"
-                      >
-                        <Eye size={18} />
-                      </Link>
-                    </div>
-                  )}
+                      <Plus size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+                    </button>
                 </div>
               </div>
 

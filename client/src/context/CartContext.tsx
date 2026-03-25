@@ -22,6 +22,8 @@ interface CartContextType {
   totalPrice: number;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  quickViewId: string | null;
+  setQuickViewId: (id: string | null) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -41,6 +43,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   });
 
   const [isOpen, setIsOpen] = useState(false);
+  const [quickViewId, setQuickViewId] = useState<string | null>(null);
 
   // Sincroniza el carrito con localStorage cada vez que cambia
   useEffect(() => {
@@ -119,6 +122,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         totalPrice,
         isOpen,
         setIsOpen,
+        quickViewId,
+        setQuickViewId,
       }}
     >
       {children}

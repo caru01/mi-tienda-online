@@ -12,7 +12,7 @@ import { useRouter } from "next/navigation";
 
 export default function CategoriaPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = React.use(params);
-  const { addToCart, setIsOpen } = useCart();
+  const { setQuickViewId } = useCart();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -24,13 +24,6 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
   const [filtrosAtributos, setFiltrosAtributos] = useState<Record<string, string>>({});
   const [precioInfo, setPrecioInfo] = useState({ min: 0, max: 1000000, current: 1000000 });
   const [orden, setOrden] = useState("novedad");
-
-  // Estados para el popup de selección rápida (Igual al carrusel)
-  const [seleccionarId, setSeleccionarId] = useState<string | null>(null);
-  const [opcionTemporal, setOpcionTemporal] = useState("");
-  const [cantTemp, setCantTemp] = useState(1);
-  const [variantes, setVariantes] = useState<any[]>([]);
-  const [stockMaximo, setStockMaximo] = useState(0);
 
   // Estados Interacción Móvil
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
@@ -103,71 +96,6 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
     cargarDatos();
   }, [slug]);
 
-  // Cargar variantes cuando se hace clic para añadir
-  const cargarVariantes = async (productoId: string) => {
-    // Limpiar estados antes de cargar nuevas variantes
-    setVariantes([]);
-    setStockMaximo(0);
-    setOpcionTemporal("");
-    setCantTemp(1);
-
-    const { data } = await supabase
-      .from('variantes_producto')
-      .select(`
-        id, 
-        stock,
-        sku,
-        variante_atributos (
-          atributo_valores (
-            valor,
-            atributos (nombre)
-          )
-        )
-      `)
-      .eq('producto_id', productoId)
-      .eq('activo', true);
-    
-    if (data) {
-      setVariantes(data);
-      const prodActual = productosDB.find(p => p.id === productoId);
-      // Si no es ropa y tiene una única variante sin atributos (producto simple)
-      if (prodActual && !prodActual.es_ropa && data.length === 1 && !data[0].variante_atributos?.length) {
-        setStockMaximo(data[0].stock);
-      }
-    }
-  };
-
-  useEffect(() => {
-    if (opcionTemporal && variantes.length > 0) {
-      const v = variantes.find(v => {
-        const nOpcion = v.variante_atributos?.length > 0 
-          ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-          : v.sku || 'Única';
-        return nOpcion === opcionTemporal;
-      });
-      setStockMaximo(v?.stock || 0);
-    }
-  }, [opcionTemporal, variantes]);
-
-  const handleConfirmarAdd = (prod: any) => {
-    const tieneOpciones = variantes.some(v => v.variante_atributos && v.variante_atributos.length > 0);
-    if (tieneOpciones && !opcionTemporal) return;
-
-    addToCart({
-      id: prod.id,
-      nombre: prod.nombre,
-      precio: prod.precio_base,
-      cantidad: cantTemp,
-      talla: opcionTemporal || "Única",
-      imagen: prod.imagen_principal
-    });
-    setSeleccionarId(null);
-    setOpcionTemporal("");
-    setCantTemp(1);
-    setIsOpen(true);
-    toast(`¡${prod.nombre} agregado!`, "success");
-  };
-
   const atributosDisponibles = useMemo(() => {
     const grupos: Record<string, Set<string>> = {};
     productosDB.forEach(p => {
@@ -232,7 +160,6 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
             Inicio <span className="mx-2 text-gray-300">/</span> <span className="font-black text-black">{categoriaNombre.toUpperCase()}</span>
           </nav>
 
-          {/* CABECERA MÓVIL: NOMBRE */}
           <div className="w-full md:hidden flex flex-col items-center gap-2 mb-6 text-center">
             <h1 className="text-4xl font-black uppercase text-black italic tracking-tighter">
               {categoriaNombre}
@@ -255,7 +182,7 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
           </div>
         </div>
 
-        {/* BARRA FLOTANTE MÓVIL (MÁS PROFESIONAL) */}
+        {/* BARRA FLOTANTE MÓVIL */}
         <div className="md:hidden fixed bottom-24 left-1/2 -translate-x-1/2 z-[40] w-full px-10 pointer-events-none">
           <div className="max-w-[280px] mx-auto bg-black text-white rounded-full flex divide-x divide-white/20 shadow-2xl pointer-events-auto border border-white/10 overflow-hidden scale-100 active:scale-95 transition-transform">
             <button 
@@ -277,224 +204,44 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
           </div>
         </div>
 
-        {/* POPUP DE ORDENAMIENTO MÓVIL (MODERNIZADO) */}
+        {/* MODALES MÓVILES */}
         <AnimatePresence>
           {showSortMobile && (
             <div className="md:hidden fixed inset-0 z-[110] flex items-end">
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }} 
-                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-                onClick={() => setShowSortMobile(false)}
-              />
-              <motion.div 
-                initial={{ y: "100%" }} 
-                animate={{ y: 0 }} 
-                exit={{ y: "100%" }} 
-                className="relative w-full bg-white rounded-t-3xl p-8 shadow-2xl space-y-4 border-t-2 border-black"
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              >
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xs font-black uppercase tracking-widest italic">Opciones de ordenamiento</h3>
-                  <button onClick={() => setShowSortMobile(false)} className="text-black/30 hover:text-black">
-                     <X size={20} />
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {[
-                    { id: "novedad", label: "Novedades de Temporada" },
-                    { id: "precio-menor", label: "Precio: Menor a Mayor" },
-                    { id: "precio-mayor", label: "Precio: Mayor a Menor" },
-                    { id: "a-z", label: "Nombre: ALfabético (A-Z)" }
-                  ].map((opt) => (
-                    <button 
-                      key={opt.id} 
-                      onClick={() => { setOrden(opt.id); setShowSortMobile(false); }}
-                      className={`w-full text-left py-4 px-6 rounded-2xl text-[11px] font-black uppercase tracking-wide transition-all ${orden === opt.id ? 'bg-black text-white shadow-lg' : 'bg-gray-50 text-black active:bg-zinc-100'}`}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowSortMobile(false)} />
+              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="relative w-full bg-white rounded-t-3xl p-8 shadow-2xl space-y-4 border-t-2 border-black" transition={{ type: "spring", damping: 25, stiffness: 200 }}>
+                <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-black uppercase tracking-widest italic">Opciones de ordenamiento</h3><button onClick={() => setShowSortMobile(false)} className="text-black/30 hover:text-black"><X size={20} /></button></div>
+                <div className="space-y-2">{[{ id: "novedad", label: "Novedades" }, { id: "precio-menor", label: "Menor Precio" }, { id: "precio-mayor", label: "Mayor Precio" }, { id: "a-z", label: "A-Z" }].map((opt) => (<button key={opt.id} onClick={() => { setOrden(opt.id); setShowSortMobile(false); }} className={`w-full text-left py-4 px-6 rounded-2xl text-[11px] font-black uppercase tracking-wide transition-all ${orden === opt.id ? 'bg-black text-white shadow-lg' : 'bg-gray-50 text-black active:bg-zinc-100'}`}>{opt.label}</button>))}</div>
               </motion.div>
             </div>
-          )}
-        </AnimatePresence>
-
-        {/* DRAWER DE FILTROS MÓVIL (LEFT SIDE) */}
-        <AnimatePresence>
-          {showFiltersMobile && (
-            <>
-              <motion.div 
-                initial={{ opacity: 0 }} 
-                animate={{ opacity: 1 }} 
-                exit={{ opacity: 0 }} 
-                onClick={() => setShowFiltersMobile(false)}
-                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] md:hidden"
-              />
-              <motion.div 
-                initial={{ x: "-100%" }} 
-                animate={{ x: 0 }} 
-                exit={{ x: "-100%" }} 
-                transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                className="fixed left-0 top-0 h-full w-[85%] max-w-[320px] bg-white z-[101] md:hidden shadow-2xl flex flex-col pt-6 pb-8"
-              >
-                <div className="flex justify-between items-center px-6 mb-6">
-                  <h2 className="text-xl font-black uppercase italic tracking-tighter text-black">Filtrar por</h2>
-                  <button onClick={() => setShowFiltersMobile(false)} className="bg-gray-100 p-2 rounded-full hover:bg-gray-200 transition-colors">
-                    <X size={20} />
-                  </button>
-                </div>
-
-                <div className="px-6 mb-8">
-                   <button
-                    onClick={() => { 
-                      setPrecioInfo(prev => ({ ...prev, current: prev.max })); 
-                      setFiltrosAtributos({}); 
-                    }}
-                    className="text-red-600 font-bold uppercase text-[10px] tracking-widest border-b border-red-100 hover:border-red-600 transition-all"
-                  >
-                    Restablecer filtros
-                  </button>
-                </div>
-
-                <div className="flex-1 overflow-y-auto px-6 space-y-10 custom-scrollbar pb-10">
-                  {/* FILTRO DE PRECIO */}
-                  <div>
-                    <div className="flex justify-between mb-4">
-                      <h3 className="text-[11px] font-black text-black uppercase tracking-widest">Presupuesto</h3>
-                      <span className="text-[11px] font-black text-zinc-600">${precioInfo.current.toLocaleString("es-CO")}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min={precioInfo.min}
-                      max={precioInfo.max}
-                      step={5000}
-                      value={precioInfo.current}
-                      onChange={(e) => setPrecioInfo(prev => ({ ...prev, current: parseInt(e.target.value) }))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
-                    />
-                  </div>
-
-                  {/* FILTROS ATRIBUTOS */}
-                  {Object.entries(atributosDisponibles).map(([nombreAttr, valoresSet]) => (
-                    <div key={nombreAttr}>
-                      <h3 className="text-[11px] font-black text-black uppercase tracking-widest mb-4">{nombreAttr}</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {Array.from(valoresSet as Set<string>).map((valorAttr) => {
-                          const estaSeleccionado = filtrosAtributos[nombreAttr] === valorAttr;
-                          return (
-                            <button
-                              key={valorAttr}
-                              onClick={() => toggleFiltroAtributo(nombreAttr, valorAttr)}
-                              className={`px-3 py-2 min-w-[32px] text-[9px] font-black uppercase border-2 flex items-center justify-center transition-all ${
-                                estaSeleccionado 
-                                  ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' 
-                                  : 'bg-white text-black border-2 border-transparent hover:border-black'
-                              }`}
-                            >
-                              {valorAttr}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="px-6 mt-auto">
-                  <button 
-                    onClick={() => setShowFiltersMobile(false)}
-                    className="w-full bg-black text-white font-black uppercase tracking-[0.2em] text-[11px] py-4 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:bg-zinc-800 transition-all"
-                  >
-                    Aplicar Filtros
-                  </button>
-                </div>
-              </motion.div>
-            </>
           )}
         </AnimatePresence>
 
         <div className="flex flex-col md:flex-row gap-12">
-          {/* ASIDE DE FILTROS DESKTOP */}
+          {/* ASIDE FILTROS */}
           <aside className="hidden md:block w-56 space-y-12 flex-shrink-0 sticky top-24 h-fit">
             <h2 className="text-sm font-black uppercase tracking-widest text-black border-b-2 border-black pb-2 italic">Filtrar por</h2>
-
-            {/* FILTRO DE RANGO DE PRECIO */}
             <div>
-              <div className="flex justify-between mb-4 mt-2">
-                <h3 className="text-[11px] font-black text-black uppercase tracking-widest">Presupuesto</h3>
-                <span className="text-[11px] font-black text-zinc-600">${precioInfo.current.toLocaleString("es-CO")}</span>
-              </div>
-              
-              <div className="relative pt-1">
-                <input
-                   type="range"
-                   min={precioInfo.min}
-                   max={precioInfo.max}
-                   step={5000}
-                   value={precioInfo.current}
-                   onChange={(e) => setPrecioInfo(prev => ({ ...prev, current: parseInt(e.target.value) }))}
-                   className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black"
-                />
-                <div className="flex justify-between text-[8px] font-bold text-gray-400 mt-2 uppercase tracking-widest">
-                  <span>Mín: ${precioInfo.min.toLocaleString("es-CO")}</span>
-                  <span>Máx: ${precioInfo.max.toLocaleString("es-CO")}</span>
-                </div>
-              </div>
+              <div className="flex justify-between mb-4 mt-2"><h3 className="text-[11px] font-black text-black uppercase tracking-widest">Presupuesto</h3><span className="text-[11px] font-black text-zinc-600">${precioInfo.current.toLocaleString("es-CO")}</span></div>
+              <input type="range" min={precioInfo.min} max={precioInfo.max} step={5000} value={precioInfo.current} onChange={(e) => setPrecioInfo(prev => ({ ...prev, current: parseInt(e.target.value) }))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black" />
             </div>
-
-            {/* FILTROS DINÁMICOS POR ATRIBUTOS (DEPENDIENTES DE BD) */}
             {Object.entries(atributosDisponibles).map(([nombreAttr, valoresSet]) => (
               <div key={nombreAttr}>
                 <h3 className="text-[11px] font-black text-black uppercase tracking-widest mb-4">{nombreAttr}</h3>
-                <div className="flex flex-wrap gap-2">
-                  {Array.from(valoresSet as Set<string>).map((valorAttr) => {
-                    const estaSeleccionado = filtrosAtributos[nombreAttr] === valorAttr;
-                    return (
-                      <button
-                        key={valorAttr}
-                        onClick={() => toggleFiltroAtributo(nombreAttr, valorAttr)}
-                        className={`px-3 py-2 min-w-[32px] text-[9px] font-black uppercase border-2 flex items-center justify-center transition-all ${
-                          estaSeleccionado 
-                            ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' 
-                            : 'bg-white text-black border-2 border-transparent hover:border-black'
-                        }`}
-                      >
-                        {valorAttr}
-                      </button>
-                    );
-                  })}
-                </div>
+                <div className="flex flex-wrap gap-2">{Array.from(valoresSet as Set<string>).map((valorAttr) => (<button key={valorAttr} onClick={() => toggleFiltroAtributo(nombreAttr, valorAttr)} className={`px-3 py-2 min-w-[32px] text-[9px] font-black uppercase border-2 flex items-center justify-center transition-all ${filtrosAtributos[nombreAttr] === valorAttr ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black border-2 border-transparent hover:border-black'}`}>{valorAttr}</button>))}</div>
               </div>
             ))}
-
-            {/* BOTÓN LIMPIAR */}
-            {hayFiltrosActivos && (
-              <button
-                onClick={() => { 
-                  setPrecioInfo(prev => ({ ...prev, current: prev.max })); 
-                  setFiltrosAtributos({}); 
-                }}
-                className="w-full text-[10px] font-black uppercase tracking-widest text-white bg-black py-3 hover:bg-zinc-800 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
-              >
-                ✕ Limpiar filtros
-              </button>
-            )}
+            {hayFiltrosActivos && (<button onClick={() => { setPrecioInfo(prev => ({ ...prev, current: prev.max })); setFiltrosAtributos({}); }} className="w-full text-[10px] font-black uppercase tracking-widest text-white bg-black py-3 hover:bg-zinc-800 transition-all shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">✕ Limpiar filtros</button>)}
           </aside>
 
-          {/* GRID DE PRODUCTOS */}
+          {/* GRID PRODUCTOS */}
           <div className="flex-1">
             {loading ? (
               <p className="text-center py-20 text-[10px] font-black uppercase tracking-widest text-black">Cargando Galu Shop...</p>
             ) : productosProcesados.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-x-2 md:gap-x-6 gap-y-8 md:gap-y-12">
                 {productosProcesados.map((prod) => (
-                  <div 
-                    key={prod.id} 
-                    className="group/item flex flex-col bg-white product-card-global relative"
-                  >
+                  <div key={prod.id} className="group/item flex flex-col bg-white product-card-global relative">
                     <div 
                       className="aspect-[3/4] overflow-hidden bg-gray-50 rounded-none mb-4 relative border border-gray-100 cursor-pointer"
                       onClick={() => {
@@ -504,111 +251,23 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                           } else {
                             setActiveActionsId(prod.id);
                           }
+                        } else {
+                            router.push(`/producto/${prod.id}`);
                         }
                       }}
                     >
-                      <img
-                        src={prod.imagen_principal}
-                        alt={prod.nombre}
-                        className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-700"
-                      />
-
-                      <div 
-                        className={`absolute inset-0 bg-black/5 transition-opacity flex items-center justify-center p-2 
-                        ${activeActionsId === prod.id ? 'opacity-100 pointer-events-auto' : 'opacity-0 md:group-hover/item:opacity-100 pointer-events-none md:group-hover/item:pointer-events-auto'}`}
-                        onClick={(e) => {
-                          if (e.target === e.currentTarget && window.innerWidth < 1024) {
-                             router.push(`/producto/${prod.id}`);
-                          }
-                        }}
-                      >
-                        {seleccionarId === prod.id ? (
-                          /* --- MENÚ DE CONFIGURACIÓN PREMIUM --- */
-                          <motion.div 
-                            initial={{ y: 20, opacity: 0 }} 
-                            animate={{ y: 0, opacity: 1 }} 
-                            exit={{ y: 20, opacity: 0 }}
-                            className="bg-white/95 backdrop-blur-xl p-4 w-[95%] border-[3px] border-black shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] space-y-3 z-50 transform -translate-y-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="flex justify-between items-center border-b-2 border-black/10 pb-1.5">
-                              <span className="text-[10px] font-black uppercase text-black italic">Personalizar</span>
-                              <button onClick={(e) => { e.stopPropagation(); setSeleccionarId(null); }} className="text-black hover:rotate-90 transition-transform"><X size={16} strokeWidth={3} /></button>
-                            </div>
-
-                            {variantes.some(v => v.variante_atributos?.length > 0) && (
-                              <div className="text-left w-full space-y-1">
-                                <label className="text-[9px] font-black text-black/50 uppercase pl-1 tracking-widest leading-none">
-                                  {variantes[0]?.variante_atributos?.[0]?.atributo_valores?.atributos?.nombre || "Opciones"}:
-                                </label>
-                                <select
-                                  value={opcionTemporal}
-                                  onChange={(e) => { e.stopPropagation(); setOpcionTemporal(e.target.value); }}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="w-full border-2 border-black p-2 text-[10px] font-black bg-white text-black outline-none appearance-none cursor-pointer"
-                                >
-                                  <option value="">Selecciona...</option>
-                                  {variantes.map((v: any) => {
-                                    const nombreOpcion = v.variante_atributos?.length > 0 
-                                      ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-                                      : v.sku;
-                                    return (
-                                      <option key={v.id} value={nombreOpcion} disabled={v.stock <= 0}>
-                                        {nombreOpcion} {v.stock <= 0 ? '(Agotado)' : ''}
-                                      </option>
-                                    );
-                                  })}
-                                </select>
-                              </div>
-                            )}
-
-                            <div className="flex justify-between items-end w-full px-1">
-                               <label className="text-[9px] font-black text-black/50 uppercase tracking-widest leading-none">CANTIDAD:</label>
-                               {(opcionTemporal || !variantes.some(v => v.variante_atributos?.length > 0)) && (
-                                 <div className="flex items-center gap-1">
-                                   <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${stockMaximo > 3 ? "bg-green-500" : "bg-orange-500"}`}></span>
-                                   <span className={`text-[8px] font-black uppercase italic ${stockMaximo > 5 ? "text-green-600" : stockMaximo > 0 ? "text-orange-600" : "text-red-500"}`}>Stock: {stockMaximo}</span>
-                                 </div>
-                               )}
-                            </div>
-
-                            <div className="flex items-center justify-between border-2 border-black p-0.5 bg-white">
-                              <button onClick={() => setCantTemp(prev => Math.max(1, prev - 1))} className="text-black p-1.5 hover:bg-zinc-50"><Minus size={12} strokeWidth={3} /></button>
-                              <span className="text-[11px] font-black text-black">{cantTemp}</span>
-                              <button onClick={() => setCantTemp(prev => prev < stockMaximo ? prev + 1 : prev)} className="text-black p-1.5 hover:bg-zinc-50"><Plus size={12} strokeWidth={3} /></button>
-                            </div>
-
-                            <button
-                               disabled={(variantes.length > 0 && variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) || (opcionTemporal && stockMaximo <= 0) || (variantes.length === 0)}
-                                onClick={(e) => { e.stopPropagation(); handleConfirmarAdd(prod); }}
-                               className={`w-full py-3 text-[10px] font-black uppercase tracking-[0.2em] transition-all border-2 border-black ${
-                                 (variantes.length > 0 && !(opcionTemporal && stockMaximo <= 0)) 
-                                 ? "bg-black text-white hover:bg-[#FCD7DE] hover:text-black hover:translate-x-1 hover:-translate-y-1 hover:shadow-[-4px_4px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-none" 
-                                 : "bg-gray-100 text-gray-400 border-2 border-gray-200 cursor-not-allowed"
-                               }`}
-                             >
-                               {variantes.length === 0 ? "Buscando..." : 
-                                (variantes.some(v => v.variante_atributos?.length > 0) && !opcionTemporal) ? "Elegir Opción" :
-                                stockMaximo <= 0 ? "Sin existencias" : "Confirmar Selección"}
-                             </button>
-                          </motion.div>
-                        ) : (
-                          <div className="flex gap-2">
-                             <button
-                                onClick={(e) => { e.stopPropagation(); setSeleccionarId(prod.id); cargarVariantes(prod.id); }}
-                                className="bg-white text-black p-3 rounded-full shadow-md hover:bg-black hover:text-white transition-colors border-2 border-black"
-                              >
-                                <ShoppingCart size={18} />
-                              </button>
-                              <Link 
-                                href={`/producto/${prod.id}`} 
-                                onClick={(e) => e.stopPropagation()}
-                                className="bg-white text-black p-3 rounded-full shadow-md hover:bg-black hover:text-white transition-colors border-2 border-black"
-                              >
-                                <Eye size={18} />
-                              </Link>
-                          </div>
-                        )}
+                      <img src={prod.imagen_principal} alt={prod.nombre} className="w-full h-full object-cover group-hover/item:scale-105 transition-transform duration-700" />
+                      
+                      <div className="absolute inset-0 transition-opacity flex items-center justify-center pointer-events-none p-4">
+                         <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickViewId(prod.id);
+                          }}
+                          className={`absolute top-3 right-3 bg-white text-black p-2.5 rounded-full shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-2 border-black hover:bg-black hover:text-white hover:translate-x-1 hover:-translate-y-1 hover:shadow-[-2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0 active:shadow-none transition-all pointer-events-auto flex items-center justify-center group ${activeActionsId === prod.id ? 'opacity-100' : 'opacity-0 md:group-hover/item:opacity-100'}`}
+                        >
+                          <Plus size={20} strokeWidth={3} className="group-hover:rotate-90 transition-transform duration-300" />
+                        </button>
                       </div>
                     </div>
 
@@ -616,44 +275,23 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
                       <h3 className="text-[12px] text-black uppercase font-black tracking-tighter mb-1">{prod.nombre}</h3>
                       <p className="font-black text-base text-black">${Number(prod.precio_base).toLocaleString("es-CO")}</p>
                       
-                      {/* ESTRELLAS DE RESEÑA */}
                       <div className="flex justify-center items-center gap-1 mt-1">
                         <div className="flex gap-0.5">
                           {[1, 2, 3, 4, 5].map((s) => {
                             const califs = prod.resenas || [];
                             const promedio = califs.length > 0 ? califs.reduce((acc: any, curr: any) => acc + curr.calificacion, 0) / califs.length : 0;
-                            return (
-                              <Star
-                                key={s}
-                                size={10}
-                                className={s <= Math.round(promedio) ? "text-yellow-400 fill-yellow-400" : "text-gray-200"}
-                              />
-                            );
+                            return (<Star key={s} size={10} className={s <= Math.round(promedio) ? "text-yellow-400 fill-yellow-400" : "text-gray-200"} />);
                           })}
                         </div>
-                        {prod.resenas?.length > 0 && (
-                          <span className="text-[9px] font-bold text-gray-400">({prod.resenas.length})</span>
-                        )}
+                        {prod.resenas?.length > 0 && (<span className="text-[9px] font-bold text-gray-400">({prod.resenas.length})</span>)}
                       </div>
-
                       <div className="w-8 h-[2px] bg-black mx-auto mt-2 transition-all group-hover/item:w-16" />
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-20 text-center border-2 border-dashed border-black">
-                <p className="text-black text-[10px] font-black uppercase tracking-widest">No hay productos en esta categoría.</p>
-                <button
-                  onClick={() => { 
-                    setPrecioInfo(prev => ({ ...prev, current: prev.max })); 
-                    setFiltrosAtributos({}); 
-                  }}
-                  className="mt-4 text-[10px] font-black uppercase underline decoration-2 underline-offset-4"
-                >
-                  Limpiar filtros
-                </button>
-              </div>
+              <div className="py-20 text-center border-2 border-dashed border-black"><p className="text-black text-[10px] font-black uppercase tracking-widest">No hay productos en esta categoría.</p></div>
             )}
           </div>
         </div>
