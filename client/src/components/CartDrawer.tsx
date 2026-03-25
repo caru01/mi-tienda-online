@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { X, Trash2, ShoppingBag, ArrowRight, Plus, Minus } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
@@ -80,6 +81,40 @@ export default function CartDrawer() {
             <X size={22} />
           </button>
         </div>
+
+        {/* Barra de Progreso - Envío Gratis (Profesional) */}
+        {cart.length > 0 && (
+          <div className="px-6 py-4 bg-zinc-50 border-b border-black/5">
+            {subtotal >= 150000 ? (
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-end">
+                  <p className="text-[10px] font-black uppercase text-green-600 tracking-tighter italic">¡Felicidades! Tienes Envío GRATIS</p>
+                  <span className="text-xl">🚚✨</span>
+                </div>
+                <div className="w-full h-1.5 bg-green-100 rounded-full overflow-hidden">
+                  <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} className="h-full bg-green-500" />
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                 <div className="flex justify-between items-end">
+                    <p className="text-[10px] font-black uppercase text-black tracking-tighter italic">
+                      Te faltan <span className="text-red-500">${(150000 - subtotal).toLocaleString("es-CO")}</span> para <span className="underline decoration-pink-300 decoration-2">Envío GRATIS</span>
+                    </p>
+                    <span className="text-xs text-gray-300 font-bold">{Math.round((subtotal / 150000) * 100)}%</span>
+                 </div>
+                 <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                    <motion.div 
+                      key={subtotal}
+                      initial={{ width: 0 }} 
+                      animate={{ width: `${(subtotal / 150000) * 100}%` }} 
+                      className="h-full bg-black" 
+                    />
+                 </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Lista de productos agregados */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">

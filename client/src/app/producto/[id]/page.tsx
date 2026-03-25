@@ -371,22 +371,26 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
               </button>
             </div>
 
-            {/* INFO EXTRA */}
-            <div className="pt-8 space-y-6 border-t border-gray-100">
-              <div className="flex items-center gap-4 text-[10px] font-bold uppercase text-gray-500">
-                <ShieldCheck size={18} className="text-blue-600" /> Pago 100% seguro
-              </div>
-              <div className="flex items-center gap-4 text-[10px] font-bold uppercase text-gray-500">
-                <Truck size={18} className="text-amber-500" /> Envíos a todo Colombia
-              </div>
-              <div>
-                <div className="flex items-center gap-4 text-[10px] font-bold uppercase text-gray-500">
-                  <RefreshCw size={18} className="text-green-600" /> Política de Devolución
-                </div>
-                <p className="text-[10px] text-gray-600 leading-normal font-bold">
-                  No realizamos devoluciones de dinero. Sin embargo, puedes cambiar tu artículo por otro de igual valor o de mayor valor pagando la diferencia. Los cambios se realizan únicamente el mismo día de la compra.
+            {/* INFO EXTRA - BADGES DE CONFIANZA PREMIUM */}
+            <div className="pt-8 grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-gray-100">
+               <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg group hover:bg-black transition-all duration-500">
+                  <ShieldCheck size={24} className="text-black group-hover:text-yellow-400 transition-colors mb-2" />
+                  <p className="text-[8px] font-black uppercase tracking-widest text-center group-hover:text-white">Pago 100%<br/>Seguro</p>
+               </div>
+               <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg group hover:bg-black transition-all duration-500">
+                  <Truck size={24} className="text-black group-hover:text-yellow-400 transition-colors mb-2" />
+                  <p className="text-[8px] font-black uppercase tracking-widest text-center group-hover:text-white">Envíos<br/>Nacionales</p>
+               </div>
+               <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg group hover:bg-black transition-all duration-500">
+                  <RefreshCw size={24} className="text-black group-hover:text-yellow-400 transition-colors mb-2" />
+                  <p className="text-[8px] font-black uppercase tracking-widest text-center group-hover:text-white">Garantía<br/>Galu Shop</p>
+               </div>
+            </div>
+
+            <div className="mt-4 p-4 bg-zinc-50 border-l-4 border-black">
+                <p className="text-[9px] text-gray-500 leading-normal font-bold uppercase italic">
+                  * Cambios únicamente el mismo día de la compra por artículos de igual o mayor valor. No realizamos devoluciones de dinero.
                 </p>
-              </div>
             </div>
           </div>
         </div>

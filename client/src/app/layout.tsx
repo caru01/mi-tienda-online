@@ -14,8 +14,8 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  title: "GALU SHOP | Tienda de Moda",
-  description: "Encuentra lo último en tendencia y estilo en GALU SHOP",
+  title: "GALU SHOP | Tu Mundo de Tendencias",
+  description: "Explora un mundo infinito de estilo: desde la última moda hasta las mejores tendencias para tu hogar y día a día. Galu Shop, tu destino favorito para lo que realmente quieres.",
 };
 
 export default function RootLayout({

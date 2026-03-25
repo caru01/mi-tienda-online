@@ -75,22 +75,49 @@ export default function TabBanners({ toast }: { toast: (m: string, t?: any) => v
                 <h3 className="text-[11px] font-black uppercase tracking-widest text-white/40 border-b border-white/8 pb-3">
                     Agregar Nuevo Banner
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input required placeholder="URL de la imagen (1400×500px recomendado)"
-                        className="md:col-span-2 bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3 rounded-lg text-[12px] font-bold outline-none focus:border-[#FCD7DE]/40"
-                        value={form.imagen_url} onChange={e => setForm({ ...form, imagen_url: e.target.value })} />
-                    <input placeholder="Título (opcional)"
-                        className="bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3 rounded-lg text-[12px] font-bold outline-none"
-                        value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} />
-                    <input placeholder="Subtítulo (opcional)"
-                        className="bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3 rounded-lg text-[12px] font-bold outline-none"
-                        value={form.subtitulo} onChange={e => setForm({ ...form, subtitulo: e.target.value })} />
-                    <input placeholder="URL de destino al hacer clic (opcional)"
-                        className="bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3 rounded-lg text-[12px] font-bold outline-none"
-                        value={form.enlace} onChange={e => setForm({ ...form, enlace: e.target.value })} />
-                    <input placeholder="URL imagen móvil (opcional)"
-                        className="bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3 rounded-lg text-[12px] font-bold outline-none"
-                        value={form.imagen_movil} onChange={e => setForm({ ...form, imagen_movil: e.target.value })} />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="md:col-span-2 space-y-2">
+                        <label className="text-[11px] font-black uppercase text-[#FCD7DE] tracking-wider ml-1">URL Imagen Escritorio (Recomendado: 1920 × 800 px)</label>
+                        <input required placeholder="https://ejemplo.com/banner-pc.jpg"
+                            className="w-full bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3.5 rounded-lg text-[12px] font-bold outline-none focus:border-[#FCD7DE]/40 transition-all shadow-inner"
+                            value={form.imagen_url} onChange={e => setForm({ ...form, imagen_url: e.target.value })} />
+                    </div>
+                    
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-black uppercase text-[#FCD7DE] tracking-wider ml-1">URL Imagen Móvil (Recomendado: 800 × 1000 px)</label>
+                        <input placeholder="https://ejemplo.com/banner-movil.jpg"
+                            className="w-full bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3.5 rounded-lg text-[12px] font-bold outline-none focus:border-[#FCD7DE]/40"
+                            value={form.imagen_movil} onChange={e => setForm({ ...form, imagen_movil: e.target.value })} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-black uppercase text-white/70 tracking-wider ml-1">Título del Banner</label>
+                        <input placeholder="Ej: Nueva Colección"
+                            className="w-full bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3.5 rounded-lg text-[12px] font-bold outline-none focus:border-[#FCD7DE]/40"
+                            value={form.titulo} onChange={e => setForm({ ...form, titulo: e.target.value })} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-black uppercase text-white/70 tracking-wider ml-1">Subtítulo / Promo</label>
+                        <input placeholder="Ej: 20% de Descuento"
+                            className="w-full bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3.5 rounded-lg text-[12px] font-bold outline-none focus:border-[#FCD7DE]/40"
+                            value={form.subtitulo} onChange={e => setForm({ ...form, subtitulo: e.target.value })} />
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-[11px] font-black uppercase text-white/70 tracking-wider ml-1">Enlace de Destino</label>
+                        <input placeholder="/categoria/todas"
+                            className="w-full bg-[#111] border border-white/15 text-white placeholder:text-white/20 px-4 py-3.5 rounded-lg text-[12px] font-bold outline-none focus:border-[#FCD7DE]/40"
+                            value={form.enlace} onChange={e => setForm({ ...form, enlace: e.target.value })} />
+                    </div>
+                </div>
+
+                {/* Nota de Ayuda */}
+                <div className="p-3 bg-white/5 rounded-lg border border-white/5">
+                    <p className="text-[9px] text-white/40 font-bold uppercase leading-tight italic">
+                        Tip: Para una carga más rápida, usa imágenes optimizadas en formato .webp o .jpg. 
+                        El banner móvil es ideal para fotos verticales que capten la atención en pantallas táctiles.
+                    </p>
                 </div>
 
                 {/* Preview URL mientras escribe */}

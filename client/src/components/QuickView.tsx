@@ -112,68 +112,78 @@ export default function QuickView() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-10 bg-black/60 backdrop-blur-md">
+      <div className="fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-6 bg-black/60 backdrop-blur-md">
         
         {/* Backdrop overlay */}
         <div className="absolute inset-0 z-0" onClick={() => setQuickViewId(null)} />
 
-        {/* Modal Principal */}
+        {/* Modal / Bottom Sheet - Diseño Sencillo y Familiar */}
         <motion.div
           initial={{ y: "100%", opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: "100%", opacity: 0 }}
-          transition={{ type: "spring", damping: 32, stiffness: 350 }}
-          className="relative z-10 bg-white w-full max-w-5xl h-[92vh] md:h-auto md:max-h-[90vh] overflow-hidden border-t md:border-4 border-black flex flex-col md:grid md:grid-cols-2 rounded-t-[2.5rem] md:rounded-none shadow-2xl md:shadow-[30px_30px_0px_0px_rgba(0,0,0,1)]"
+          transition={{ type: "spring", damping: 30, stiffness: 300 }}
+          className="relative z-10 bg-white w-full max-w-5xl h-[92vh] md:h-auto md:max-h-[90vh] overflow-hidden border-t md:border border-gray-100 flex flex-col md:grid md:grid-cols-2 rounded-t-[2.5rem] md:rounded-lg shadow-2xl"
         >
-          {/* BOTÓN CERRAR - Estilo limpio en móvil */}
+          {/* CERRAR */}
           <button 
             onClick={() => setQuickViewId(null)}
-            className="absolute top-5 right-5 z-40 bg-white/80 backdrop-blur-sm md:bg-black text-black md:text-white p-2 md:p-2.5 rounded-full shadow-lg md:shadow-none active:scale-90 transition-transform md:hover:rotate-90"
+            className="absolute top-5 right-5 z-40 bg-white/80 backdrop-blur-sm md:bg-gray-50 text-black p-2 md:p-2.5 rounded-full shadow-lg hover:bg-black hover:text-white transition-all active:scale-95"
           >
             <X size={20} strokeWidth={2} />
           </button>
 
           {loading ? (
              <div className="flex-1 col-span-2 flex items-center justify-center h-[500px]">
-                <div className="w-10 h-10 border-4 border-black border-t-transparent animate-spin rounded-full" />
+                <div className="w-10 h-10 border-2 border-black border-t-transparent animate-spin rounded-full" />
              </div>
           ) : (
             <>
-              {/* IMAGEN: Estilo limpio como página de producto */}
-              <div className="relative bg-gray-50 h-[35vh] md:h-full flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-100 md:border-black group overflow-hidden">
-                <img src={producto?.imagen_principal} className="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-700" alt={producto?.nombre} />
+              {/* IMAGEN: Estilo limpio como la página de producto detallada */}
+              <div className="relative bg-gray-50 h-[35vh] md:h-full flex-shrink-0 border-b md:border-b-0 md:border-r border-gray-100 group overflow-hidden">
+                <img src={producto?.imagen_principal} className="w-full h-full object-cover md:group-hover:scale-105 transition-transform duration-1000" alt={producto?.nombre} />
                 {producto?.destacado && (
-                   <span className="absolute top-4 left-4 bg-black text-white px-3 py-1 font-bold uppercase italic text-[8px] md:text-[10px] tracking-widest">
+                   <span className="absolute top-4 left-4 bg-black text-white px-3 py-1 font-bold uppercase italic text-[8px] md:text-[10px] tracking-widest rounded-sm">
                       Destacado
                    </span>
                 )}
               </div>
 
-              {/* CONTENIDO: Buscando la simplicidad de la página completa */}
+              {/* CONTENIDO: Estilo mimetizado con /producto/[id] */}
               <div className="flex-1 flex flex-col min-h-0 bg-white">
                 
-                {/* Scrollable: Estilo página de producto */}
+                {/* Scrollable: Aquí vive la info y opciones con diseño limpio */}
                 <div className="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 custom-scrollbar">
-                   <div className="space-y-2">
-                      <div className="flex items-center gap-1.5">
-                        <div className="flex text-yellow-400">
-                          {[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= Math.round(promedioResenas) ? "fill-current" : "text-gray-200"} />)}
+                   <div className="space-y-4">
+                      {/* Cabecera info */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-1.5">
+                          <div className="flex text-yellow-400">
+                            {[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= Math.round(promedioResenas) ? "fill-current" : "text-gray-200"} />)}
+                          </div>
+                          <span className="text-[10px] font-bold text-gray-400">({producto?.resenas?.length || 0})</span>
                         </div>
-                        <span className="text-[10px] font-bold text-gray-400">({producto?.resenas?.length || 0})</span>
+                        <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-black leading-tight italic">
+                          {producto?.nombre}
+                        </h2>
+                        <div className="flex items-center gap-4">
+                            <p className="text-2xl md:text-3xl font-bold text-black font-sans">
+                                ${Number(producto?.precio_base).toLocaleString("es-CO")}
+                            </p>
+                        </div>
                       </div>
-                      <h2 className="text-xl md:text-4xl font-black uppercase tracking-tight text-black leading-tight italic">
-                        {producto?.nombre}
-                      </h2>
-                      <p className="text-xl md:text-3xl font-bold text-black font-sans">
-                        ${Number(producto?.precio_base).toLocaleString("es-CO")}
+
+                      {/* Descripción corta: Estilo similar a la web completa */}
+                      <p className="text-[13px] md:text-[15px] text-gray-500 leading-relaxed font-medium border-b border-gray-50 pb-6">
+                        {producto?.descripcion || "Detalles premium del producto Galu Shop."}
                       </p>
                    </div>
 
-                   {/* Variantes - Estilo botones limpios como la página de producto */}
+                   {/* Variantes: Botones limpios sin bordes neobrutalistas pesados */}
                    {variantes.length > 0 && (
                      <div className="space-y-4">
-                        <label className="text-[10px] md:text-[12px] font-bold uppercase tracking-widest text-[#B0B0B0] italic">Opciones Disponibles</label>
-                        <div className="flex flex-wrap gap-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3">
+                        <label className="text-[11px] md:text-[12px] font-bold uppercase tracking-widest text-gray-400 italic">Opciones Disponibles</label>
+                        <div className="flex flex-wrap gap-2 md:grid md:grid-cols-2 md:gap-3">
                            {variantes.map((v:any) => {
                               const nombre = v.variante_atributos?.length > 0 
                                 ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
@@ -185,9 +195,9 @@ export default function QuickView() {
                                   key={v.id}
                                   disabled={isAgotado}
                                   onClick={() => setOpcionSeleccionada(nombre)}
-                                  className={`px-4 py-2.5 text-[10px] font-bold uppercase border transition-all ${
-                                    isAgotado ? "opacity-20 cursor-not-allowed bg-gray-100 border-gray-100" : 
-                                    isSelected ? "bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]" : "bg-white text-black border-gray-200 hover:border-black active:scale-95"
+                                  className={`px-4 py-3 text-[10px] md:text-[11px] font-bold uppercase border transition-all rounded-sm ${
+                                    isAgotado ? "opacity-20 cursor-not-allowed bg-gray-50 border-gray-100" : 
+                                    isSelected ? "bg-black text-white border-black shadow-lg" : "bg-white text-black border-gray-200 hover:border-black active:scale-95"
                                   }`}
                                 >
                                   {nombre}
@@ -198,52 +208,63 @@ export default function QuickView() {
                      </div>
                    )}
 
-                   {/* SELECTOR DE CANTIDAD - Simetría con página de producto */}
+                   {/* SELECTOR DE CANTIDAD: Diseño sencillo */}
                    <div className="space-y-4">
-                      <label className="text-[10px] md:text-[12px] font-bold uppercase tracking-widest text-[#B0B0B0] italic">Cantidad</label>
-                      <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+                      <label className="text-[11px] md:text-[12px] font-bold uppercase tracking-widest text-gray-400 italic">Cantidad</label>
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-6">
                         <div className="flex items-center gap-1">
-                           <button onClick={() => setCantidad(p => Math.max(1, p-1))} className="p-2 border border-gray-200 rounded-sm hover:bg-gray-50"><Minus size={14} /></button>
-                           <span className="w-10 text-center text-sm font-bold">{cantidad}</span>
-                           <button onClick={() => setCantidad(p => p < stockMaximo ? p + 1 : p)} className="p-2 border border-gray-200 rounded-sm hover:bg-gray-50"><Plus size={14} /></button>
+                           <button onClick={() => setCantidad(p => Math.max(1, p-1))} className="p-2 border border-gray-200 rounded-sm hover:bg-gray-50"><Minus size={16} /></button>
+                           <span className="w-12 text-center text-lg font-bold">{cantidad}</span>
+                           <button onClick={() => setCantidad(p => p < stockMaximo ? p + 1 : p)} className="p-2 border border-gray-200 rounded-sm hover:bg-gray-50"><Plus size={16} /></button>
                         </div>
-                        <div className="text-right">
-                            <span className={`text-[10px] font-bold uppercase ${stockMaximo > 0 ? "text-green-600" : "text-red-500"}`}>
-                               {stockMaximo > 0 ? `${stockMaximo} disponibles` : "Agotado"}
+                        <div className="text-right flex flex-col">
+                            <span className={`text-[10px] md:text-[11px] font-bold uppercase ${stockMaximo > 0 ? "text-green-600" : "text-red-500"}`}>
+                               {stockMaximo > 0 ? `${stockMaximo} unidades listas` : "Sin existencias"}
                             </span>
                         </div>
                       </div>
                    </div>
 
-                   {/* Descripción - Limpia */}
-                   <div className="space-y-3 pt-2 pb-10">
-                      <p className="text-[12px] md:text-[14px] text-gray-500 leading-relaxed font-medium">
-                        {producto?.descripcion || "Producto premium diseñado por Galu Shop para elevar tu estilo diario."}
-                      </p>
-                   </div>
+                   <div className="h-4" />
                 </div>
 
-                {/* ACCIONES FINALES - Mimético a la página de producto */}
-                <div className="p-6 md:p-10 bg-white border-t border-gray-100 md:border-black md:border-t-4 flex-shrink-0 space-y-4">
+                {/* ACCIONES FINALES: Botón de compra profesional y limpio */}
+                <div className="p-6 md:p-10 bg-white border-t border-gray-50 md:border-t-2 flex-shrink-0 space-y-4">
                    <button
                      disabled={stockMaximo <= 0 || (variantes.length > 0 && !opcionSeleccionada)}
                      onClick={handleAddToCart}
-                     className={`w-full py-4 text-[12px] md:text-[14px] font-bold uppercase tracking-widest flex items-center justify-center gap-3 transition-all ${
+                     className={`w-full py-5 text-[12px] md:text-[14px] font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all rounded-sm ${
                        (stockMaximo > 0 && (variantes.length === 0 || opcionSeleccionada)) 
-                       ? "bg-black text-white hover:bg-zinc-900 active:scale-[0.98]" 
-                       : "bg-gray-100 text-gray-300 cursor-not-allowed"
-                     } ${!loading && "shadow-lg md:shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]"}`}
+                       ? "bg-black text-white hover:bg-zinc-900 shadow-xl active:scale-[0.98]" 
+                       : "bg-gray-100 text-gray-300 border-gray-200 cursor-not-allowed"
+                     }`}
                    >
-                     Añadir al Carrito <ShoppingCart size={20} strokeWidth={2} />
+                     Añadir al Carrito <ShoppingCart size={22} strokeWidth={2} />
                    </button>
                    
                    <Link 
                      href={`/producto/${producto?.id}`}
                      onClick={() => setQuickViewId(null)}
-                     className="block text-center text-[10px] md:text-[11px] font-bold uppercase tracking-[0.2em] text-gray-300 hover:text-black transition-colors"
+                     className="block text-center text-[10px] md:text-[11px] font-bold uppercase tracking-[0.3em] text-gray-300 hover:text-black transition-colors"
                    >
-                     Saber más <ArrowRight size={14} className="inline ml-1" />
+                     Información completa <ArrowRight size={14} className="inline ml-1" />
                    </Link>
+
+                   {/* BADGES DE CONFIANZA (Estilo Marketplace Profesional) */}
+                   <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-50">
+                      <div className="flex flex-col items-center text-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                         <div className="p-2 bg-gray-50 rounded-full"><img src="https://cdn-icons-png.flaticon.com/512/2501/2501784.png" className="w-5 h-5 grayscale opacity-70" alt="Pago Seguro" /></div>
+                         <p className="text-[7px] font-black uppercase leading-tight">Pago<br/>Seguro</p>
+                      </div>
+                      <div className="flex flex-col items-center text-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                         <div className="p-2 bg-gray-50 rounded-full"><img src="https://cdn-icons-png.flaticon.com/512/709/709790.png" className="w-5 h-5 grayscale opacity-70" alt="Envío Express" /></div>
+                         <p className="text-[7px] font-black uppercase leading-tight">Envío<br/>Express</p>
+                      </div>
+                      <div className="flex flex-col items-center text-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                         <div className="p-2 bg-gray-50 rounded-full"><img src="https://cdn-icons-png.flaticon.com/512/411/411763.png" className="w-5 h-5 grayscale opacity-70" alt="Garantía" /></div>
+                         <p className="text-[7px] font-black uppercase leading-tight">Calidad<br/>Galu</p>
+                      </div>
+                   </div>
                 </div>
               </div>
             </>

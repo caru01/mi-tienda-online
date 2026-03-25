@@ -45,47 +45,50 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
     const cargarDatos = async () => {
       setLoading(true);
       try {
-        const { data: catData } = await supabase
-          .from('categorias')
-          .select('id, nombre')
-          .eq('slug', slug)
-          .single();
-
-        if (catData) {
-          setCategoriaNombre(catData.nombre);
-          const { data: prods, error } = await supabase
-            .from('productos')
-            .select(`
-              *,
-              variantes_producto (
-                stock,
-                sku,
-                variante_atributos (
-                  atributo_valores (
-                    valor,
-                    atributos (nombre)
-                  )
-                )
-              ),
-              resenas (
-                calificacion
+        let query = supabase.from('productos').select(`
+          *,
+          variantes_producto (
+            stock,
+            sku,
+            variante_atributos (
+              atributo_valores (
+                valor,
+                atributos (nombre)
               )
-            `)
-            .eq("resenas.aprobada", true)
-            .eq('categoria_id', catData.id)
-            .eq('activo', true);
+            )
+          ),
+          resenas (
+            calificacion
+          )
+        `).eq('activo', true);
 
-          if (error) throw error;
-          if (prods && prods.length > 0) {
-            setProductosDB(prods);
-            
-            // Configurar los rangos de precio inicialmente
-            const maxPrice = Math.max(...prods.map((p: any) => p.precio_base));
-            const minPrice = Math.min(...prods.map((p: any) => p.precio_base));
-            setPrecioInfo({ min: minPrice, max: maxPrice, current: maxPrice });
-          } else {
-            setProductosDB([]);
+        if (slug === "todas") {
+          setCategoriaNombre("Todos los Productos");
+        } else {
+          const { data: catData } = await supabase
+            .from('categorias')
+            .select('id, nombre')
+            .eq('slug', slug)
+            .single();
+
+          if (catData) {
+            setCategoriaNombre(catData.nombre);
+            query = query.eq('categoria_id', catData.id);
           }
+        }
+
+        const { data: prods, error } = await query;
+
+        if (error) throw error;
+        if (prods && prods.length > 0) {
+          setProductosDB(prods);
+          
+          // Configurar los rangos de precio inicialmente
+          const maxPrice = Math.max(...prods.map((p: any) => p.precio_base));
+          const minPrice = Math.min(...prods.map((p: any) => p.precio_base));
+          setPrecioInfo({ min: minPrice, max: maxPrice, current: maxPrice });
+        } else {
+          setProductosDB([]);
         }
       } catch (error) {
         console.error("Error:", error);
