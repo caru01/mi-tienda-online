@@ -503,45 +503,57 @@ export default function AdminDashboard() {
 
   // --- NUEVA FUNCIÓN: GENERADOR DE MATRIZ DE VARIANTES ---
   const generarMatrizVariantes = async () => {
-    if (!productoInventario || seleccionMultipleColores.length === 0 || seleccionMultipleTallas.length === 0) {
-      return alert("Selecciona al menos un color y una talla para generar la matriz");
+    const hayColores = seleccionMultipleColores.length > 0;
+    const hayTallas = seleccionMultipleTallas.length > 0;
+
+    if (!productoInventario || (!hayColores && !hayTallas)) {
+      return alert("Selecciona al menos un color o una talla para generar la matriz");
     }
 
     setIsMatrixGenerating(true);
     let creadas = 0;
     
     try {
-      for (const colorId of seleccionMultipleColores) {
-        for (const tallaId of seleccionMultipleTallas) {
-          // 1. Generar SKU automático
+      // Determinamos las combinaciones a crear
+      // Si hay ambos, hacemos producto cartesiano. Si solo hay uno, usamos solo ese.
+      const coloresParaIterar = hayColores ? seleccionMultipleColores : [null];
+      const tallasParaIterar = hayTallas ? seleccionMultipleTallas : [null];
+
+      for (const colorId of coloresParaIterar) {
+        for (const tallaId of tallasParaIterar) {
+          // Generar SKU automático único
           const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
           const autoSku = `GL-${randomPart}`;
 
-          // 2. Insertar Variante Maestra
+          // 1. Insertar Variante Maestra
           const { data: vData, error: vError } = await supabase.from('variantes_producto').insert([{
             producto_id: productoInventario.id,
             sku: autoSku,
-            stock: 0 // Inicia en 0 para que el admin lo llene
+            stock: 0 
           }]).select().single();
 
           if (vError) throw vError;
 
           if (vData) {
-            // 3. Insertar Relación con Color
-            await supabase.from('variante_atributos').insert([{
-              variante_id: vData.id,
-              atributo_valor_id: colorId
-            }]);
-            // 4. Insertar Relación con Talla
-            await supabase.from('variante_atributos').insert([{
-              variante_id: vData.id,
-              atributo_valor_id: tallaId
-            }]);
+            // 2. Insertar Relación con Color (si aplica)
+            if (colorId) {
+              await supabase.from('variante_atributos').insert([{
+                variante_id: vData.id,
+                atributo_valor_id: colorId
+              }]);
+            }
+            // 3. Insertar Relación con Talla (si aplica)
+            if (tallaId) {
+              await supabase.from('variante_atributos').insert([{
+                variante_id: vData.id,
+                atributo_valor_id: tallaId
+              }]);
+            }
             creadas++;
           }
         }
       }
-      alert(`¡Éxito! Se generaron ${creadas} variantes automáticas. Ahora puedes asignarles stock en la tabla.`);
+      alert(`¡Éxito! Se generaron ${creadas} variantes automáticas.`);
       cargarVariantes(productoInventario.id);
       setSeleccionMultipleColores([]);
       setSeleccionMultipleTallas([]);
