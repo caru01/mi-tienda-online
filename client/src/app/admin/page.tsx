@@ -3,14 +3,17 @@ import React, { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { motion, AnimatePresence } from "framer-motion";
-import {
+import { 
   Package, Tag, Plus, Save, Hash, Wifi, WifiOff, ListOrdered, Star, ExternalLink,
   Pencil, Check, X, Layers, Settings, Trash2, Search, ChevronLeft, Ticket, ShoppingBag,
-  Image as ImageIcon, Menu, Activity, MapPin, TrendingUp, BarChart3, Globe, MousePointer2
+  Image as ImageIcon, Menu, Activity, MapPin, TrendingUp, BarChart3, Globe, MousePointer2,
+  Trash
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/context/ToastContext";
 
 export default function AdminDashboard() {
+  const { toast } = useToast();
   const [session, setSession] = useState<any>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -482,11 +485,8 @@ export default function AdminDashboard() {
   const manejarGuardarValorAtributo = async () => {
     if (!nuevoValorAtributo || !atributoSeleccionado) return;
     
-    // Si es un atributo de color, guardamos el formato NOMBRE|#HEX
-    let valorFinal = nuevoValorAtributo.toUpperCase();
-    if (atributoSeleccionado.nombre.toLowerCase().includes('color')) {
-      valorFinal = `${nuevoValorAtributo.toUpperCase()}|${nuevoHexAtributo}`;
-    }
+    // Guardar valor normal (Sin Hex)
+    const valorFinal = nuevoValorAtributo.toUpperCase();
 
     const { error } = await supabase.from('atributo_valores').insert([{
       atributo_id: atributoSeleccionado.id,
@@ -498,6 +498,23 @@ export default function AdminDashboard() {
       setNuevoHexAtributo("#000000");
       setIsModalOpen(false);
       cargarAtributos();
+    }
+  };
+
+  const eliminarAtributo = async (id: string) => {
+    if (!confirm("¿ESTÁS SEGURO DE ELIMINAR ESTE ATRIBUTO? SE PERDERÁN TODAS LAS COMBINACIONES EN LOS PRODUCTOS.")) return;
+    const { error } = await supabase.from('atributos').delete().eq('id', id);
+    if (!error) {
+      cargarAtributos();
+      toast("ATRIBUTO ELIMINADO", "success");
+    }
+  };
+
+  const eliminarValorAtributo = async (id: string) => {
+    const { error } = await supabase.from('atributo_valores').delete().eq('id', id);
+    if (!error) {
+      cargarAtributos();
+      toast("VALOR ELIMINADO", "success");
     }
   };
 
@@ -1478,18 +1495,24 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {listaAtributos.map(attr => (
                     <div key={attr.id} className="bg-white p-4 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative text-black">
-                      <p className="font-black uppercase text-sm italic mb-4 flex justify-between">
-                        {attr.nombre} <Settings size={14} />
+                      <p className="font-black uppercase text-sm italic mb-4 flex justify-between items-center">
+                        {attr.nombre} 
+                        <button onClick={() => eliminarAtributo(attr.id)} className="text-red-500 hover:scale-110 transition-transform">
+                          <Trash2 size={16} />
+                        </button>
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {attr.atributo_valores?.map((v: any) => {
-                          const parts = v.valor.split('|');
-                          const name = parts[0];
-                          const hex = parts[1];
+                          const name = v.valor.split('|')[0];
                           return (
-                            <span key={v.id} className="flex items-center gap-2 pl-1 pr-3 py-1 bg-black text-white font-black text-[9px] uppercase rounded-full">
-                               {hex && <div className="w-3 h-3 rounded-full border border-white/20" style={{ backgroundColor: hex }} />}
+                            <span key={v.id} className="group flex items-center gap-2 px-3 py-1 bg-black text-white font-black text-[9px] uppercase rounded-full border border-black hover:bg-white hover:text-black transition-all">
                                {name}
+                               <button 
+                                 onClick={() => eliminarValorAtributo(v.id)}
+                                 className="opacity-0 group-hover:opacity-100 text-red-500 ml-1 hover:scale-125 transition-all"
+                               >
+                                 <X size={10} />
+                               </button>
                             </span>
                           );
                         })}
@@ -1513,27 +1536,6 @@ export default function AdminDashboard() {
                              <input autoFocus placeholder="EJ: ROJO" className="w-full p-4 border-2 border-black font-black uppercase outline-none text-black" value={nuevoValorAtributo} onChange={e => setNuevoValorAtributo(e.target.value)} />
                            </div>
 
-                           {atributoSeleccionado?.nombre.toLowerCase().includes('color') && (
-                             <div className="bg-zinc-50 p-4 border-2 border-black border-dashed">
-                               <label className="text-[10px] font-black uppercase text-black mb-2 block italic">🎨 Selección Visual del Color</label>
-                               <div className="flex gap-4 items-center">
-                                 <input 
-                                   type="color" 
-                                   className="w-16 h-12 border-2 border-black cursor-pointer bg-white p-1"
-                                   value={nuevoHexAtributo} 
-                                   onChange={e => setNuevoHexAtributo(e.target.value)} 
-                                 />
-                                 <div className="flex-1">
-                                    <input 
-                                      className="w-full bg-white border-b-2 border-black p-2 font-mono text-xs font-black uppercase text-black" 
-                                      value={nuevoHexAtributo} 
-                                      onChange={e => setNuevoHexAtributo(e.target.value)} 
-                                    />
-                                    <p className="text-[8px] font-bold text-gray-400 mt-1 uppercase">Este tono es el que el cliente verá en los círculos del producto.</p>
-                                 </div>
-                               </div>
-                             </div>
-                           )}
                         </div>
                         <button onClick={manejarGuardarValorAtributo} className="w-full bg-black text-white py-4 font-black uppercase text-xs tracking-widest shadow-[4px_4px_0px_0px_rgba(252,215,222,1)] active:translate-y-1 active:shadow-none transition-all border-2 border-black">Guardar Valor</button>
                       </motion.div>
