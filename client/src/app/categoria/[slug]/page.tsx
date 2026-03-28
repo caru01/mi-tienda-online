@@ -218,6 +218,55 @@ export default function CategoriaPage({ params }: { params: Promise<{ slug: stri
               </motion.div>
             </div>
           )}
+
+          {showFiltersMobile && (
+            <div className="md:hidden fixed inset-0 z-[110] flex items-end">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowFiltersMobile(false)} />
+              <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="relative w-full bg-white rounded-t-3xl p-8 shadow-2xl overflow-y-auto max-h-[80vh] border-t-2 border-black" transition={{ type: "spring", damping: 25, stiffness: 200 }}>
+                <div className="sticky top-0 bg-white z-10 flex justify-between items-center pb-6 mb-6 border-b border-gray-100">
+                  <h3 className="text-sm font-black uppercase tracking-widest italic">Refinar Búsqueda</h3>
+                  <button onClick={() => setShowFiltersMobile(false)} className="bg-black text-white p-2 flex items-center justify-center"><X size={18} /></button>
+                </div>
+                
+                <div className="space-y-10 pb-20">
+                  {/* PRECIO */}
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Presupuesto</h4>
+                      <span className="text-[11px] font-black">${precioInfo.current.toLocaleString("es-CO")}</span>
+                    </div>
+                    <input type="range" min={precioInfo.min} max={precioInfo.max} step={5000} value={precioInfo.current} onChange={(e) => setPrecioInfo(prev => ({ ...prev, current: parseInt(e.target.value) }))} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-black" />
+                  </div>
+
+                  {/* ATRIBUTOS */}
+                  {Object.entries(atributosDisponibles).map(([nombreAttr, valoresSet]) => (
+                    <div key={nombreAttr} className="space-y-4">
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">{nombreAttr}</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {Array.from(valoresSet as Set<string>).map((valorAttr) => (
+                          <button 
+                            key={valorAttr} 
+                            onClick={() => toggleFiltroAtributo(nombreAttr, valorAttr)} 
+                            className={`px-4 py-3 min-w-[40px] text-[10px] font-black uppercase border-2 transition-all ${filtrosAtributos[nombreAttr] === valorAttr ? 'bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]' : 'bg-gray-50 text-black border-transparent active:bg-zinc-200'}`}
+                          >
+                            {valorAttr}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* APLICAR / LIMPIAR */}
+                  <div className="flex gap-4">
+                     {hayFiltrosActivos && (
+                       <button onClick={() => { setPrecioInfo(prev => ({ ...prev, current: prev.max })); setFiltrosAtributos({}); }} className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest border-2 border-black">Limpiar</button>
+                     )}
+                     <button onClick={() => setShowFiltersMobile(false)} className="flex-[2] py-4 text-[10px] font-black uppercase tracking-widest bg-black text-white shadow-[6px_6px_0px_0px_rgba(252,215,222,0.3)] italic">Ver Resultados</button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
         </AnimatePresence>
 
         <div className="flex flex-col md:flex-row gap-12">

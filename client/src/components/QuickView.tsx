@@ -13,13 +13,9 @@ export default function QuickView() {
   const [producto, setProducto] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [variantes, setVariantes] = useState<any[]>([]);
-  const [opcionSeleccionada, setOpcionSeleccionada] = useState("");
+  const [atributosSeleccionados, setAtributosSeleccionados] = useState<Record<string, string>>({});
   const [cantidad, setCantidad] = useState(1);
   const [stockMaximo, setStockMaximo] = useState(0);
-
-  // Estados para variantes avanzadas
-  const [colorSeleccionado, setColorSeleccionado] = useState("");
-  const [tallaSeleccionada, setTallaSeleccionada] = useState("");
 
   // Cargar datos cuando se abre
   useEffect(() => {
@@ -62,7 +58,6 @@ export default function QuickView() {
         if (!varData || varData.length === 0) {
             setStockMaximo(prodData.stock_total || 0);
         } else {
-            setOpcionSeleccionada("");
             setStockMaximo(0);
         }
 
@@ -76,65 +71,72 @@ export default function QuickView() {
     fetchDetail();
   }, [quickViewId]);
 
-   // Detectar qué atributos existen realmente
-   const tieneColor = variantes.some(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.atributos?.nombre.toLowerCase().includes('color')));
-   const tieneTalla = variantes.some(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.atributos?.nombre.toLowerCase().includes('talla')));
+   // Agrupar atributos disponibles dinámicamente
+   const gruposAtributos = React.useMemo(() => {
+     const grupos: Record<string, string[]> = {};
+     variantes.forEach(v => {
+       v.variante_atributos?.forEach((va: any) => {
+         const nombreAttr = va.atributo_valores?.atributos?.nombre;
+         const valorAttr = va.atributo_valores?.valor;
+         if (nombreAttr && valorAttr) {
+           if (!grupos[nombreAttr]) grupos[nombreAttr] = [];
+           if (!grupos[nombreAttr].includes(valorAttr)) {
+             grupos[nombreAttr].push(valorAttr);
+           }
+         }
+       });
+     });
+     return grupos;
+   }, [variantes]);
 
-   // Actualizar stock basado en lo que el producto tenga
+   // Actualizar stock basado en combinaciones dinámicas
    useEffect(() => {
      if (variantes.length > 0) {
-       // Caso 1: Tiene Color y Talla
-       if (tieneColor && tieneTalla) {
-         if (colorSeleccionado && tallaSeleccionada) {
-           const v = variantes.find(v => 
-             v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado)) &&
-             v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === tallaSeleccionada)
-           );
-           setStockMaximo(v ? v.stock : 0);
+       const nombresRequeridos = Object.keys(gruposAtributos);
+       const seleccionCompleta = nombresRequeridos.every(n => atributosSeleccionados[n]);
+
+       if (nombresRequeridos.length > 0) {
+         if (seleccionCompleta) {
+           const vFound = variantes.find(v => {
+             return nombresRequeridos.every(nombre => {
+               const valSel = atributosSeleccionados[nombre];
+               return v.variante_atributos?.some((va: any) => 
+                 va.atributo_valores?.atributos?.nombre === nombre && 
+                 va.atributo_valores?.valor === valSel
+               );
+             });
+           });
+           setStockMaximo(vFound ? vFound.stock : 0);
          } else {
            setStockMaximo(0);
          }
-       } 
-       // Caso 2: Solo Color (ej. Vaso)
-       else if (tieneColor && !tieneTalla) {
-         if (colorSeleccionado) {
-            const v = variantes.find(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado)));
-            setStockMaximo(v ? v.stock : 0);
-         } else {
-            setStockMaximo(0);
-         }
-       }
-       // Caso 3: Solo Talla
-       else if (!tieneColor && tieneTalla) {
-         if (tallaSeleccionada) {
-            const v = variantes.find(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === tallaSeleccionada));
-            setStockMaximo(v ? v.stock : 0);
-         } else {
-            setStockMaximo(0);
-         }
+       } else {
+         setStockMaximo(variantes[0]?.stock || 0);
        }
      } else {
-        // Si no hay variantes, el stock es el del producto base
         setStockMaximo(producto?.stock_total || 0);
      }
-   }, [colorSeleccionado, tallaSeleccionada, variantes, tieneColor, tieneTalla, producto?.stock_total]);
+   }, [atributosSeleccionados, variantes, gruposAtributos, producto?.stock_total]);
 
    const handleAddToCart = () => {
-     // Validación inteligente
-     const faltaColor = tieneColor && !colorSeleccionado;
-     const faltaTalla = tieneTalla && !tallaSeleccionada;
+     const nombresRequeridos = Object.keys(gruposAtributos);
+     const faltantes = nombresRequeridos.filter(n => !atributosSeleccionados[n]);
 
-     if (variantes.length > 0 && (faltaColor || faltaTalla)) {
-       toast(`Elige ${faltaColor ? 'color' : ''}${faltaColor && faltaTalla ? ' y ' : ''}${faltaTalla ? 'talla' : ''} antes de continuar`, "warning");
+     if (variantes.length > 0 && faltantes.length > 0) {
+       toast(`Falta elegir: ${faltantes.join(', ')}`, "warning");
        return;
      }
+
+     const detalleVar = Object.entries(atributosSeleccionados)
+       .map(([k,v]) => `${k}: ${v.split('|')[0]}`)
+       .join(' / ');
 
      addToCart({
        id: producto.id,
        nombre: producto.nombre,
        precio: producto.precio_base,
        cantidad: cantidad,
-       talla: `${colorSeleccionado || ''} ${tallaSeleccionada || ''}`.trim() || "Única",
+       talla: detalleVar || "Única",
        imagen: producto.imagen_principal
      });
 
@@ -146,7 +148,7 @@ export default function QuickView() {
 
   const promedioResenas = producto?.resenas?.length > 0 
     ? producto.resenas.reduce((acc: any, curr: any) => acc + curr.calificacion, 0) / producto.resenas.length 
-    : 0;
+    : 5;
 
   return (
     <AnimatePresence>
@@ -195,11 +197,13 @@ export default function QuickView() {
                    <div className="space-y-4">
                       {/* Cabecera info */}
                       <div className="space-y-2">
-                        <div className="flex items-center gap-1.5">
-                          <div className="flex text-yellow-400">
-                            {[1,2,3,4,5].map(s => <Star key={s} size={12} className={s <= Math.round(promedioResenas) ? "fill-current" : "text-gray-200"} />)}
+                        <div className="flex items-center gap-1.5 border-b border-gray-50 pb-2">
+                          <div className="flex text-yellow-500">
+                            {[1,2,3,4,5].map(s => <Star key={s} size={14} className={s <= Math.round(promedioResenas) ? "fill-current" : "text-gray-200"} />)}
                           </div>
-                          <span className="text-[10px] font-bold text-gray-400">({producto?.resenas?.length || 0})</span>
+                          <span className="text-[10px] font-black uppercase text-gray-400">
+                             {producto?.resenas?.length > 0 ? `${producto.resenas.length} opiniones` : "Sin opiniones aún"}
+                          </span>
                         </div>
                         <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-black leading-tight italic">
                           {producto?.nombre}
@@ -212,117 +216,46 @@ export default function QuickView() {
                       </div>
 
                       {/* Descripción corta: Estilo similar a la web completa */}
-                      <p className="text-[13px] md:text-[15px] text-gray-500 leading-relaxed font-medium border-b border-gray-50 pb-6">
+                      <p className="text-[13px] md:text-[15px] text-gray-500 leading-relaxed font-medium pb-6">
                         {producto?.descripcion || "Detalles premium del producto Galu Shop."}
                       </p>
                    </div>
 
-                   {/* Variantes: Paso 1 (Color) y Paso 2 (Talla) */}
+                   {/* Variantes DINÁMICAS */}
                    {variantes.length > 0 && (
                      <div className="space-y-8">
-                        {/* PASO 1: COLOR (SOLO TEXTO) */}
-                        {(() => {
-                           if (!tieneColor) return null; // Skip if no color attribute exists
-
-                           const mapaColores = new Map();
-                           variantes.forEach(v => {
-                              v.variante_atributos?.forEach((va:any) => {
-                                 if (va.atributo_valores?.atributos?.nombre.toLowerCase().includes('color')) {
-                                    const val = va.atributo_valores.valor;
-                                    const [nombre] = val.split('|');
-                                    mapaColores.set(nombre, { nombre });
-                                 }
-                              });
-                           });
-
-                           if (mapaColores.size === 0) return null;
-
-                           return (
-                              <div className="space-y-4">
-                                 <div className="flex justify-between items-end">
-                                    <label className="text-[11px] font-black uppercase tracking-widest text-black italic">1. Elige tu Color</label>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase italic">{colorSeleccionado || 'Sin seleccionar'}</span>
-                                 </div>
-                                 <div className="flex flex-wrap gap-2">
-                                    {Array.from(mapaColores.values()).map((c: any) => (
+                        {Object.entries(gruposAtributos).map(([nombreGroup, valores], idx) => (
+                           <div key={nombreGroup} className="space-y-4 animate-in fade-in slide-in-from-top-1">
+                              <div className="flex justify-between items-end">
+                                 <label className="text-[11px] font-black uppercase tracking-widest text-black italic">{idx + 1}. Elige {nombreGroup}</label>
+                                 <span className="text-[10px] font-bold text-gray-400 uppercase italic">
+                                    {atributosSeleccionados[nombreGroup] || 'Sin seleccionar'}
+                                 </span>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                 {valores.map((val) => {
+                                    const isSelected = atributosSeleccionados[nombreGroup] === val;
+                                    return (
                                        <button
-                                          key={c.nombre}
-                                          onClick={() => {
-                                             setColorSeleccionado(c.nombre);
-                                             setTallaSeleccionada(""); 
-                                          }}
-                                          className={`px-4 py-3 border-2 font-black text-[11px] uppercase transition-all min-w-[60px] ${
-                                             colorSeleccionado === c.nombre ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]" : 
+                                          key={val}
+                                          onClick={() => setAtributosSeleccionados(prev => ({...prev, [nombreGroup]: val}))}
+                                          className={`relative py-3 px-4 border-2 font-black text-[11px] uppercase transition-all tracking-tighter ${
+                                             isSelected ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]" : 
                                              "bg-white text-black border-black hover:bg-zinc-50 active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]"
                                           }`}
                                        >
-                                          {c.nombre}
+                                          {val.split('|')[0]}
                                        </button>
-                                    ))}
-                                 </div>
+                                    );
+                                 })}
                               </div>
-                           );
-                        })()}
-
-                        {/* PASO 2: TALLA */}
-                        {(() => {
-                           if (!tieneTalla) return null; // Skip if no size attribute exists
-
-                           const todasLasTallas = new Set<string>();
-                           variantes.forEach(v => {
-                              v.variante_atributos?.forEach((va:any) => {
-                                 if (va.atributo_valores?.atributos?.nombre.toLowerCase().includes('talla')) {
-                                    todasLasTallas.add(va.atributo_valores.valor);
-                                 }
-                              });
-                           });
-
-                           if (todasLasTallas.size === 0) return null;
-
-                           return (
-                              <div className="space-y-4 animate-in fade-in slide-in-from-top-1">
-                                 <div className="flex justify-between items-end">
-                                    <label className="text-[11px] font-black uppercase tracking-widest text-black italic">2. Elige tu Talla</label>
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase italic">{tallaSeleccionada || (tieneColor && !colorSeleccionado ? 'Selecciona un color primero' : 'Sin seleccionar')}</span>
-                                 </div>
-                                 <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                                    {Array.from(todasLasTallas).map((t) => {
-                                       const varianteParaColorYTalla = variantes.find(v => {
-                                          const tieneColorMatch = !tieneColor || !colorSeleccionado || v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado));
-                                          const tieneTallaMatch = !tieneTalla || v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === t);
-                                          return tieneColorMatch && tieneTallaMatch;
-                                       });
-
-                                       const isAgotado = !varianteParaColorYTalla || varianteParaColorYTalla.stock <= 0;
-                                       const isSelected = tallaSeleccionada === t;
-                                       const isOculta = tieneColor && colorSeleccionado && !varianteParaColorYTalla; 
-
-                                       return (
-                                          <button
-                                             key={t}
-                                             disabled={isAgotado || (tieneColor && !colorSeleccionado)}
-                                             onClick={() => setTallaSeleccionada(t)}
-                                             className={`relative py-3 border-2 font-black text-[11px] uppercase transition-all tracking-tighter ${
-                                                isOculta ? "hidden" :
-                                                isAgotado ? "opacity-20 border-gray-100 bg-gray-50 text-gray-300 line-through cursor-not-allowed" :
-                                                (tieneColor && !colorSeleccionado) ? "opacity-30 border-gray-100 text-gray-300 cursor-not-allowed" :
-                                                isSelected ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]" : 
-                                                "bg-white text-black border-black hover:bg-zinc-50 active:scale-95 shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]"
-                                             }`}
-                                          >
-                                             {t}
-                                          </button>
-                                       );
-                                    })}
-                                 </div>
-                              </div>
-                           );
-                        })()}
+                           </div>
+                        ))}
                      </div>
                    )}
 
-                   {/* SELECTOR DE CANTIDAD: Diseño sencillo */}
-                   <div className="space-y-4">
+                   {/* SELECTOR DE CANTIDAD */}
+                   <div className="space-y-4 pt-4 border-t">
                       <label className="text-[11px] md:text-[12px] font-bold uppercase tracking-widest text-gray-400 italic">Cantidad</label>
                       <div className="flex items-center justify-between border-b border-gray-100 pb-6">
                         <div className="flex items-center gap-1">
@@ -332,7 +265,7 @@ export default function QuickView() {
                         </div>
                         <div className="text-right flex flex-col">
                             <span className={`text-[10px] md:text-[11px] font-bold uppercase ${stockMaximo > 0 ? "text-green-600" : "text-red-500"}`}>
-                               {stockMaximo > 0 ? `${stockMaximo} unidades listas` : "Sin existencias"}
+                               {stockMaximo > 0 ? `${stockMaximo} unidades útiles` : "Sin existencias"}
                             </span>
                         </div>
                       </div>
@@ -341,13 +274,13 @@ export default function QuickView() {
                    <div className="h-4" />
                 </div>
 
-                {/* ACCIONES FINALES: Botón de compra profesional y limpio */}
+                {/* ACCIONES FINALES */}
                 <div className="p-6 md:p-10 bg-white border-t border-gray-50 md:border-t-2 flex-shrink-0 space-y-4">
                     <button
-                      disabled={stockMaximo <= 0 || (tieneColor && !colorSeleccionado) || (tieneTalla && !tallaSeleccionada)}
+                      disabled={stockMaximo <= 0 || Object.keys(gruposAtributos).some(n => !atributosSeleccionados[n])}
                       onClick={handleAddToCart}
                       className={`w-full py-5 text-[12px] md:text-[14px] font-bold uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all rounded-sm ${
-                        (stockMaximo > 0 && (!tieneColor || colorSeleccionado) && (!tieneTalla || tallaSeleccionada)) 
+                        (stockMaximo > 0 && Object.keys(gruposAtributos).every(n => atributosSeleccionados[n])) 
                         ? "bg-black text-white hover:bg-zinc-900 shadow-xl active:scale-[0.98]" 
                         : (variantes.length === 0 && stockMaximo > 0)
                         ? "bg-black text-white hover:bg-zinc-900 shadow-xl active:scale-[0.98]"
@@ -365,20 +298,18 @@ export default function QuickView() {
                      Información completa <ArrowRight size={14} className="inline ml-1" />
                    </Link>
 
-                   {/* BADGES DE CONFIANZA (Estilo Marketplace Profesional) */}
+                   {/* BADGES DE CONFIANZA */}
                    <div className="grid grid-cols-3 gap-2 pt-4 border-t border-gray-50">
-                      <div className="flex flex-col items-center text-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-                         <div className="p-2 bg-gray-50 rounded-full"><img src="https://cdn-icons-png.flaticon.com/512/2501/2501784.png" className="w-5 h-5 grayscale opacity-70" alt="Pago Seguro" /></div>
-                         <p className="text-[7px] font-black uppercase leading-tight">Pago<br/>Seguro</p>
-                      </div>
-                      <div className="flex flex-col items-center text-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-                         <div className="p-2 bg-gray-50 rounded-full"><img src="https://cdn-icons-png.flaticon.com/512/709/709790.png" className="w-5 h-5 grayscale opacity-70" alt="Envío Express" /></div>
-                         <p className="text-[7px] font-black uppercase leading-tight">Envío<br/>Express</p>
-                      </div>
-                      <div className="flex flex-col items-center text-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
-                         <div className="p-2 bg-gray-50 rounded-full"><img src="https://cdn-icons-png.flaticon.com/512/411/411763.png" className="w-5 h-5 grayscale opacity-70" alt="Garantía" /></div>
-                         <p className="text-[7px] font-black uppercase leading-tight">Calidad<br/>Galu</p>
-                      </div>
+                      {[
+                        {icon: "https://cdn-icons-png.flaticon.com/512/2501/2501784.png", text: "Pago Seguro"},
+                        {icon: "https://cdn-icons-png.flaticon.com/512/709/709790.png", text: "Envío Express"},
+                        {icon: "https://cdn-icons-png.flaticon.com/512/411/411763.png", text: "Calidad Galu"}
+                      ].map((b, i) => (
+                        <div key={i} className="flex flex-col items-center text-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity">
+                           <div className="p-2 bg-gray-50 rounded-full"><img src={b.icon} className="w-5 h-5 grayscale opacity-70" alt={b.text} /></div>
+                           <p className="text-[7px] font-black uppercase leading-tight">{b.text.split(' ')[0]}<br/>{b.text.split(' ')[1]}</p>
+                        </div>
+                      ))}
                    </div>
                 </div>
               </div>

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, use } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { ShoppingBag, Truck, ShieldCheck, ArrowLeft, RefreshCw, Plus, Minus, Star, ChevronLeft, ChevronRight, Send } from "lucide-react";
+import { ShoppingBag, Truck, ShieldCheck, ArrowLeft, RefreshCw, Plus, Minus, Star, ChevronLeft, ChevronRight, Send, Copy } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
@@ -16,10 +16,10 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
   const [resenas, setResenas] = useState<any[]>([]);
   const [imgActual, setImgActual] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [tallaSeleccionada, setTallaSeleccionada] = useState("");
-  const [colorSeleccionado, setColorSeleccionado] = useState("");
+  const [atributosSeleccionados, setAtributosSeleccionados] = useState<Record<string, string>>({});
   const [cantidad, setCantidad] = useState(1);
   const [stockDisponible, setStockDisponible] = useState(0);
+  const [skuActual, setSkuActual] = useState("");
   // Form reseña
   const [resenaForm, setResenaForm] = useState({ nombre: "", email: "", calificacion: 5, comentario: "" });
   const [enviandoResena, setEnviandoResena] = useState(false);
@@ -77,6 +77,10 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
 
         if (varsErr) throw varsErr;
         setVariantes(vars || []);
+        
+        // Inicializar SKU por defecto
+        if (prod.sku) setSkuActual(prod.sku);
+        else if (vars && vars.length > 0) setSkuActual(vars[0].sku || "");
 
       } catch (error) {
         console.error("Error:", error);
@@ -87,52 +91,65 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
     if (resolvedParams.id) fetchDatosProducto();
   }, [resolvedParams.id]);
 
-  // Detectar atributos existentes
-  const tieneColor = variantes.some(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.atributos?.nombre.toLowerCase().includes('color')));
-  const tieneTalla = variantes.some(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.atributos?.nombre.toLowerCase().includes('talla')));
+  // Agrupar atributos disponibles dinámicamente
+  const gruposAtributos = React.useMemo(() => {
+    const grupos: Record<string, string[]> = {};
+    variantes.forEach(v => {
+      v.variante_atributos?.forEach((va: any) => {
+        const nombreAttr = va.atributo_valores?.atributos?.nombre;
+        const valorAttr = va.atributo_valores?.valor;
+        if (nombreAttr && valorAttr) {
+          if (!grupos[nombreAttr]) grupos[nombreAttr] = [];
+          if (!grupos[nombreAttr].includes(valorAttr)) {
+            grupos[nombreAttr].push(valorAttr);
+          }
+        }
+      });
+    });
+    return grupos;
+  }, [variantes]);
 
-  // 2. ACTUALIZAR STOCK
+  // 2. ACTUALIZAR STOCK DINÁMICO
   useEffect(() => {
     if (variantes.length > 0) {
-      if (tieneColor && tieneTalla) {
-        if (colorSeleccionado && tallaSeleccionada) {
-          const v = variantes.find(v => 
-            v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado)) &&
-            v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === tallaSeleccionada)
-          );
-          setStockDisponible(v ? v.stock : 0);
-        } else {
-          setStockDisponible(0);
-        }
-      } else if (tieneColor && !tieneTalla) {
-        if (colorSeleccionado) {
-          const v = variantes.find(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.valor.startsWith(colorSeleccionado)));
-          setStockDisponible(v ? v.stock : 0);
-        } else {
-          setStockDisponible(0);
-        }
-      } else if (!tieneColor && tieneTalla) {
-        if (tallaSeleccionada) {
-          const v = variantes.find(v => v.variante_atributos?.some((va:any) => va.atributo_valores?.valor === tallaSeleccionada));
-          setStockDisponible(v ? v.stock : 0);
-        } else {
-          setStockDisponible(0);
+      const nombresAtributosRequeridos = Object.keys(gruposAtributos);
+      const seleccionCompleta = nombresAtributosRequeridos.every(nombre => atributosSeleccionados[nombre]);
+
+      if (nombresAtributosRequeridos.length > 0) {
+        if (seleccionCompleta) {
+          const vFound = variantes.find(v => {
+            return nombresAtributosRequeridos.every(nombre => {
+              const valorSeleccionado = atributosSeleccionados[nombre];
+              return v.variante_atributos?.some((va: any) => 
+                va.atributo_valores?.atributos?.nombre === nombre && 
+                va.atributo_valores?.valor === valorSeleccionado
+              );
+            });
+          });
+          if (vFound) {
+            setStockDisponible(vFound.stock);
+            if (vFound.sku) setSkuActual(vFound.sku);
+          } else {
+            setStockDisponible(0);
+          }
         }
       } else {
         setStockDisponible(variantes[0]?.stock || 0);
+        if (variantes[0]?.sku) setSkuActual(variantes[0]?.sku);
       }
     } else {
       setStockDisponible(producto?.stock_total || 0);
+      if (producto?.sku) setSkuActual(producto?.sku);
     }
     setCantidad(1);
-  }, [colorSeleccionado, tallaSeleccionada, variantes, tieneColor, tieneTalla, producto?.stock_total]);
+  }, [atributosSeleccionados, variantes, gruposAtributos, producto?.stock_total, producto?.sku]);
 
   const handleAddToCart = () => {
-    const faltaColor = tieneColor && !colorSeleccionado;
-    const faltaTalla = tieneTalla && !tallaSeleccionada;
+    const nombresAtributosRequeridos = Object.keys(gruposAtributos);
+    const atributosFaltantes = nombresAtributosRequeridos.filter(nombre => !atributosSeleccionados[nombre]);
 
-    if (variantes.length > 0 && (faltaColor || faltaTalla)) {
-      toast(`Elige ${faltaColor ? 'color' : ''}${faltaColor && faltaTalla ? ' y ' : ''}${faltaTalla ? 'talla' : ''}`, "warning");
+    if (variantes.length > 0 && atributosFaltantes.length > 0) {
+      toast(`Por favor elige: ${atributosFaltantes.join(', ')}`, "warning");
       return;
     }
 
@@ -141,12 +158,16 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
       return;
     }
 
+    const detalleVariante = Object.entries(atributosSeleccionados)
+      .map(([k, v]) => `${k}: ${v.split('|')[0]}`)
+      .join(' / ');
+
     addToCart({
       id: producto.id,
       nombre: producto.nombre,
       precio: producto.precio_base,
       cantidad: cantidad,
-      talla: `${colorSeleccionado || ''} ${tallaSeleccionada || ''}`.trim() || "Única",
+      talla: detalleVariante || "Única",
       imagen: producto.imagen_principal
     });
     toast(`¡${producto.nombre} agregado!`, "success");
@@ -189,81 +210,109 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
 
           {/* INFO */}
           <div className="flex flex-col space-y-8">
-            <div className="space-y-4">
-              <h1 className="text-3xl md:text-4xl font-black uppercase text-black italic">{producto.nombre}</h1>
-              <div className="flex items-center gap-6">
-                <p className="text-3xl font-bold text-black font-sans">${Number(producto.precio_base).toLocaleString("es-CO")}</p>
-                {resenas.length > 0 && (
-                   <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full">
-                     <div className="flex text-yellow-400">
-                       {[1,2,3,4,5].map(s => <Star key={s} size={14} className={s <= Math.round(resenas.reduce((a,b)=>a+b.calificacion,0)/resenas.length) ? "fill-current" : "text-gray-200"} />)}
-                     </div>
-                     <span className="text-[10px] font-black">({resenas.length})</span>
-                   </div>
-                )}
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <h1 className="text-2xl md:text-3xl font-black uppercase italic tracking-tight text-black">{producto.nombre}</h1>
+                <div className="flex items-center gap-2 group">
+                  <p className="text-[10px] font-bold text-gray-400">SKU: {skuActual || producto.sku || 'N/A'}</p>
+                  {(skuActual || producto.sku) && (
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(skuActual || producto.sku);
+                        toast("Código copiado", "success");
+                      }}
+                      className="p-1 hover:bg-gray-100 rounded transition-colors"
+                      title="Copiar SKU"
+                    >
+                      <Copy size={10} className="text-gray-400" />
+                    </button>
+                  )}
+                </div>
               </div>
-              <p className="text-gray-500 text-[15px] leading-relaxed font-medium">{producto.descripcion}</p>
+
+              <div className="flex items-center gap-4">
+                <p className="text-2xl font-bold text-black font-sans">${Number(producto.precio_base).toLocaleString("es-CO")}</p>
+                <div className={`flex ${resenas.length > 0 ? "text-yellow-400" : "text-gray-200"}`}>
+                  {[1, 2, 3, 4, 5].map(s => {
+                    const val = resenas.length > 0 ? Math.round(resenas.reduce((a, b) => a + b.calificacion, 0) / resenas.length) : 0;
+                    return <Star key={s} size={14} className={s <= val ? "fill-current" : ""} />;
+                  })}
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-6">
+                <p className="text-gray-500 text-[14px] leading-relaxed font-normal">{producto.descripcion}</p>
+              </div>
             </div>
 
-            {/* SELECCIÓN */}
             {variantes.length > 0 && (
-              <div className="space-y-10 border-y py-10">
-                {tieneColor && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-end">
-                      <h3 className="text-[11px] font-black uppercase tracking-widest italic">1. Elige Color</h3>
-                      <span className="text-[10px] font-black uppercase text-gray-400">{colorSeleccionado || 'Selecciona uno'}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                      {Array.from(new Set(variantes.flatMap(v => v.variante_atributos.filter((va:any) => va.atributo_valores.atributos.nombre.toLowerCase().includes('color')).map((va:any) => va.atributo_valores.valor.split('|')[0])))).map(c => (
-                        <button key={c} onClick={() => { setColorSeleccionado(c); if(tieneTalla) setTallaSeleccionada(""); }} className={`px-6 py-4 border-2 font-black text-[12px] uppercase transition-all rounded-sm ${colorSeleccionado === c ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]" : "bg-white text-black border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]"}`}>{c}</button>
+              <div className="space-y-6">
+                {Object.entries(gruposAtributos).map(([nombreGroup, valores]) => (
+                  <div key={nombreGroup} className="space-y-3">
+                    <h3 className="text-[10px] font-black uppercase italic tracking-widest text-black">{nombreGroup}</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {valores.map(val => (
+                        <button 
+                          key={val} 
+                          onClick={() => setAtributosSeleccionados(prev => ({...prev, [nombreGroup]: val}))} 
+                          className={`px-6 py-2 border font-bold text-[11px] uppercase transition-all rounded-full ${atributosSeleccionados[nombreGroup] === val ? "bg-black text-white border-black" : "bg-white text-black border-gray-200 hover:border-black"}`}
+                        >
+                          {val.split('|')[0]}
+                        </button>
                       ))}
                     </div>
                   </div>
-                )}
-
-                {tieneTalla && (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-end">
-                      <h3 className="text-[11px] font-black uppercase tracking-widest italic">2. Elige Talla</h3>
-                      <span className="text-[10px] font-black uppercase text-gray-400">{tallaSeleccionada || 'Selecciona talla'}</span>
-                    </div>
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
-                      {Array.from(new Set(variantes.flatMap(v => v.variante_atributos.filter((va:any) => va.atributo_valores.atributos.nombre.toLowerCase().includes('talla')).map((va:any) => va.atributo_valores.valor)))).map(t => {
-                        const vMatch = variantes.find(v => (!tieneColor || !colorSeleccionado || v.variante_atributos.some((va:any) => va.atributo_valores.valor.startsWith(colorSeleccionado))) && v.variante_atributos.some((va:any) => va.atributo_valores.valor === t));
-                        const isAgotado = !vMatch || vMatch.stock <= 0;
-                        const isOculta = tieneColor && colorSeleccionado && !vMatch;
-                        return (
-                          <button key={t} disabled={isAgotado || (tieneColor && !colorSeleccionado)} onClick={() => setTallaSeleccionada(t)} className={`py-4 border-2 font-black text-[12px] uppercase transition-all rounded-sm ${isOculta ? "hidden" : isAgotado ? "opacity-20 line-through" : (tieneColor && !colorSeleccionado) ? "opacity-30" : tallaSeleccionada === t ? "bg-black text-white border-black shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]" : "bg-white text-black border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,0.05)]"}`}>{t}</button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
+                ))}
               </div>
             )}
 
-            {/* ACCIONES */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-4 bg-gray-50 px-4 py-2 border-2 border-black rounded-sm shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                  <button onClick={() => setCantidad(p => Math.max(1, p-1))}><Minus size={18} /></button>
-                  <span className="w-8 text-center text-lg font-black">{cantidad}</span>
-                  <button onClick={() => setCantidad(p => p < stockDisponible ? p + 1 : p)}><Plus size={18} /></button>
+            <div className="space-y-8">
+              <div className="space-y-3">
+                <h3 className="text-[10px] font-black uppercase italic tracking-widest text-black">Cantidad</h3>
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center w-fit gap-4 bg-white px-4 py-2 border border-gray-200 rounded-full">
+                    <button onClick={() => setCantidad(p => Math.max(1, p-1))}><Minus size={14} /></button>
+                    <span className="w-8 text-center text-sm font-bold">{cantidad}</span>
+                    <button onClick={() => setCantidad(p => p < stockDisponible ? p + 1 : p)}><Plus size={14} /></button>
+                  </div>
+                  {stockDisponible > 0 ? (
+                    <span className="text-[10px] font-bold text-green-500 bg-green-50 px-3 py-1 rounded-full border border-green-100">
+                      {stockDisponible} en stock
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-bold text-red-500 bg-red-50 px-3 py-1 rounded-full border border-red-100">
+                      Producto Agotado
+                    </span>
+                  )}
                 </div>
-                <p className={`text-[11px] font-black uppercase italic ${stockDisponible > 0 ? "text-green-600" : "text-red-500"}`}>{stockDisponible > 0 ? `Stock: ${stockDisponible}` : "Agotado"}</p>
               </div>
-              <button disabled={stockDisponible <= 0 || (tieneColor && !colorSeleccionado) || (tieneTalla && !tallaSeleccionada)} onClick={handleAddToCart} className={`w-full py-6 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-4 transition-all rounded-sm ${stockDisponible > 0 && (!tieneColor || colorSeleccionado) && (!tieneTalla || tallaSeleccionada) ? "bg-black text-white shadow-[6px_6px_0px_0px_rgba(252,215,222,1)]" : "bg-gray-100 text-gray-300 border-2"}`}><ShoppingBag size={24} /> Añadir al Carrito</button>
-            </div>
 
-            {/* BADGES */}
-            <div className="pt-8 grid grid-cols-3 gap-4 border-t">
-              {[ {icon: ShieldCheck, text: "Pago Seguro"}, {icon: Truck, text: "Nacional"}, {icon: RefreshCw, text: "Garantía"} ].map((b, i) => (
-                <div key={i} className="flex flex-col items-center p-4 bg-gray-50 rounded-lg group hover:bg-black transition-all">
-                  <b.icon size={24} className="group-hover:text-yellow-400 mb-2" />
-                  <p className="text-[8px] font-black uppercase text-center group-hover:text-white">{b.text}</p>
+              <button 
+                disabled={stockDisponible <= 0 || Object.keys(gruposAtributos).some(n => !atributosSeleccionados[n])} 
+                onClick={handleAddToCart} 
+                className={`w-full py-5 text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 transition-all rounded-full ${stockDisponible > 0 && Object.keys(gruposAtributos).every(n => atributosSeleccionados[n]) ? "bg-[#e5e7eb] text-[#374151] hover:bg-gray-300" : "bg-gray-50 text-gray-300 cursor-not-allowed"}`}
+              >
+                <ShoppingBag size={18} /> Agregar al Carrito
+              </button>
+
+              {/* BADGES VERTICALES CON COLORES */}
+              <div className="space-y-6 pt-8 border-t border-gray-100">
+                <div className="flex items-start gap-4">
+                  <ShieldCheck size={20} className="text-blue-500 mt-0.5" />
+                  <p className="text-[10px] font-bold uppercase text-gray-900 tracking-tight">Pago 100% Seguro</p>
                 </div>
-              ))}
+                <div className="flex items-start gap-4">
+                  <Truck size={20} className="text-green-500 mt-0.5" />
+                  <p className="text-[10px] font-bold uppercase text-gray-900 tracking-tight">Envíos a todo Colombia</p>
+                </div>
+                <div className="flex items-start gap-4">
+                  <RefreshCw size={20} className="text-orange-500 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase text-gray-900 tracking-tight">Política de devolución</p>
+                    <p className="text-[9px] text-gray-500 leading-tight font-medium">No realizamos devoluciones de dinero. Sin embargo, puedes cambiar tu artículo por otro de igual valor o de mayor valor pagando la diferencia.</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

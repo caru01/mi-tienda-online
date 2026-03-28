@@ -89,16 +89,6 @@ export default function ImageCarousel() {
             <div className="container mx-auto px-6 md:px-12 lg:px-20">
               <div className="max-w-3xl space-y-6">
                 
-                {/* Badge Flotante */}
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="flex items-center gap-2 bg-yellow-400 text-black px-4 py-1.5 w-fit rounded-full shadow-lg"
-                >
-                  <Sparkles size={14} />
-                  <span className="text-[10px] font-black uppercase tracking-widest italic">{banner.subtitulo || "Trend Alert"}</span>
-                </motion.div>
 
                 {/* Título Monumental */}
                 <div className="overflow-hidden">

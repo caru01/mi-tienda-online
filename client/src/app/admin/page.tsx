@@ -67,6 +67,7 @@ export default function AdminDashboard() {
   const [nuevoHexAtributo, setNuevoHexAtributo] = useState("#000000");
   const [seleccionMultipleColores, setSeleccionMultipleColores] = useState<string[]>([]);
   const [seleccionMultipleTallas, setSeleccionMultipleTallas] = useState<string[]>([]);
+  const [seleccionMultiplePresentaciones, setSeleccionMultiplePresentaciones] = useState<string[]>([]);
   const [isMatrixGenerating, setIsMatrixGenerating] = useState(false);
 
   const [nuevaCategoria, setNuevaCategoria] = useState({ nombre: "", slug: "", imagen: "" });
@@ -95,8 +96,27 @@ export default function AdminDashboard() {
   };
 
   const cargarAtributos = async () => {
-    const { data } = await supabase.from('atributos').select('*, atributo_valores(*)');
-    if (data) setListaAtributos(data);
+    try {
+      const { data, error } = await supabase
+        .from('atributos')
+        .select(`
+          id, 
+          nombre, 
+          atributo_valores (
+            id, 
+            valor
+          )
+        `)
+        .order('nombre', { ascending: true });
+        
+      if (error) {
+        console.error("Error cargando atributos:", error);
+        toast("Fallo al cargar atributos desde el servidor", "error");
+      }
+      if (data) setListaAtributos(data);
+    } catch (err: any) {
+      console.error("Error crítico en atributos:", err);
+    }
   };
 
   const cargarProductos = async () => {
@@ -112,7 +132,7 @@ export default function AdminDashboard() {
   const cargarVariantes = async (prodId: string) => {
     const { data } = await supabase
       .from('variantes_producto')
-      .select('*, variante_atributos(atributo_valores(valor))')
+      .select('*, variante_atributos(atributo_valor_id, atributo_valores(valor))')
       .eq('producto_id', prodId);
     if (data) setVariantesProducto(data);
   };
@@ -434,9 +454,18 @@ export default function AdminDashboard() {
 
   // --- LÓGICA INVENTARIO PRO ---
   const manejarCrearVariante = async () => {
-    if (!nuevaVariante.valor_id || !productoInventario) return alert("Selecciona una talla o color");
+    // Verificación de Duplicados para Variante Manual
+    const yaExiste = variantesProducto.some(v => 
+      v.variante_atributos?.length === 1 && 
+      v.variante_atributos[0].atributo_valor_id === nuevaVariante.valor_id
+    );
 
-    setLoading(true);
+    if (yaExiste) {
+      toast("Esta variante ya existe en el inventario", "error");
+      setLoading(false);
+      return;
+    }
+
     try {
       // GENERACIÓN AUTOMÁTICA DE SKU: GL- + 5 caracteres aleatorios
       const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
@@ -485,8 +514,15 @@ export default function AdminDashboard() {
   const manejarGuardarValorAtributo = async () => {
     if (!nuevoValorAtributo || !atributoSeleccionado) return;
     
-    // Guardar valor normal (Sin Hex)
-    const valorFinal = nuevoValorAtributo.toUpperCase();
+    // Guardar valor normal (Sin Hex) e implementar validación de duplicados
+    const valorFinal = nuevoValorAtributo.toUpperCase().trim();
+    
+    // Verificar si el valor ya existe para este atributo
+    const yaExiste = atributoSeleccionado.atributo_valores?.some((v: any) => v.valor.toUpperCase().trim() === valorFinal);
+    if (yaExiste) {
+      toast(`${valorFinal} ya está registrado en ${atributoSeleccionado.nombre}`, "error");
+      return;
+    }
 
     const { error } = await supabase.from('atributo_valores').insert([{
       atributo_id: atributoSeleccionado.id,
@@ -518,55 +554,61 @@ export default function AdminDashboard() {
     }
   };
 
-  // --- NUEVA FUNCIÓN: GENERADOR DE MATRIZ DE VARIANTES ---
+  // --- NUEVA FUNCIÓN: GENERADOR DE MATRIZ DE VARIANTES (3 DIMENSIONES) ---
   const generarMatrizVariantes = async () => {
     const hayColores = seleccionMultipleColores.length > 0;
     const hayTallas = seleccionMultipleTallas.length > 0;
+    const hayPresentaciones = seleccionMultiplePresentaciones.length > 0;
 
-    if (!productoInventario || (!hayColores && !hayTallas)) {
-      return alert("Selecciona al menos un color o una talla para generar la matriz");
+    if (!productoInventario || (!hayColores && !hayTallas && !hayPresentaciones)) {
+      return alert("Selecciona al menos un valor en cualquiera de los bloques para generar variantes");
     }
 
     setIsMatrixGenerating(true);
     let creadas = 0;
     
     try {
-      // Determinamos las combinaciones a crear
-      // Si hay ambos, hacemos producto cartesiano. Si solo hay uno, usamos solo ese.
+      // Determinamos las combinaciones a crear (Producto Cartesiano de 3 dimensiones)
       const coloresParaIterar = hayColores ? seleccionMultipleColores : [null];
       const tallasParaIterar = hayTallas ? seleccionMultipleTallas : [null];
+      const presentacionesParaIterar = hayPresentaciones ? seleccionMultiplePresentaciones : [null];
 
       for (const colorId of coloresParaIterar) {
         for (const tallaId of tallasParaIterar) {
-          // Generar SKU automático único
-          const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
-          const autoSku = `GL-${randomPart}`;
+          for (const presId of presentacionesParaIterar) {
+            // Verificación de combinación duplicada en la Matriz
+            const seleccionIds = [colorId, tallaId, presId].filter(id => id !== null);
+            const yaExiste = variantesProducto.some(v => {
+              const idsVariante = v.variante_atributos?.map((va: any) => va.atributo_valor_id) || [];
+              if (idsVariante.length !== seleccionIds.length) return false;
+              return seleccionIds.every(id => idsVariante.includes(id));
+            });
 
-          // 1. Insertar Variante Maestra
-          const { data: vData, error: vError } = await supabase.from('variantes_producto').insert([{
-            producto_id: productoInventario.id,
-            sku: autoSku,
-            stock: 0 
-          }]).select().single();
+            if (yaExiste) continue; // Si ya existe, nos saltamos esta combinación de la matriz
 
-          if (vError) throw vError;
+            // Generar SKU automático único
+            const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase();
+            const autoSku = `GL-${randomPart}`;
 
-          if (vData) {
-            // 2. Insertar Relación con Color (si aplica)
-            if (colorId) {
-              await supabase.from('variante_atributos').insert([{
-                variante_id: vData.id,
-                atributo_valor_id: colorId
-              }]);
+            // 1. Insertar Variante Maestra
+            const { data: vData, error: vError } = await supabase.from('variantes_producto').insert([{
+              producto_id: productoInventario.id,
+              sku: autoSku,
+              stock: 0 
+            }]).select().single();
+
+            if (vError) throw vError;
+
+            if (vData) {
+              // Insertar Relaciones dinámicamente
+              for (const attrValId of seleccionIds) {
+                await supabase.from('variante_atributos').insert([{
+                  variante_id: vData.id,
+                  atributo_valor_id: attrValId
+                }]);
+              }
+              creadas++;
             }
-            // 3. Insertar Relación con Talla (si aplica)
-            if (tallaId) {
-              await supabase.from('variante_atributos').insert([{
-                variante_id: vData.id,
-                atributo_valor_id: tallaId
-              }]);
-            }
-            creadas++;
           }
         }
       }
@@ -574,6 +616,7 @@ export default function AdminDashboard() {
       cargarVariantes(productoInventario.id);
       setSeleccionMultipleColores([]);
       setSeleccionMultipleTallas([]);
+      setSeleccionMultiplePresentaciones([]);
     } catch (err: any) {
       alert("Error generando matriz: " + err.message);
     } finally {
@@ -1363,7 +1406,17 @@ export default function AdminDashboard() {
                 {!productoInventario ? (
                   <div className="bg-white border-2 border-black p-10 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                     <Search size={48} className="mx-auto mb-4 text-gray-300" />
-                    <h3 className="font-black uppercase italic text-lg mb-4 text-black">Gestión de Existencias por Variantes</h3>
+                    <div className="flex justify-between items-center mb-6">
+                      <h3 className="font-black uppercase italic text-lg text-black">Gestión de Existencias por Variantes</h3>
+                      <button onClick={cargarTodo} className="bg-black text-white px-4 py-2 text-[8px] font-black uppercase flex items-center gap-2 shadow-[2px_2px_0px_0px_rgba(252,215,222,1)] active:scale-95 transition-all">
+                        <Wifi size={12} /> Sincronizar Catálogo
+                      </button>
+                    </div>
+                    {listaAtributos.length === 0 && (
+                      <div className="bg-yellow-50 border-2 border-dashed border-yellow-200 p-4 mb-6 text-[9px] font-black uppercase text-yellow-700">
+                        ⚠ No se detectan atributos maestros. Ve a la pestaña "Atributos" para crear Color, Talla, etc. asegurándote de añadirles valores.
+                      </div>
+                    )}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
                       {listaProductos.map(p => (
                         <div key={p.id} onClick={() => { setProductoInventario(p); cargarVariantes(p.id); }} className="border-2 border-black p-3 hover:bg-[#FCD7DE] cursor-pointer flex items-center gap-4 text-black">
@@ -1376,38 +1429,132 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="space-y-4">
                     <button onClick={() => setProductoInventario(null)} className="flex items-center gap-2 text-[10px] font-black uppercase hover:underline text-black"> <ChevronLeft size={14} /> Volver</button>
-                    <div className="bg-white border-2 border-black p-6 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
-                      <h3 className="font-black uppercase italic text-sm mb-4 border-b-2 border-black pb-2">Generador Automático de Matriz</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-zinc-50 border-2 border-black p-6 mb-8 border-dashed">
+                       <h3 className="font-black uppercase italic text-xs mb-4 flex items-center gap-2"> <Plus size={16}/> Añadir Variante Manual (Cualquier Atributo)</h3>
+                       <div className="flex flex-col md:flex-row gap-4 items-end">
+                          <div className="flex-1 space-y-2">
+                             <label className="text-[10px] font-black uppercase text-gray-400">Seleccionar Atributo y Valor</label>
+                             <select 
+                                className="w-full bg-white border-2 border-black p-3 font-black text-[10px] uppercase"
+                                value={nuevaVariante.valor_id}
+                                onChange={(e) => setNuevaVariante({...nuevaVariante, valor_id: e.target.value})}
+                             >
+                                <option value="">--- ELIGE UN VALOR ---</option>
+                                {listaAtributos.map(attr => (
+                                   <optgroup key={attr.id} label={attr.nombre} className="font-black">
+                                      {attr.atributo_valores?.map((v: any) => (
+                                         <option key={v.id} value={v.id}>{v.valor.split('|')[0]}</option>
+                                      ))}
+                                   </optgroup>
+                                ))}
+                             </select>
+                          </div>
+                          <div className="w-24 space-y-2">
+                             <label className="text-[10px] font-black uppercase text-gray-400">Stock</label>
+                             <input 
+                                type="number" 
+                                className="w-full bg-white border-2 border-black p-3 font-black text-center" 
+                                value={nuevaVariante.stock}
+                                onChange={(e) => setNuevaVariante({...nuevaVariante, stock: parseInt(e.target.value)})}
+                             />
+                          </div>
+                          <button 
+                            onClick={manejarCrearVariante}
+                            className="bg-black text-white px-8 py-4 font-black uppercase text-[10px] shadow-[4px_4px_0_0_rgba(0,0,0,0.1)] active:scale-95 transition-all"
+                          >
+                             Agregar
+                          </button>
+                       </div>
+                    </div>
+
+                    <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+                      <div className="flex justify-between items-center mb-6 border-b-4 border-black pb-4">
+                        <h3 className="font-black uppercase italic text-lg leading-none">Generador de Variantes Inteligente</h3>
+                        <p className="text-[10px] font-black uppercase text-pink-500 italic bg-pink-50 px-3 py-1 border-2 border-pink-500 shadow-[2px_2px_0px_0px_rgba(219,39,119,1)]">Selecciona solo lo que necesites</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         
-                        {/* Selector de Colores */}
-                        <div className="space-y-3">
-                           <p className="text-[10px] font-black uppercase text-gray-500">Paso 1: Elige los Colores</p>
-                           <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-2 border-dashed border-black/10">
-                              {listaAtributos.find(a => a.nombre.toLowerCase().includes('color'))?.atributo_valores?.map((v: any) => (
-                                <button 
-                                  key={v.id} 
-                                  onClick={() => setSeleccionMultipleColores(p => p.includes(v.id) ? p.filter(id => id !== v.id) : [...p, v.id])}
-                                  className={`px-3 py-1.5 text-[9px] font-black uppercase border-2 transition-all ${seleccionMultipleColores.includes(v.id) ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(252,215,222,1)]' : 'bg-white border-gray-200'}`}
-                                >
-                                  {v.valor.split('|')[0]}
-                                </button>
+                        {/* BLOQUE 1: COLORES */}
+                        <div className="space-y-4">
+                           <div className="flex items-center gap-2 border-b-2 border-black pb-2">
+                             <div className="w-3 h-3 bg-red-400 border border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"></div>
+                             <p className="text-[11px] font-black uppercase tracking-widest text-black">Bloque 1: COLORES</p>
+                           </div>
+                           <div className="space-y-6">
+                              {listaAtributos.filter(a => (a.nombre || '').toLowerCase().includes('color')).map(attr => (
+                                <div key={attr.id} className="border-l-2 border-gray-100 pl-3">
+                                   <p className="text-[8px] font-black text-black/30 mb-2 uppercase tracking-widest">{attr.nombre}</p>
+                                   <div className="flex flex-wrap gap-2">
+                                      {attr.atributo_valores?.length === 0 && <p className="text-[7px] text-gray-300 italic">Sin valores creados</p>}
+                                      {attr.atributo_valores?.map((v: any) => (
+                                        <button 
+                                          key={v.id} 
+                                          onClick={() => setSeleccionMultipleColores(p => p.includes(v.id) ? p.filter(id => id !== v.id) : [...p, v.id])}
+                                          className={`px-3 py-2 text-[10px] font-black uppercase border-2 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none ${seleccionMultipleColores.includes(v.id) ? 'bg-black text-white border-black' : 'bg-white border-black hover:bg-zinc-50'}`}
+                                        >
+                                          {v.valor?.split('|')[0]}
+                                        </button>
+                                      ))}
+                                   </div>
+                                </div>
                               ))}
                            </div>
                         </div>
 
-                        {/* Selector de Tallas */}
-                        <div className="space-y-3">
-                           <p className="text-[10px] font-black uppercase text-gray-500">Paso 2: Elige las Tallas</p>
-                           <div className="flex flex-wrap gap-2 p-3 bg-gray-50 border-2 border-dashed border-black/10">
-                              {listaAtributos.find(a => a.nombre.toLowerCase().includes('talla'))?.atributo_valores?.map((v: any) => (
-                                <button 
-                                  key={v.id} 
-                                  onClick={() => setSeleccionMultipleTallas(p => p.includes(v.id) ? p.filter(id => id !== v.id) : [...p, v.id])}
-                                  className={`px-3 py-1.5 text-[9px] font-black uppercase border-2 transition-all ${seleccionMultipleTallas.includes(v.id) ? 'bg-black text-white border-black shadow-[2px_2px_0px_0px_rgba(252,215,222,1)]' : 'bg-white border-gray-200'}`}
-                                >
-                                  {v.valor}
-                                </button>
+                        {/* BLOQUE 2: TALLAS */}
+                        <div className="space-y-4">
+                           <div className="flex items-center gap-2 border-b-2 border-black pb-2">
+                             <div className="w-3 h-3 bg-blue-400 border border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"></div>
+                             <p className="text-[11px] font-black uppercase tracking-widest text-black">Bloque 2: TALLAS</p>
+                           </div>
+                           <div className="space-y-6">
+                              {listaAtributos.filter(a => (a.nombre || '').toLowerCase().includes('talla')).map(attr => (
+                                <div key={attr.id} className="border-l-2 border-gray-100 pl-3">
+                                   <p className="text-[8px] font-black text-black/30 mb-2 uppercase tracking-widest">{attr.nombre}</p>
+                                   <div className="flex flex-wrap gap-2">
+                                      {attr.atributo_valores?.length === 0 && <p className="text-[7px] text-gray-300 italic">Sin valores creados</p>}
+                                      {attr.atributo_valores?.map((v: any) => (
+                                        <button 
+                                          key={v.id} 
+                                          onClick={() => setSeleccionMultipleTallas(p => p.includes(v.id) ? p.filter(id => id !== v.id) : [...p, v.id])}
+                                          className={`px-3 py-2 text-[10px] font-black uppercase border-2 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none ${seleccionMultipleTallas.includes(v.id) ? 'bg-black text-white border-black' : 'bg-white border-black hover:bg-zinc-50'}`}
+                                        >
+                                          {v.valor}
+                                        </button>
+                                      ))}
+                                   </div>
+                                </div>
+                              ))}
+                           </div>
+                        </div>
+
+                        {/* BLOQUE 3: PRESENTACIÓN */}
+                        <div className="space-y-4">
+                           <div className="flex items-center gap-2 border-b-2 border-black pb-2">
+                             <div className="w-3 h-3 bg-yellow-400 border border-black rounded-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"></div>
+                             <p className="text-[11px] font-black uppercase tracking-widest text-black">Bloque 3: PRESENTACIÓN</p>
+                           </div>
+                           <div className="space-y-6">
+                              {listaAtributos.filter(a => {
+                                const n = (a.nombre || '').toLowerCase();
+                                return !n.includes('color') && !n.includes('talla');
+                              }).map(attr => (
+                                <div key={attr.id} className="border-l-2 border-gray-100 pl-3">
+                                   <p className="text-[8px] font-black text-black/30 mb-2 uppercase tracking-widest">{attr.nombre}</p>
+                                   <div className="flex flex-wrap gap-2">
+                                      {attr.atributo_valores?.length === 0 && <p className="text-[7px] text-gray-300 italic">Sin valores creados</p>}
+                                      {attr.atributo_valores?.map((v: any) => (
+                                        <button 
+                                          key={v.id} 
+                                          onClick={() => setSeleccionMultiplePresentaciones(p => p.includes(v.id) ? p.filter(id => id !== v.id) : [...p, v.id])}
+                                          className={`px-3 py-2 text-[10px] font-black uppercase border-2 transition-all shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-y-0.5 active:shadow-none ${seleccionMultiplePresentaciones.includes(v.id) ? 'bg-black text-white border-black' : 'bg-white border-black hover:bg-zinc-50'}`}
+                                        >
+                                          {v.valor}
+                                        </button>
+                                      ))}
+                                   </div>
+                                </div>
                               ))}
                            </div>
                         </div>
@@ -1417,17 +1564,18 @@ export default function AdminDashboard() {
                       <button 
                         onClick={generarMatrizVariantes}
                         disabled={isMatrixGenerating}
-                        className="w-full mt-6 bg-black text-white font-black uppercase py-4 shadow-[4px_4px_0px_0px_rgba(252,215,222,1)] hover:bg-[#FCD7DE] hover:text-black transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                        className="w-full mt-10 bg-black text-white font-black uppercase py-5 text-sm shadow-[8px_8px_0px_0px_rgba(252,215,222,1)] hover:bg-[#FCD7DE] hover:text-black hover:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 border-2 border-black"
                       >
-                        {isMatrixGenerating ? "Generando..." : "Sincronizar Combinaciones y Generar Variantes"}
-                        <Plus size={18} />
+                        {isMatrixGenerating ? "GENERANDO VARIANTES..." : "Sincronizar y Crear Variantes Seleccionadas"}
+                        <Plus size={20} strokeWidth={3} />
                       </button>
                     </div>
 
-                    <div className="bg-white border-2 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-t-0 bg-yellow-50">
-                       <p className="text-[9px] font-black uppercase text-black/50 italic flex items-center gap-2">
-                          <Activity size={12} /> Selecciona los colores y tallas que deseas activar para este producto y el sistema creará las variantes por ti.
+                    <div className="bg-zinc-100 border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] border-t-0 bg-yellow-50 relative overflow-hidden">
+                       <p className="text-[10px] font-black uppercase text-black/70 italic flex items-center gap-3 relative z-10">
+                          <Activity size={16} className="text-black" /> Combina atributos de diferentes bloques para crear variantes complejas (Ej: Negro + XL + 100ml) o elige solo uno para variantes simples.
                        </p>
+                       <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-400/20 rounded-full -mr-16 -mt-16 blur-2xl"></div>
                     </div>
                     <div className="bg-white border-2 border-black overflow-hidden shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
                       <table className="w-full text-[10px] font-bold text-black">
@@ -1486,8 +1634,18 @@ export default function AdminDashboard() {
                   <div className="flex gap-2">
                     <input placeholder="NOMBRE ATRIBUTO" className="flex-1 p-3 border-2 border-black font-bold outline-none uppercase text-black" value={nuevoAtributo} onChange={e => setNuevoAtributo(e.target.value)} />
                     <button onClick={async () => {
-                      await supabase.from('atributos').insert([{ nombre: nuevoAtributo.toUpperCase() }]);
+                      const nombreAtributo = nuevoAtributo.toUpperCase().trim();
+                      if (!nombreAtributo) return;
+                      
+                      // Validación de duplicados en Atributos Maestros
+                      if (listaAtributos.some(a => a.nombre.toUpperCase().trim() === nombreAtributo)) {
+                        toast("Ya existe un atributo con este nombre", "error");
+                        return;
+                      }
+
+                      await supabase.from('atributos').insert([{ nombre: nombreAtributo }]);
                       setNuevoAtributo(""); cargarAtributos();
+                      toast("Atributo creado correctamente", "success");
                     }} className="bg-black text-white px-6 font-black uppercase tracking-widest">Crear</button>
                   </div>
                 </div>
