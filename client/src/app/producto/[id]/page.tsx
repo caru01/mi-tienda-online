@@ -213,7 +213,7 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
             <div className="space-y-6">
               <div className="space-y-1">
                 <h1 className="text-2xl md:text-3xl font-black uppercase italic tracking-tight text-black">{producto.nombre}</h1>
-                <div className="flex items-center gap-2 group">
+                <div className="flex items-center gap-3 group">
                   <p className="text-[10px] font-bold text-gray-400">SKU: {skuActual || producto.sku || 'N/A'}</p>
                   {(skuActual || producto.sku) && (
                     <button 
@@ -227,17 +227,18 @@ export default function ProductoDetalle({ params }: { params: Promise<{ id: stri
                       <Copy size={10} className="text-gray-400" />
                     </button>
                   )}
+                  {/* ESTRELLAS AL LADO DEL SKU */}
+                  <div className={`flex gap-0.5 ml-1 ${resenas.length > 0 ? "text-yellow-400" : "text-gray-200"}`}>
+                    {[1, 2, 3, 4, 5].map(s => {
+                      const val = resenas.length > 0 ? Math.round(resenas.reduce((a, b) => a + b.calificacion, 0) / resenas.length) : 0;
+                      return <Star key={s} size={12} className={s <= val ? "fill-current" : ""} />;
+                    })}
+                  </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-4">
                 <p className="text-2xl font-bold text-black font-sans">${Number(producto.precio_base).toLocaleString("es-CO")}</p>
-                <div className={`flex ${resenas.length > 0 ? "text-yellow-400" : "text-gray-200"}`}>
-                  {[1, 2, 3, 4, 5].map(s => {
-                    const val = resenas.length > 0 ? Math.round(resenas.reduce((a, b) => a + b.calificacion, 0) / resenas.length) : 0;
-                    return <Star key={s} size={14} className={s <= val ? "fill-current" : ""} />;
-                  })}
-                </div>
               </div>
 
               <div className="border-t border-gray-100 pt-6">
