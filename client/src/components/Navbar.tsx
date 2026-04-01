@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { ShoppingBag, ChevronDown, HelpCircle, ChevronRight, Menu, X, Star, Home, Search } from "lucide-react";
+import { ShoppingBag, ChevronDown, HelpCircle, ChevronRight, Menu, X, Star, Home, Search, Package } from "lucide-react";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { supabase } from "@/lib/supabase";
@@ -185,8 +185,18 @@ export default function Navbar() {
         >
           <Star size={12} className="fill-current" />
           Club Galu
-          <span className="absolute -top-3 -right-6 bg-gradient-to-r from-yellow-500 to-amber-400 text-black text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide animate-pulse">
-            NEW
+        </Link>
+
+        {/* GALU SHOPPER - Personal Shopper */}
+        <Link
+          href="/galu-shopper"
+          className="relative flex items-center gap-1.5 uppercase font-black tracking-[0.2em] transition-all group"
+          style={{ color: '#ff4d4d' }}
+        >
+          <Package size={12} strokeWidth={3} />
+          Galu Shopper
+          <span className="absolute -top-3 -right-4 bg-black text-white text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-wide">
+             ENCARGOS
           </span>
         </Link>
       </div>
@@ -274,8 +284,19 @@ export default function Navbar() {
                   <Star size={14} className="fill-current" />
                   Club Galu
                 </span>
-                <span className="bg-gradient-to-r from-yellow-500 to-amber-400 text-black text-[8px] font-black px-2 py-0.5 rounded-full uppercase">
-                  Puntos y Referidos
+              </Link>
+              <Link
+                href="/galu-shopper"
+                onClick={closeMobile}
+                className="flex items-center justify-between px-6 py-4 text-[12px] font-black uppercase tracking-widest border-b border-gray-50 hover:bg-red-50 transition-colors"
+                style={{ color: '#ff4d4d' }}
+              >
+                <span className="flex items-center gap-2">
+                  <Package size={14} strokeWidth={3} />
+                  Galu Shopper
+                </span>
+                <span className="bg-black text-white text-[8px] font-black px-2 py-0.5 rounded-full uppercase">
+                  Traemos por Ti
                 </span>
               </Link>
               <Link

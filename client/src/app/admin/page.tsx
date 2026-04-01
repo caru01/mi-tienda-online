@@ -7,7 +7,7 @@ import {
   Package, Tag, Plus, Save, Hash, Wifi, WifiOff, ListOrdered, Star, ExternalLink,
   Pencil, Check, X, Layers, Settings, Trash2, Search, ChevronLeft, Ticket, ShoppingBag,
   Image as ImageIcon, Menu, Activity, MapPin, TrendingUp, BarChart3, Globe, MousePointer2,
-  Trash
+  Trash, Send
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/context/ToastContext";
@@ -31,6 +31,7 @@ export default function AdminDashboard() {
   const [listaConfig, setListaConfig] = useState<any[]>([]);
   const [listaBanners, setListaBanners] = useState<any[]>([]);
   const [listaVisitas, setListaVisitas] = useState<any[]>([]);
+  const [listaCotizaciones, setListaCotizaciones] = useState<any[]>([]);
   const [filtroAnalitica, setFiltroAnalitica] = useState('7_dias');
   const [testStatus, setTestStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
@@ -90,9 +91,18 @@ export default function AdminDashboard() {
       cargarResenas(),
       cargarConfig(),
       cargarBanners(),
-      cargarAnalitica()
+      cargarAnalitica(),
+      cargarCotizaciones()
     ]);
     setLoading(false);
+  };
+
+  const cargarCotizaciones = async () => {
+    const { data } = await supabase
+      .from('cotizaciones')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (data) setListaCotizaciones(data);
   };
 
   const cargarAtributos = async () => {
@@ -401,6 +411,27 @@ export default function AdminDashboard() {
       setEditandoId(null);
       cargarProductos();
     } catch (e: any) { alert(e.message); }
+  };
+
+  // --- LÓGICA GALU SHOPPER ---
+  const actualizarEstadoCotizacion = async (id: string, nuevoEstado: string) => {
+    const { error } = await supabase.from('cotizaciones').update({ estado: nuevoEstado }).eq('id', id);
+    if (!error) {
+      cargarCotizaciones();
+      toast("Estado de encargo actualizado", "success");
+    }
+  };
+
+  const enviarCotizacionWhatsApp = (cot: any) => {
+    const valor = prompt("¿Cuál es el valor TOTAL para este producto? (Solo números)", "90000");
+    if (!valor) return;
+
+    const anticipo = Math.round(Number(valor) / 2);
+    const msg = `¡Hola ${cot.cliente_nombre.split(' ')[0].toUpperCase()}! Soy Camilo de GALU SHOP ✌️. \n\nYa coticé tu encargo de: *${cot.producto_link}*\n\n💰 *VALOR TOTAL:* $${Number(valor).toLocaleString("es-CO")} COP\n💎 *ANTICIPO REQUERIDO (50%):* $${anticipo.toLocaleString("es-CO")} COP\n\nEste valor ya incluye envío internacional e impuestos hasta Valledupar. Para asegurar tu pedido, por favor realiza la transferencia a nuestra *Llave Bre-B* y envíame el comprobante por este medio. \n\n¡Quedo atento!`;
+    
+    let num = cot.whatsapp.replace(/\D/g, '');
+    if (!num.startsWith("57")) num = "57" + num;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   // --- LÓGICA GUARDAR PRODUCTO ---
@@ -722,6 +753,7 @@ export default function AdminDashboard() {
             <nav className="space-y-2" onClick={() => setIsSidebarOpen(false)}>
               <button onClick={() => setActiveTab("dashboard")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'dashboard' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Layers size={18} /> Resumen</button>
               <button onClick={() => setActiveTab("pedidos")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'pedidos' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><ShoppingBag size={18} /> Pedidos</button>
+              <button onClick={() => setActiveTab("galu-shopper")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'galu-shopper' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-red-50'}`}><Package size={18} /> Galu Shopper {listaCotizaciones.filter(c => c.estado === 'Cotizando').length > 0 && <span className="bg-red-500 text-white rounded-full px-2 text-[8px]">{listaCotizaciones.filter(c => c.estado === 'Cotizando').length}</span>}</button>
               <button onClick={() => setActiveTab("productos")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'productos' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Package size={18} /> Catálogo</button>
               <button onClick={() => setActiveTab("stock")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'stock' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Hash size={18} /> Inventario PRO</button>
               <button onClick={() => setActiveTab("resenas")} className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-black uppercase transition-all ${activeTab === 'resenas' ? 'bg-black text-white shadow-[4px_4px_0px_0px_rgba(252,215,222,1)]' : 'hover:bg-gray-100'}`}><Star size={18} /> Reseñas{listaResenas.filter(r => !r.aprobada).length > 0 && <span className="bg-red-500 text-white rounded-full px-2 text-[8px]">{listaResenas.filter(r => !r.aprobada).length}</span>}</button>
@@ -1397,6 +1429,105 @@ export default function AdminDashboard() {
                       </div>
                    </div>
                 </div>
+              </div>
+            )}
+
+            {/* PESTAÑA GALU SHOPPER */}
+            {activeTab === "galu-shopper" && (
+              <div className="space-y-8 animate-in fade-in">
+                 <div className="flex justify-between items-end border-b-4 border-black pb-4">
+                    <h3 className="font-black uppercase text-2xl italic text-black">Encargos Galu Shopper</h3>
+                    <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{listaCotizaciones.length} solicitudes totales</p>
+                 </div>
+
+                 <div className="grid grid-cols-1 gap-6">
+                    {listaCotizaciones.map((cot) => (
+                       <div key={cot.id} className={`bg-white border-4 border-black overflow-hidden hover:shadow-[12px_12px_0px_0px_rgba(255,77,77,0.1)] transition-all ${cot.estado === 'Cotizando' ? 'border-red-500 shadow-[8px_8px_0px_0px_rgba(255,77,77,1)]' : 'shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]'}`}>
+                          <div className={`px-4 py-2 border-b-4 border-black flex justify-between items-center ${cot.estado === 'Cotizando' ? 'bg-red-500 text-white' : 'bg-zinc-100 text-black'}`}>
+                             <span className="font-black text-xs uppercase tracking-tighter italic">Solicitud Identificada</span>
+                             <span className="text-[10px] font-black uppercase">{new Date(cot.created_at).toLocaleDateString()}</span>
+                          </div>
+
+                          <div className="p-6 grid grid-cols-1 md:grid-cols-4 gap-8">
+                             {/* Imagen del producto */}
+                             <div className="md:col-span-1">
+                                {cot.imagen_url ? (
+                                   <a href={cot.imagen_url} target="_blank" rel="noreferrer" className="block relative group">
+                                      <img src={cot.imagen_url} className="w-full h-48 object-cover border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] grayscale group-hover:grayscale-0 transition-all" alt="Captura cliente" />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                         <ExternalLink className="text-white" />
+                                      </div>
+                                   </a>
+                                ) : (
+                                   <div className="w-full h-48 bg-gray-100 border-4 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400">
+                                      <ImageIcon size={32} />
+                                      <span className="text-[8px] font-black uppercase mt-2">Sin captura adjunta</span>
+                                   </div>
+                                )}
+                             </div>
+
+                             {/* Detalle Producto */}
+                             <div className="md:col-span-2 space-y-4">
+                                <div>
+                                   <label className="text-[9px] font-black uppercase text-gray-400 block mb-1">Producto / Enlace</label>
+                                   <p className="font-black text-sm text-black break-words underline decoration-red-500 underline-offset-4">{cot.producto_link}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                   <div>
+                                      <label className="text-[9px] font-black uppercase text-gray-400 block mb-1">Talla / Color</label>
+                                      <p className="font-bold text-xs bg-zinc-50 p-2 border border-black/5">{cot.talla_color}</p>
+                                   </div>
+                                   <div>
+                                      <label className="text-[9px] font-black uppercase text-gray-400 block mb-1">Cliente</label>
+                                      <p className="font-black text-xs uppercase">{cot.cliente_nombre}</p>
+                                      <p className="text-[10px] font-bold text-gray-500">{cot.whatsapp}</p>
+                                      <p className="text-[9px] font-bold text-gray-400 italic break-all">{cot.cliente_email}</p>
+                                   </div>
+                                   <div>
+                                      <label className="text-[9px] font-black uppercase text-gray-400 block mb-1">Dirección Valledupar</label>
+                                      <p className="font-bold text-[10px] bg-zinc-50 p-1 border border-black/5 uppercase">{cot.direccion || 'No especificada'}</p>
+                                   </div>
+                                </div>
+                             </div>
+
+                             {/* Gestión de Estado */}
+                             <div className="md:col-span-1 flex flex-col justify-between gap-4">
+                                <div className="space-y-2">
+                                   <label className="text-[9px] font-black uppercase text-gray-400 block mb-1">Fase del Encargo</label>
+                                   <select 
+                                      value={cot.estado}
+                                      onChange={(e) => actualizarEstadoCotizacion(cot.id, e.target.value)}
+                                      className="w-full bg-white border-2 border-black p-3 font-black text-[10px] uppercase outline-none focus:bg-zinc-50"
+                                   >
+                                      <option value="Cotizando">Pendiente de Cotizar</option>
+                                      <option value="Pendiente de Pago">Esperando Anticipo</option>
+                                      <option value="Pagado">Anticipo Recibido</option>
+                                      <option value="Comprado">Pedido a Proveedor</option>
+                                      <option value="En Camino">Importando (Tránsito)</option>
+                                      <option value="Listo para entrega">Listo en Valledupar</option>
+                                      <option value="Entregado">Entregado</option>
+                                      <option value="Cancelado">Cancelado</option>
+                                   </select>
+                                </div>
+
+                                <button 
+                                   onClick={() => enviarCotizacionWhatsApp(cot)}
+                                   className="w-full bg-green-500 text-white border-4 border-black p-4 font-black uppercase italic text-xs shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all flex items-center justify-center gap-2"
+                                >
+                                   Enviar Cotización <Send size={14} />
+                                </button>
+                             </div>
+                          </div>
+                       </div>
+                    ))}
+
+                    {listaCotizaciones.length === 0 && (
+                       <div className="text-center py-20 border-8 border-dashed border-zinc-100">
+                          <Package size={64} className="mx-auto text-zinc-200 mb-4" />
+                          <p className="font-black uppercase text-zinc-300 italic tracking-tighter text-2xl">Aún no hay encargos por traer</p>
+                       </div>
+                    )}
+                 </div>
               </div>
             )}
 
