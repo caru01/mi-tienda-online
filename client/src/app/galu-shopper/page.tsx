@@ -47,23 +47,28 @@ export default function GaluShopper() {
 
       // 1. Subir imagen si existe
       if (file) {
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `encargos/${fileName}`;
+        try {
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${Math.random()}.${fileExt}`;
+          const filePath = `encargos/${fileName}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from('galu-shopper')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          // Si el bucket no existe o hay error, intentamos seguir o lanzamos error
-          console.error("Error subiendo imagen:", uploadError);
-          // Pero para que la experiencia sea fluida, intentaremos seguir
-        } else {
-          const { data: { publicUrl } } = supabase.storage
+          const { error: uploadError } = await supabase.storage
             .from('galu-shopper')
-            .getPublicUrl(filePath);
-          imagenUrl = publicUrl;
+            .upload(filePath, file);
+
+          if (uploadError) {
+            console.error("Error subiendo imagen:", uploadError.message);
+            // NO lanzamos error aquí para permitir que la cotización se guarde 
+            // aunque la foto falle temporalmente por el bucket.
+            toast("La imagen no pudo subirse, pero guardaremos tu solicitud", "warning");
+          } else {
+            const { data: { publicUrl } } = supabase.storage
+              .from('galu-shopper')
+              .getPublicUrl(filePath);
+            imagenUrl = publicUrl;
+          }
+        } catch (uploadPanic) {
+          console.error("Fallo crítico en upload:", uploadPanic);
         }
       }
 
