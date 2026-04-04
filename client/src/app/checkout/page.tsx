@@ -92,7 +92,8 @@ export default function CheckoutPage() {
           stock, 
           variante_atributos (
             atributo_valores (
-              valor
+              valor,
+              atributos (nombre)
             )
           )
         `)
@@ -102,17 +103,27 @@ export default function CheckoutPage() {
         let stockInsuficiente = false;
         cart.forEach(item => {
           const vActual = variantes.find((v: any) => {
-            const valores = v.variante_atributos?.map((va: any) => va.atributo_valores?.valor) || [];
-            if (valores.length === 0) return v.producto_id === item.id && item.talla === 'Única';
+            const atributos = v.variante_atributos || [];
+            if (atributos.length === 0) return v.producto_id === item.id && item.talla === 'Única';
 
-            const nombreV1 = valores.join(' ');
-            const nombreV2 = [...valores].reverse().join(' ');
-            const nombreV3 = valores.join(' / ');
+            // Formato exacto que guarda el carrito: "NombreAttr: Valor / NombreAttr: Valor"
+            const formatoCarrito = atributos
+              .map((va: any) => `${va.atributo_valores?.atributos?.nombre}: ${va.atributo_valores?.valor}`)
+              .join(' / ');
+            const formatoCartitroInverso = [...atributos].reverse()
+              .map((va: any) => `${va.atributo_valores?.atributos?.nombre}: ${va.atributo_valores?.valor}`)
+              .join(' / ');
+
+            // Formatos alternativos (solo valores)
+            const valores = atributos.map((va: any) => va.atributo_valores?.valor);
+            const v1 = valores.join(' ');
+            const v2 = [...valores].reverse().join(' ');
+            const v3 = valores.join(' / ');
 
             return v.producto_id === item.id && (
-              nombreV1 === item.talla ||
-              nombreV2 === item.talla ||
-              nombreV3 === item.talla
+              formatoCarrito === item.talla ||
+              formatoCartitroInverso === item.talla ||
+              v1 === item.talla || v2 === item.talla || v3 === item.talla
             );
           });
 
@@ -250,18 +261,31 @@ export default function CheckoutPage() {
       for (const item of cart) {
         const { data: variantesProd, error: vErr } = await supabase
           .from('variantes_producto')
-          .select(`id, stock, variante_atributos(atributo_valores(valor))`)
+          .select(`id, stock, variante_atributos(atributo_valores(valor, atributos(nombre)))`)
           .eq('producto_id', item.id);
 
         if (vErr || !variantesProd) throw new Error("No se pudieron cargar las variantes");
 
         const variante = variantesProd.find((v: any) => {
-          const valores = v.variante_atributos?.map((va: any) => va.atributo_valores?.valor) || [];
-          if (valores.length === 0) return item.talla === 'Única';
+          const atributos = v.variante_atributos || [];
+          if (atributos.length === 0) return item.talla === 'Única';
+
+          // Formato exacto que guarda el carrito: "NombreAttr: Valor / NombreAttr: Valor"
+          const formatoCarrito = atributos
+            .map((va: any) => `${va.atributo_valores?.atributos?.nombre}: ${va.atributo_valores?.valor}`)
+            .join(' / ');
+          const formatoCartitroInverso = [...atributos].reverse()
+            .map((va: any) => `${va.atributo_valores?.atributos?.nombre}: ${va.atributo_valores?.valor}`)
+            .join(' / ');
+
+          // Formatos alternativos (solo valores)
+          const valores = atributos.map((va: any) => va.atributo_valores?.valor);
           const n1 = valores.join(' ');
           const n2 = [...valores].reverse().join(' ');
           const n3 = valores.join(' / ');
-          return n1 === item.talla || n2 === item.talla || n3 === item.talla;
+
+          return formatoCarrito === item.talla || formatoCartitroInverso === item.talla ||
+                 n1 === item.talla || n2 === item.talla || n3 === item.talla;
         });
 
         if (!variante || variante.stock < item.cantidad) {
