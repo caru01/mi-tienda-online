@@ -1,0 +1,23 @@
+# Entorno virtual Python
+venv/
+.venv/
+env/
+
+# Variables de entorno con credenciales
+.env
+
+# Cache de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Logs
+*.log
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/

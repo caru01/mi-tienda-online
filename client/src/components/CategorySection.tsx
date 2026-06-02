@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
-import { SkeletonCategoryCircle } from "@/components/SkeletonCard";
 
 export default function CategorySection() {
   // Estado para almacenar las categorías de la base de datos
@@ -33,42 +32,39 @@ export default function CategorySection() {
 
   if (cargando) {
     return (
-      <section className="py-16 bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
-        <div className="max-w-7xl mx-auto px-2 md:px-4">
-          <div className="h-3 w-56 bg-gray-100 rounded mx-auto mb-12 animate-pulse" />
-          <div className="grid grid-cols-5 md:flex md:flex-wrap justify-center gap-x-2 gap-y-6 md:gap-14">
-            {Array.from({ length: 6 }).map((_, i) => <SkeletonCategoryCircle key={i} />)}
-          </div>
-        </div>
-      </section>
+      <div className="py-10 text-center text-[10px] font-black uppercase tracking-widest">
+        Cargando categorías...
+      </div>
     );
   }
 
   return (
     <section className="py-16 bg-white" style={{ fontFamily: 'Arial, sans-serif' }}>
-      <div className="max-w-7xl mx-auto px-2 md:px-4">
-        <h3 className="text-center text-xs font-black mb-12 tracking-[0.3em] text-black uppercase italic px-4">
+      <div className="max-w-7xl mx-auto px-4">
+        <h3 className="text-center text-xs font-black mb-12 tracking-[0.3em] text-black uppercase italic">
           Explora nuestras categorías
         </h3>
-
-        <div className="grid grid-cols-5 md:flex md:flex-wrap justify-center gap-x-2 gap-y-6 md:gap-14">
+        
+        <div className="flex flex-wrap justify-center gap-8 md:gap-14">
           {listaCategorias.map((cat) => (
-            <Link
-              key={cat.id}
+            <Link 
+              key={cat.id} 
+              // Usamos la columna 'slug' de la nueva base de datos para rutas profesionales
               href={`/categoria/${cat.slug}`}
-              className="group flex flex-col items-center space-y-2 md:space-y-4"
+              className="group flex flex-col items-center space-y-4"
             >
               {/* Círculo de la imagen con borde Rosa al pasar el mouse */}
-              <div className="w-14 h-14 md:w-32 md:h-32 rounded-full overflow-hidden border-2 md:border-4 border-white group-hover:border-[#000000] transition-all duration-500 shadow-sm bg-gray-100 mx-auto">
-                <img
-                  src={cat.imagen || "/assets/placeholder-cat.webp"}
-                  alt={cat.nombre}
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-white group-hover:border-[#FCD7DE] transition-all duration-500 shadow-sm bg-gray-100">
+                <img 
+                  // Mapeamos 'imagen' que es el nombre de la columna en tu nueva estructura SQL
+                  src={cat.imagen || "/assets/placeholder-cat.webp"} 
+                  alt={cat.nombre} 
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                 />
               </div>
-
-              {/* Nombre de la categoría */}
-              <span className="text-[8px] md:text-[11px] font-black text-black group-hover:text-gray-500 uppercase tracking-widest transition-colors text-center truncate w-full px-1">
+              
+              {/* Nombre de la categoría en Arial Negro */}
+              <span className="text-[11px] font-black text-black group-hover:text-gray-500 uppercase tracking-widest transition-colors">
                 {cat.nombre}
               </span>
             </Link>

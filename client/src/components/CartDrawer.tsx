@@ -1,16 +1,13 @@
 "use client";
-import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import React, { useEffect, useState } from "react"; // Añadido useEffect y useState
 import { X, Trash2, ShoppingBag, ArrowRight, Plus, Minus } from "lucide-react";
 import { useCart } from "@/context/CartContext";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/context/ToastContext";
+import { supabase } from "@/lib/supabase"; // Importamos supabase
 import Link from "next/link";
 
 export default function CartDrawer() {
   const { cart, isOpen, setIsOpen, removeItem, updateQuantity } = useCart();
-  const { toast } = useToast();
-
+  
   // Estado para guardar el stock real de los productos que están en el carrito
   const [stocks, setStocks] = useState<{ [key: string]: number }>({});
 
@@ -21,29 +18,17 @@ export default function CartDrawer() {
   useEffect(() => {
     const fetchStocks = async () => {
       if (cart.length === 0) return;
+      
+      const ids = cart.map(item => item.id);
+      const { data, error } = await supabase
+        .from('productos')
+        .select('id, stock')
+        .in('id', ids);
 
-      const newStocks: { [key: string]: number } = {};
-
-      for (const item of cart) {
-        const { data, error } = await supabase
-          .from('variantes_producto')
-          .select('stock, sku, variante_atributos(atributo_valores(valor))')
-          .eq('producto_id', item.id)
-          .eq('activo', true);
-
-        if (data) {
-          const variante = data.find(v => {
-            const nombreV = v.variante_atributos?.length > 0 
-              ? v.variante_atributos.map((va:any) => va.atributo_valores?.valor).join(' / ') 
-              : v.sku || 'Única';
-            return nombreV === item.talla;
-          });
-          if (variante) {
-            newStocks[`${item.id}-${item.talla}`] = variante.stock;
-          }
-        }
+      if (!error && data) {
+        const stockMap = data.reduce((acc, p) => ({ ...acc, [p.id]: p.stock }), {});
+        setStocks(stockMap);
       }
-      setStocks(newStocks);
     };
 
     if (isOpen) fetchStocks();
@@ -51,11 +36,12 @@ export default function CartDrawer() {
 
   // Función validada para aumentar cantidad según stock
   const handleIncrease = (item: any) => {
-    const stockDisponible = stocks[`${item.id}-${item.talla}`] || 0;
+    const stockDisponible = stocks[item.id] || 0;
+    
     if (item.cantidad < stockDisponible) {
       updateQuantity(item.id, item.talla, 1);
     } else {
-      toast(`Solo quedan ${stockDisponible} unidades disponibles`, "warning");
+      alert(`Lo sentimos, no hay más stock de este producto (Máximo: ${stockDisponible})`);
     }
   };
 
@@ -64,16 +50,16 @@ export default function CartDrawer() {
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
       {/* Fondo oscuro traslúcido */}
-      <div
-        className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity"
+      <div 
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity" 
         onClick={() => setIsOpen(false)}
       />
 
       {/* Panel Blanco Lateral */}
       <div className="relative w-full max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300" style={{ fontFamily: 'Arial, sans-serif' }}>
-
+        
         {/* Cabecera del Carrito */}
-        <div className="p-6 border-b border-black/10 flex justify-between items-center bg-white">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-[#FCD7DE]">
           <h2 className="text-xs font-black uppercase tracking-[0.2em] text-black flex items-center gap-2">
             <ShoppingBag size={16} /> Tu Carrito
           </h2>
@@ -82,56 +68,13 @@ export default function CartDrawer() {
           </button>
         </div>
 
-        {/* Barra de Progreso - Envío Gratis (Profesional) */}
-        {cart.length > 0 && (
-          <div className="px-6 py-4 bg-zinc-50 border-b border-black/5">
-            {subtotal >= 150000 ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-between items-end">
-                  <p className="text-[10px] font-black uppercase text-green-600 tracking-tighter italic">¡Felicidades! Tienes Envío GRATIS</p>
-                  <span className="text-xl">🚚✨</span>
-                </div>
-                <div className="w-full h-1.5 bg-green-100 rounded-full overflow-hidden">
-                  <motion.div initial={{ width: 0 }} animate={{ width: "100%" }} className="h-full bg-green-500" />
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                 <div className="flex justify-between items-end">
-                    <p className="text-[10px] font-black uppercase text-black tracking-tighter italic">
-                      Te faltan <span className="text-red-500">${(150000 - subtotal).toLocaleString("es-CO")}</span> para <span className="underline decoration-pink-300 decoration-2">Envío GRATIS</span>
-                    </p>
-                    <span className="text-xs text-gray-300 font-bold">{Math.round((subtotal / 150000) * 100)}%</span>
-                 </div>
-                 <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                    <motion.div 
-                      key={subtotal}
-                      initial={{ width: 0 }} 
-                      animate={{ width: `${(subtotal / 150000) * 100}%` }} 
-                      className="h-full bg-black" 
-                    />
-                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Lista de productos agregados */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {cart.length > 0 && (
-            <div className="mx-6 mb-6 p-3 bg-yellow-400 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex items-center gap-3">
-              <span className="text-xl animate-pulse">🔥</span>
-              <p className="text-[9px] font-black uppercase leading-tight">
-                ¡Atención! Los artículos no están reservados. Finaliza tu compra antes de que se agoten.
-              </p>
-            </div>
-          )}
-          
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center space-y-4">
               <ShoppingBag size={40} className="text-gray-200" />
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest italic">Tu bolsa está vacía</p>
-              <button
+              <button 
                 onClick={() => setIsOpen(false)}
                 className="text-[10px] font-black underline uppercase tracking-widest text-black"
               >
@@ -145,11 +88,11 @@ export default function CartDrawer() {
                 <div className="w-20 h-24 bg-gray-50 rounded-sm overflow-hidden flex-shrink-0 border border-gray-100">
                   <img src={item.imagen} alt={item.nombre} className="w-full h-full object-cover" />
                 </div>
-
+                
                 <div className="flex-1 min-w-0">
                   <div className="flex justify-between items-start mb-1">
                     <h3 className="text-[11px] font-black uppercase text-black truncate pr-2">{item.nombre}</h3>
-                    <button
+                    <button 
                       onClick={() => removeItem(item.id, item.talla)}
                       className="text-gray-300 hover:text-black transition-colors"
                     >
@@ -157,50 +100,32 @@ export default function CartDrawer() {
                     </button>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Opción: {item.talla}</p>
-
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Talla: {item.talla}</p>
+                    
                     {/* SELECTOR DE CANTIDAD (+ / -) CON VALIDACIÓN DE STOCK */}
                     <div className="flex items-center gap-2 mt-2">
                       <div className="flex items-center border border-black rounded-full px-2 py-1">
-                        <button
+                        <button 
                           onClick={() => updateQuantity(item.id, item.talla, -1)}
                           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                           disabled={item.cantidad <= 1}
                         >
                           <Minus size={12} className={item.cantidad <= 1 ? "text-gray-300" : "text-black"} />
                         </button>
-
+                        
                         <span className="text-[11px] font-black px-3 w-6 text-center">
                           {item.cantidad}
                         </span>
 
-                        <button
+                        <button 
                           onClick={() => handleIncrease(item)} // Cambiado para validar stock
                           className="p-1 hover:bg-gray-100 rounded-full transition-colors"
                         >
                           <Plus size={12} className="text-black" />
                         </button>
                       </div>
-                      
-                      {/* ALERTAS DE STOCK BAJO (FOMO) */}
-                      {stocks[`${item.id}-${item.talla}`] < 4 && stocks[`${item.id}-${item.talla}`] > 0 && (
-                        <div className="bg-red-50 px-2 py-0.5 border border-red-200 animate-pulse">
-                          <p className="text-[8px] font-black text-red-600 uppercase">
-                            ¡Sólo quedan {stocks[`${item.id}-${item.talla}`]}!
-                          </p>
-                        </div>
-                      )}
-                      
-                      {stocks[`${item.id}-${item.talla}`] === 0 && (
-                        <div className="bg-black px-2 py-0.5">
-                          <p className="text-[8px] font-black text-white uppercase italic">
-                            Agotado
-                          </p>
-                        </div>
-                      )}
-
                       {/* Indicador visual si está al límite de stock */}
-                      {(stocks[`${item.id}-${item.talla}`] ?? 999) <= item.cantidad && stocks[`${item.id}-${item.talla}`] > 0 && (
+                      {stocks[item.id] === item.cantidad && (
                         <span className="text-[8px] font-bold text-orange-500 uppercase">Límite alcanzado</span>
                       )}
                     </div>
@@ -222,15 +147,15 @@ export default function CartDrawer() {
               <span className="text-[11px] font-black uppercase tracking-widest">Subtotal</span>
               <span className="text-xl font-black">${subtotal.toLocaleString("es-CO")}</span>
             </div>
-
+            
             <p className="text-[9px] text-gray-400 uppercase font-bold italic">
               Los costos de envío se calculan en la siguiente página.
             </p>
 
-            <Link
-              href="/checkout"
+            <Link 
+              href="/checkout" 
               onClick={() => setIsOpen(false)}
-              className="w-full bg-black text-white font-black uppercase tracking-[0.2em] text-[11px] py-5 rounded-full hover:bg-zinc-800 hover:text-white transition-all flex items-center justify-center gap-3 group text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none"
+              className="w-full bg-black text-white font-black uppercase tracking-[0.2em] text-[11px] py-5 rounded-full hover:bg-[#FCD7DE] hover:text-black transition-all flex items-center justify-center gap-3 group text-center"
             >
               Ir a Pagar <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </Link>
