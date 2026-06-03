@@ -65,7 +65,10 @@ def is_restaurant_open() -> bool:
 
 def get_text(key: str, default: str) -> str:
     data = _get_dynamic_settings()
-    return data.get(key, default)
+    val = data.get(key)
+    if val is None or val == "":
+        return default
+    return val
 
 def get_welcome_message() -> str:
     return get_text("welcome_message", base_settings.welcome_message)
