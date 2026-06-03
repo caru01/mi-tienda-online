@@ -109,6 +109,7 @@ async def receive_webhook(request: Request):
                     interactive_title=btn_title,
                 )
             else:
+                # Fuera de horario: mensaje de horarios
                 await handle_off_hours(customer_phone)
 
         else:

@@ -5,7 +5,7 @@ Si falla, usa valores por defecto (de config.settings).
 """
 import logging
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 from services.supabase_client import get_supabase
 from config.settings import settings as base_settings
 
@@ -61,6 +61,15 @@ def is_restaurant_open() -> bool:
     open_time = now.replace(hour=open_h, minute=open_m, second=0, microsecond=0)
     close_time = now.replace(hour=close_h, minute=close_m, second=0, microsecond=0)
     
+    # Manejo de horarios que cruzan la medianoche (ej. 6 PM a 2 AM)
+    if close_time <= open_time:
+        # Si la hora actual es antes de la hora de cierre (ej. 1 AM), 
+        # asumimos que corresponde al turno que empezó el día anterior
+        if now < close_time:
+            open_time -= timedelta(days=1)
+        else:
+            close_time += timedelta(days=1)
+            
     return open_time <= now < close_time
 
 def get_text(key: str, default: str) -> str:
