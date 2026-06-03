@@ -396,7 +396,7 @@ async def _send_combos_list(phone: str, category: str = None) -> None:
     await send_list_message(
         to=phone,
         body_text=f"🍔 *Nuestro Catálogo: {cat_title}*\n\nRevisa las opciones y selecciona tu favorito:",
-        button_text=f"Abrir {cat_title}",
+        button_label=f"Abrir {cat_title}"[:20],
         sections=[{"title": f"Opciones de {cat_title}", "rows": rows}]
     )
 
