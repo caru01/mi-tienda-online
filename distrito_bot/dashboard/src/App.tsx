@@ -167,7 +167,7 @@ function App() {
         {[
           { key: 'sales',     icon: <LayoutDashboard size={22}/>, label: 'Órdenes' },
           { key: 'reports',   icon: <TrendingUp size={22}/>,     label: 'Reportes' },
-          { key: 'catalog',   icon: <ClipboardList size={22}/>,  label: 'Catálogo' },
+          { key: 'catalog',   icon: <ClipboardList size={22}/>,  label: 'Menú / Carta' },
           { key: 'schedules', icon: <Clock size={22}/>,          label: 'Horarios' },
           { key: 'settings',  icon: <Settings size={22}/>,       label: 'Config.' },
         ].map(item => (
@@ -195,7 +195,7 @@ function App() {
             ) : activeTab === 'catalog' ? (
               <div className="glass rounded-2xl p-8 border border-white/10 shadow-2xl">
                 <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-distrito-accent">Catálogo de Productos</h2>
+                  <h2 className="text-2xl font-bold text-distrito-accent">Menú / Carta de Productos</h2>
                   <button 
                     onClick={() => setShowAddProduct(true)}
                     className="bg-distrito-accent text-distrito-dark px-4 py-2 rounded-lg font-bold"
