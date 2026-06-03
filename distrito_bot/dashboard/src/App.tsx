@@ -152,6 +152,7 @@ function App() {
           <h1 className="text-2xl font-black tracking-tighter mb-12">
             DISTRITO<span className="text-distrito-accent">.</span>BOT
           </h1>
+        </div>
           <nav className="space-y-4">
             <button onClick={() => setActiveTab('sales')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'sales' ? 'bg-distrito-accent text-distrito-dark font-bold shadow-[0_0_15px_rgba(255,204,0,0.4)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
               <LayoutDashboard size={20} />
