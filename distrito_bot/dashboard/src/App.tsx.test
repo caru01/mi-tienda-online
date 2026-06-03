@@ -1,12 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { LayoutDashboard, PackageSearch, ClipboardList, Utensils, TrendingUp, Settings, Printer, History, Clock, ChefHat } from 'lucide-react'
+import { LayoutDashboard, PackageSearch, ClipboardList, Utensils, TrendingUp, Settings, Printer } from 'lucide-react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import ConfigurationTab from './components/ConfigurationTab'
 import ReportsTab from './components/ReportsTab'
-import OrderHistoryTab from './components/OrderHistoryTab'
-import SchedulesTab from './components/SchedulesTab'
-import RecipeTab from './components/RecipeTab'
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
@@ -166,10 +163,6 @@ function App() {
               <TrendingUp size={20} />
               <span>Reportes (BI)</span>
             </button>
-            <button onClick={() => setActiveTab('history')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'history' ? 'bg-distrito-accent text-distrito-dark font-bold shadow-[0_0_15px_rgba(255,204,0,0.4)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
-              <History size={20} />
-              <span>Historial Órdenes</span>
-            </button>
           
           <button 
             onClick={() => setActiveTab('catalog')}
@@ -185,20 +178,6 @@ function App() {
           >
             <PackageSearch className="w-5 h-5" />
             <span>Inventario</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('recipes')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'recipes' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5'}`}
-          >
-            <ChefHat className="w-5 h-5" />
-            <span>Recetas</span>
-          </button>
-          <button 
-            onClick={() => setActiveTab('schedules')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'schedules' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5'}`}
-          >
-            <Clock className="w-5 h-5" />
-            <span>Horarios</span>
           </button>
           <button
               onClick={() => setActiveTab('settings')}
@@ -221,7 +200,6 @@ function App() {
         <div className="absolute bottom-[-20%] right-[-10%] w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="relative z-10 max-w-6xl mx-auto">
-          {activeTab === 'sales' ? (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-3xl font-bold">Kanban de Cocina</h2>
@@ -459,12 +437,6 @@ function App() {
               </div>
             ) : activeTab === 'reports' ? (
               <ReportsTab data={data} />
-            ) : activeTab === 'history' ? (
-              <OrderHistoryTab data={data} />
-            ) : activeTab === 'recipes' ? (
-              <RecipeTab data={data} />
-            ) : activeTab === 'schedules' ? (
-              <SchedulesTab />
             ) : activeTab === 'settings' ? (
               <ConfigurationTab />
             ) : null}

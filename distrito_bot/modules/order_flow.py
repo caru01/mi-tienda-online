@@ -31,7 +31,13 @@ from config.dynamic_settings import (
     get_off_hours_message,
     get_pickup_address,
     get_payment_transfer_text,
-    get_active_categories
+    get_active_categories,
+    get_msg_ask_name,
+    get_msg_ask_delivery,
+    get_msg_ask_address,
+    get_msg_ask_neighborhood,
+    get_msg_ask_payment,
+    get_msg_order_registered
 )
 from config.settings import settings
 from modules.inventory_manager import deduct_inventory_for_order
@@ -435,7 +441,7 @@ async def _ask_add_combo(phone: str, items_text: str, total: int) -> None:
 async def _send_delivery_buttons(phone: str) -> None:
     await send_button_message(
         to=phone,
-        body_text="Como quieres recibir tu pedido? 🙌",
+        body_text=get_msg_ask_delivery(),
         buttons=[
             {"id": "entrega_domicilio", "title": "Domicilio"},
             {"id": "entrega_recoger",   "title": "Recoger en local"},
@@ -446,7 +452,7 @@ async def _send_delivery_buttons(phone: str) -> None:
 async def _send_payment_buttons(phone: str, summary: str) -> None:
     await send_button_message(
         to=phone,
-        body_text=f"{summary}\n\n¿Como deseas pagar?",
+        body_text=f"{summary}\n\n{get_msg_ask_payment()}",
         buttons=[
             {"id": "pago_efectivo",      "title": "Efectivo"},
             {"id": "pago_transferencia", "title": "Transferencia"},
@@ -608,8 +614,7 @@ async def handle_customer_message(
             if ok:
                 await send_text_message(
                     customer_phone,
-                    "Perfecto! 🛵 Para el domicilio necesito algunos datos.\n\n"
-                    "Cual es tu *nombre completo*?"
+                    get_msg_ask_name()
                 )
 
         elif delivery == "recoger":
@@ -622,8 +627,7 @@ async def handle_customer_message(
             if ok:
                 await send_text_message(
                     customer_phone,
-                    "Perfecto! 🛍 Para apartar tu pedido necesito un dato.\n\n"
-                    "Cual es tu *nombre completo*?"
+                    get_msg_ask_name()
                 )
         else:
             await _send_delivery_buttons(customer_phone)
@@ -633,7 +637,7 @@ async def handle_customer_message(
     if state == "waiting_name":
         name = body.strip() if body else ""
         if len(name) < 2:
-            await send_text_message(customer_phone, "Por favor escribe tu *nombre completo*.")
+            await send_text_message(customer_phone, get_msg_ask_name())
             return
         ok = await _update_session(customer_phone, {
             "customer_name": name,
@@ -649,9 +653,7 @@ async def handle_customer_message(
                 await _update_session(customer_phone, {"state": "waiting_address"})
                 await send_text_message(
                     customer_phone,
-                    f"Mucho gusto *{name}*! 👋\n\n"
-                    "Cual es tu *direccion de entrega*?\n"
-                    "_(Ej: Calle 15 #12-34)_"
+                    get_msg_ask_address()
                 )
         return
 
@@ -670,7 +672,7 @@ async def handle_customer_message(
             "delivery_address": address,
         })
         if ok:
-            await send_text_message(customer_phone, "En que *barrio* te encuentras? 🏘")
+            await send_text_message(customer_phone, get_msg_ask_neighborhood())
         else:
             await send_text_message(customer_phone, "Hubo un error, intenta de nuevo con tu direccion.")
         return
@@ -679,7 +681,7 @@ async def handle_customer_message(
     if state == "waiting_barrio":
         barrio = body.strip() if body else ""
         if len(barrio) < 2:
-            await send_text_message(customer_phone, "Por favor escribe el nombre del *barrio*. 🏘")
+            await send_text_message(customer_phone, get_msg_ask_neighborhood())
             return
         updated = {**session, "delivery_barrio": barrio}
         ok = await _update_session(customer_phone, {
@@ -701,19 +703,8 @@ async def handle_customer_message(
             is_vip = await _finalize_sale(customer_phone, session)
             
             delivery = session.get("delivery_type", "")
-            if delivery == "recoger":
-                msg = (
-                    "Tu pedido esta en fila! 🎉🍔\n\n"
-                    f"Puedes recogerlo en:\n📍 *{get_pickup_address()}*\n\n"
-                    "En un momento te avisamos cuando este listo. ⏳"
-                )
-            else:
-                msg = (
-                    "Tu pedido esta en fila! 🎉🍔\n\n"
-                    "Pronto preparamos tu orden y te avisamos. ⏳\n\n"
-                    "*Gracias por elegir Distrito Burger!* 🔥"
-                )
-                
+            msg = get_msg_order_registered()
+            
             if is_vip:
                 msg += "\n\n🎁 *¡Sorpresa!* Vemos que eres un cliente frecuente. Hoy hemos incluido un *obsequio especial* en tu pedido por tu fidelidad. ¡Disfrútalo!"
                 
@@ -727,7 +718,7 @@ async def handle_customer_message(
             
             await send_text_message(customer_phone, get_payment_transfer_text())
             
-            msg = "Envianos el *comprobante de pago* y confirmamos tu pedido de inmediato. 📸✅\n\n*Gracias por elegir Distrito Burger!* 🔥"
+            msg = get_msg_order_registered()
             if is_vip:
                 msg += "\n\n🎁 *¡Sorpresa!* Vemos que eres un cliente frecuente. Hoy hemos incluido un *obsequio especial* en tu pedido por tu fidelidad. ¡Disfrútalo!"
                 

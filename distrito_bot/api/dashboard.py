@@ -163,3 +163,41 @@ async def update_order_status(payload: dict) -> Dict[str, Any]:
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@router.get("/api/dashboard/recipes")
+async def get_recipes() -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        res = db.table("recipe_ingredients").select("*").execute()
+        return {"status": "ok", "recipes": res.data}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/recipes")
+async def save_recipe(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        product_id = payload.get("product_id")
+        ingredients = payload.get("ingredients", [])
+        
+        if not product_id:
+            return {"status": "error", "message": "product_id is required"}
+            
+        # Delete old recipe for this product
+        db.table("recipe_ingredients").delete().eq("product_id", product_id).execute()
+        
+        # Insert new recipe if there are ingredients
+        if ingredients:
+            # Prepare data
+            insert_data = []
+            for item in ingredients:
+                insert_data.append({
+                    "product_id": product_id,
+                    "inventory_item_id": item["inventory_item_id"],
+                    "quantity_required": item["quantity_required"]
+                })
+            db.table("recipe_ingredients").insert(insert_data).execute()
+            
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

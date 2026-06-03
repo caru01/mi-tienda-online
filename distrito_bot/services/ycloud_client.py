@@ -6,6 +6,7 @@ Abstrae el envío de mensajes de WhatsApp (texto e interactivos).
 import httpx
 import logging
 from config.settings import settings
+from config.dynamic_settings import get_ycloud_api_key, get_whatsapp_phone_id
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ YCLOUD_API_BASE = "https://api.ycloud.com/v2"
 def _headers() -> dict:
     return {
         "Content-Type": "application/json",
-        "X-API-Key": settings.ycloud_api_key,
+        "X-API-Key": get_ycloud_api_key(),
     }
 
 
@@ -52,7 +53,7 @@ async def send_text_message(to: str, text: str) -> dict:
     """
     return await _post({
         "to": to,
-        "from": settings.ycloud_phone_number,
+        "from": get_whatsapp_phone_id(),
         "type": "text",
         "text": {"body": text}
     })
@@ -80,7 +81,7 @@ async def send_button_message(to: str, body_text: str, buttons: list[dict]) -> d
 
     return await _post({
         "to": to,
-        "from": settings.ycloud_phone_number,
+        "from": get_whatsapp_phone_id(),
         "type": "interactive",
         "interactive": {
             "type": "button",
@@ -110,7 +111,7 @@ async def send_list_message(to: str, body_text: str, button_label: str, sections
     """
     return await _post({
         "to": to,
-        "from": settings.ycloud_phone_number,
+        "from": get_whatsapp_phone_id(),
         "type": "interactive",
         "interactive": {
             "type": "list",

@@ -80,10 +80,37 @@ def get_payment_transfer_text() -> str:
     return get_text("payment_transfer_text", base_settings.payment_transfer_text)
 
 def get_msg_order_accepted() -> str:
-    return get_text("msg_order_accepted", "✅ ¡Hola! Tu pedido ha sido confirmado y ya está en preparación. 🍔👨‍🍳")
+    return get_text("msg_order_accepted", "Tu pedido esta en fila! 🎉🍔\n\nPronto preparamos tu orden y te avisamos. ⏳\n\nGracias por elegir Distrito Burger! 🔥")
 
 def get_msg_order_dispatched() -> str:
     return get_text("msg_order_dispatched", "🛵 ¡Tu pedido acaba de salir de nuestra cocina! Nuestro domiciliario va en camino.")
+
+def get_msg_ask_name() -> str:
+    return get_text("msg_ask_name", "Para tomar tu pedido, ¿Me regalas tu nombre y apellido? 📝")
+
+def get_msg_ask_delivery() -> str:
+    return get_text("msg_ask_delivery", "¡Perfecto! ¿Tu pedido es para *Domicilio* 🛵 o pasas a *Recoger* 🏃?")
+
+def get_msg_ask_address() -> str:
+    return get_text("msg_ask_address", "Por favor, indícame tu *dirección exacta* 📍 (calle, carrera, número, conjunto/apto)")
+
+def get_msg_ask_neighborhood() -> str:
+    return get_text("msg_ask_neighborhood", "¿En qué *barrio* te encuentras? 🏘️")
+
+def get_msg_ask_payment() -> str:
+    return get_text("msg_ask_payment", "¿Cómo deseas pagar? 💳💵")
+
+def get_msg_order_registered() -> str:
+    return get_text("msg_order_registered", "¡Excelente! Tu pedido ha sido registrado y está a la espera de confirmación por nuestro equipo. ⏳")
+
+def get_ycloud_api_key() -> str:
+    return get_text("ycloud_api_key", base_settings.ycloud_api_key)
+
+def get_whatsapp_phone_id() -> str:
+    return get_text("whatsapp_phone_id", base_settings.ycloud_phone_number)
+
+def get_whatsapp_token() -> str:
+    return get_text("whatsapp_token", "")
 
 def get_pickup_address() -> str:
     return get_text("pickup_address", base_settings.pickup_address)
