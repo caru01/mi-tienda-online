@@ -203,10 +203,19 @@ export default function ConfigurationTab() {
         </div>
 
         <div>
-          <label className="block text-sm text-gray-400 mb-1">Mensaje de Pedido en Camino (Despachado)</label>
+          <label className="block text-sm text-gray-400 mb-1">Mensaje de Pedido en Camino (Domicilio)</label>
           <textarea 
             value={settings.msg_order_dispatched || ''}
             onChange={(e) => setSettings({...settings, msg_order_dispatched: e.target.value})}
+            className="w-full h-20 bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Mensaje de Pedido Listo (Recoger en Local)</label>
+          <textarea 
+            value={settings.msg_ready_pickup || ''}
+            onChange={(e) => setSettings({...settings, msg_ready_pickup: e.target.value})}
             className="w-full h-20 bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white"
           />
         </div>

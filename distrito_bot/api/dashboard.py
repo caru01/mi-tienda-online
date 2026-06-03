@@ -211,14 +211,22 @@ async def update_order_status(payload: dict) -> Dict[str, Any]:
         
         if customer_phone:
             from services.ycloud_client import send_text_message
-            from config.dynamic_settings import get_msg_order_accepted, get_msg_order_dispatched
+            from config.dynamic_settings import get_msg_order_accepted, get_msg_order_dispatched, get_msg_ready_pickup
             
             if new_status == "en_preparacion":
                 msg = get_msg_order_accepted()
                 await send_text_message(customer_phone, msg)
                 
             elif new_status == "por_entregar":
-                msg = get_msg_order_dispatched()
+                # Necesitamos saber si es recoger o domicilio
+                order = db.table("sales").select("delivery_type").eq("id", order_id).single().execute()
+                deliv = order.data.get("delivery_type", "") if order.data else ""
+                
+                if deliv == "recoger":
+                    msg = get_msg_ready_pickup()
+                else:
+                    msg = get_msg_order_dispatched()
+                    
                 await send_text_message(customer_phone, msg)
             
         return {"status": "success"}

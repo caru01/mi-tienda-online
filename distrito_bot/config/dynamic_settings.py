@@ -97,6 +97,9 @@ def get_msg_order_accepted() -> str:
 def get_msg_order_dispatched() -> str:
     return get_text("msg_order_dispatched", "🛵 ¡Tu pedido acaba de salir de nuestra cocina! Nuestro domiciliario va en camino.")
 
+def get_msg_ready_pickup() -> str:
+    return get_text("msg_ready_pickup", "🛍️ ¡Tu pedido ya está listo! Puedes pasar a recogerlo por nuestro local.")
+
 def get_msg_ask_name() -> str:
     return get_text("msg_ask_name", "Para tomar tu pedido, ¿Me regalas tu nombre y apellido? 📝")
 
