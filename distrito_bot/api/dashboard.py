@@ -97,3 +97,39 @@ async def save_settings(payload: dict) -> Dict[str, Any]:
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/products/add")
+async def add_product(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        if "id" in payload:
+            del payload["id"]
+        if "category" not in payload or not payload["category"]:
+            payload["category"] = "Combos"
+            
+        res = db.table("products").insert(payload).execute()
+        return {"status": "success", "product": res.data[0]}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/inventory/add")
+async def add_inventory_item(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        if "id" in payload:
+            del payload["id"]
+        res = db.table("inventory_items").insert(payload).execute()
+        return {"status": "success", "item": res.data[0]}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/inventory/update")
+async def update_inventory_item(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    item_id = payload.get("id")
+    current_stock = payload.get("current_stock")
+    try:
+        res = db.table("inventory_items").update({"current_stock": current_stock}).eq("id", item_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

@@ -133,15 +133,44 @@ export default function ConfigurationTab() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-400 mb-1">Días Laborables (0=Lunes, 6=Domingo)</label>
-            <input 
-              type="text" 
-              value={settings.business_days}
-              onChange={(e) => setSettings({...settings, business_days: e.target.value})}
-              className="w-full bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white"
-              placeholder="Ej: 0,1,2,3,4,5,6"
-            />
+          <div className="space-y-2">
+            <label className="block text-sm text-gray-400 mb-1">Días Laborables</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: '0', label: 'Lunes' },
+                { id: '1', label: 'Martes' },
+                { id: '2', label: 'Miércoles' },
+                { id: '3', label: 'Jueves' },
+                { id: '4', label: 'Viernes' },
+                { id: '5', label: 'Sábado' },
+                { id: '6', label: 'Domingo' }
+              ].map(day => {
+                const currentDays = settings.business_days ? settings.business_days.split(',') : [];
+                const isChecked = currentDays.includes(day.id);
+                
+                return (
+                  <label key={day.id} className={`flex items-center px-3 py-2 rounded-lg cursor-pointer border transition-colors ${isChecked ? 'bg-distrito-accent/20 border-distrito-accent/50 text-distrito-accent' : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'}`}>
+                    <input
+                      type="checkbox"
+                      className="hidden"
+                      checked={isChecked}
+                      onChange={(e) => {
+                        let newDays = [...currentDays];
+                        if (e.target.checked) {
+                          newDays.push(day.id);
+                        } else {
+                          newDays = newDays.filter(d => d !== day.id);
+                        }
+                        // Sort theoretically 0-6
+                        newDays.sort();
+                        setSettings({...settings, business_days: newDays.join(',')});
+                      }}
+                    />
+                    <span className="text-sm font-medium">{day.label}</span>
+                  </label>
+                )
+              })}
+            </div>
           </div>
         </div>
 
@@ -189,6 +218,15 @@ export default function ConfigurationTab() {
           <textarea 
             value={settings.off_hours_message}
             onChange={(e) => setSettings({...settings, off_hours_message: e.target.value})}
+            className="w-full h-24 bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Mensaje de Espera / Cortesía (Cuando la cocina está llena)</label>
+          <textarea 
+            value={settings.backup_reply_message || ''}
+            onChange={(e) => setSettings({...settings, backup_reply_message: e.target.value})}
             className="w-full h-24 bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white"
           />
         </div>

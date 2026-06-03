@@ -84,3 +84,20 @@ def get_pickup_address() -> str:
 
 def get_kitchen_phone() -> str:
     return get_text("kitchen_phone", base_settings.kitchen_phone_number)
+
+def get_active_categories() -> list[str]:
+    """Obtiene las categorias únicas de los productos activos."""
+    try:
+        db = get_supabase()
+        res = db.table("products").select("category").eq("is_active", True).execute()
+        categories = set()
+        for row in res.data or []:
+            cat = row.get("category")
+            if cat:
+                categories.add(cat)
+        # Convertir a lista y ordenar, por defecto si esta vacio devolvemos ['Combos']
+        cat_list = sorted(list(categories))
+        return cat_list if cat_list else ["Combos"]
+    except Exception as e:
+        logger.error(f"Error cargando categorias: {e}")
+        return ["Combos"]

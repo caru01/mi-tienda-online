@@ -30,7 +30,8 @@ from config.dynamic_settings import (
     get_welcome_message,
     get_off_hours_message,
     get_pickup_address,
-    get_payment_transfer_text
+    get_payment_transfer_text,
+    get_active_categories
 )
 from config.settings import settings
 
@@ -72,18 +73,23 @@ CONVERSATION_TIMEOUT_MINUTES = 10
 # ─────────────────────────────────────────────────────────────
 # Carga de Catálogo Dinámico
 # ─────────────────────────────────────────────────────────────
-async def get_db_combos() -> dict:
-    """Carga los combos activos desde la base de datos."""
+async def get_db_combos(category: str = None) -> dict:
+    """Carga los productos activos desde la base de datos, filtrando opcionalmente por categoría."""
     db = get_supabase()
     combos = {}
     try:
-        res = db.table("products").select("*").eq("is_active", True).execute()
+        query = db.table("products").select("*").eq("is_active", True)
+        if category:
+            query = query.eq("category", category)
+            
+        res = query.execute()
         for row in (res.data or []):
             combos[row["id"]] = {
                 "name": row["name"],
                 "price": row["price"],
                 "desc": row["description"] or "",
-                "emoji": row["emoji"] or "🍔"
+                "emoji": row["emoji"] or "🍔",
+                "category": row["category"] or "Combos"
             }
     except Exception as e:
         logger.error(f"Error cargando catálogo de Supabase: {e}")
@@ -302,15 +308,27 @@ def _build_summary(session: dict, customer_phone: str) -> str:
 # ─────────────────────────────────────────────────────────────
 
 async def _send_welcome(phone: str) -> None:
+    categories = get_active_categories()[:3]  # Máximo 3 botones permitidos por WhatsApp
+    buttons = []
+    
+    if not categories:
+        buttons.append({"id": "ver_cat_Combos", "title": "Ver Combos"})
+    else:
+        for cat in categories:
+            # WhatsApp ID limits length, clean it up
+            safe_cat_id = f"ver_cat_{cat}"[:256]
+            title = f"Ver {cat}"[:20]
+            buttons.append({"id": safe_cat_id, "title": title})
+
     await send_button_message(
         to=phone,
         body_text=get_welcome_message(),
-        buttons=[{"id": "ver_combos", "title": "Ver Combos"}],
+        buttons=buttons,
     )
 
 
-async def _send_combos_list(phone: str) -> None:
-    combos = await get_db_combos()
+async def _send_combos_list(phone: str, category: str = None) -> None:
+    combos = await get_db_combos(category)
     rows = []
     for cid, cdata in combos.items():
         rows.append({
@@ -319,11 +337,16 @@ async def _send_combos_list(phone: str) -> None:
             "description": cdata["desc"][:70]  # Limite de whatsapp para descripcion
         })
 
+    if not rows:
+        await send_text_message(phone, f"No hay productos activos en {category or 'el catálogo'} en este momento.")
+        return
+
+    cat_title = category if category else "Combos"
     await send_list_message(
         to=phone,
-        body_text="*Nuestros Combos* 🍔\n\nSelecciona el combo que quieres pedir:",
-        button_label="Ver Combos",
-        sections=[{"title": "Combos disponibles", "rows": rows}],
+        body_text=f"🍔 *Nuestro Catálogo: {cat_title}*\n\nRevisa las opciones y selecciona tu favorito:",
+        button_text=f"Abrir {cat_title}",
+        sections=[{"title": f"Opciones de {cat_title}", "rows": rows}]
     )
 
 
@@ -390,7 +413,7 @@ async def handle_customer_message(
     interactive_type: str = "",
     interactive_id: str = "",
     interactive_title: str = "",
-) -> None:
+) -> bool:
     session = await _get_session(customer_phone)
     state   = session.get("state", "idle")
 
@@ -403,15 +426,28 @@ async def handle_customer_message(
             customer_phone, 
             "Te estamos comunicando con un asesor humano. Por favor, espera un momento. 👨‍💻"
         )
-        return
+        return True
 
     # ── IDLE / FINALIZADO: iniciar flujo ──────────────────────
     if state in ("idle", "order_complete", "en_camino"):
         if should_start_flow(body) or interactive_type:
+            if not is_restaurant_open():
+                return False # Let auto_reply handle off_hours
+                
+            if interactive_type == "button_reply":
+                if interactive_id == "ver_combos":
+                    await _send_combos_list(customer_phone, "Combos")
+                    await _update_session(customer_phone, {"state": "waiting_combo_selection"})
+                    return True
+                elif interactive_id.startswith("ver_cat_"):
+                    cat = interactive_id.replace("ver_cat_", "")
+                    await _send_combos_list(customer_phone, cat)
+                    await _update_session(customer_phone, {"state": "waiting_combo_selection"})
+                    return True
             await reset_session(customer_phone)
             await _send_welcome(customer_phone)
             await _update_session(customer_phone, {"state": "waiting_combo_selection"})
-        return
+        return True
 
     # ── SELECCIÓN DE COMBO ────────────────────────────────────
     if state == "waiting_combo_selection":
