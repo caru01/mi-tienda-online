@@ -37,7 +37,9 @@ from config.dynamic_settings import (
     get_msg_ask_address,
     get_msg_ask_neighborhood,
     get_msg_ask_payment,
-    get_msg_order_registered
+    get_msg_order_registered,
+    is_menu_button_enabled,
+    get_menu_button_content
 )
 from config.settings import settings
 from modules.inventory_manager import deduct_inventory_for_order
@@ -378,17 +380,29 @@ def _build_summary(session: dict, customer_phone: str) -> str:
 # ─────────────────────────────────────────────────────────────
 
 async def _send_welcome(phone: str) -> None:
-    categories = get_active_categories()[:3]  # Máximo 3 botones permitidos por WhatsApp
+    categories = get_active_categories()
     buttons = []
     
-    if not categories:
+    # Si el botón Menú está habilitado, lo forzamos.
+    # Podemos tener máximo 3 botones.
+    if is_menu_button_enabled():
+        buttons.append({"id": "ver_menu_general", "title": "Abrir Menú"})
         buttons.append({"id": "ver_cat_Combos", "title": "Ver Combos"})
-    else:
+        # Agregamos máximo 1 categoría más si existe (ya tenemos 2 botones)
         for cat in categories:
-            # WhatsApp ID limits length, clean it up
-            safe_cat_id = f"ver_cat_{cat}"[:256]
-            title = f"Ver {cat}"[:20]
-            buttons.append({"id": safe_cat_id, "title": title})
+            if cat.lower() != "combos":
+                safe_cat_id = f"ver_cat_{cat}"[:256]
+                title = f"Ver {cat}"[:20]
+                buttons.append({"id": safe_cat_id, "title": title})
+                break
+    else:
+        if not categories:
+            buttons.append({"id": "ver_cat_Combos", "title": "Ver Combos"})
+        else:
+            for cat in categories[:3]:
+                safe_cat_id = f"ver_cat_{cat}"[:256]
+                title = f"Ver {cat}"[:20]
+                buttons.append({"id": safe_cat_id, "title": title})
 
     await send_button_message(
         to=phone,
@@ -507,6 +521,14 @@ async def handle_customer_message(
             if interactive_type == "button_reply":
                 if interactive_id == "ver_combos":
                     await _send_combos_list(customer_phone, "Combos")
+                    await _update_session(customer_phone, {"state": "waiting_combo_selection"})
+                    return True
+                elif interactive_id == "ver_menu_general":
+                    # Enviar el texto o link del menú
+                    await send_text_message(customer_phone, get_menu_button_content())
+                    # Quedamos en el mismo estado para que puedan tocar "Ver Combos" si quieren, o les volvemos a enviar la bienvenida
+                    # Por simplicidad, volvemos a enviar la bienvenida
+                    await _send_welcome(customer_phone)
                     await _update_session(customer_phone, {"state": "waiting_combo_selection"})
                     return True
                 elif interactive_id.startswith("ver_cat_"):

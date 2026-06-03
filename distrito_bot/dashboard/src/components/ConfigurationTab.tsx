@@ -115,6 +115,32 @@ export default function ConfigurationTab() {
             className="w-full h-20 bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white"
           />
         </div>
+
+        <div className="bg-white/5 p-4 rounded-xl border border-white/10">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <label className="block text-sm font-bold text-gray-200">Botón "Abrir Menú"</label>
+              <p className="text-xs text-gray-400">Mostrar un botón principal para ver el menú completo (En vez de listar todas las categorías sueltas)</p>
+            </div>
+            <button 
+              onClick={() => setSettings({...settings, menu_button_enabled: !settings.menu_button_enabled})}
+              className={`px-3 py-1 rounded-lg text-sm font-bold transition-all ${settings.menu_button_enabled !== false ? 'bg-green-500/20 text-green-400 border border-green-500/50' : 'bg-red-500/20 text-red-400 border border-red-500/50'}`}
+            >
+              {settings.menu_button_enabled !== false ? 'ACTIVADO' : 'DESACTIVADO'}
+            </button>
+          </div>
+          {settings.menu_button_enabled !== false && (
+            <div className="mt-3">
+              <label className="block text-sm text-gray-400 mb-1">Contenido del Menú (Texto o Link)</label>
+              <textarea 
+                value={settings.menu_button_content || ''}
+                onChange={(e) => setSettings({...settings, menu_button_content: e.target.value})}
+                className="w-full h-28 bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white"
+                placeholder="Escribe el texto de tu menú o pega un enlace a tu PDF/Imagen..."
+              />
+            </div>
+          )}
+        </div>
         <div>
           <label className="block text-sm text-gray-400 mb-1">Mensaje Fuera de Horario</label>
           <textarea 

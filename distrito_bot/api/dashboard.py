@@ -42,6 +42,24 @@ async def get_dashboard_stats() -> Dict[str, Any]:
         "all_sales": all_sales_res.data or []
     }
 
+@router.get("/api/dashboard/sales/history")
+async def get_sales_history(start_date: str = None, end_date: str = None) -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        query = db.table("sales").select("*")
+        if start_date:
+            query = query.gte("created_at", f"{start_date}T00:00:00Z")
+        if end_date:
+            query = query.lte("created_at", f"{end_date}T23:59:59Z")
+            
+        # Solo devolvemos los finalizados / cancelados, ordenados
+        query = query.in_("status", ["entregado", "cancelado"]).order("created_at", desc=True)
+        res = query.execute()
+        
+        return {"status": "ok", "sales": res.data or []}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @router.get("/api/dashboard/purchases")
 async def get_purchases() -> Dict[str, Any]:
     db = get_supabase()

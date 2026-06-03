@@ -5,7 +5,7 @@ import { es } from 'date-fns/locale'
 import ConfigurationTab from './components/ConfigurationTab'
 import ReportsTab from './components/ReportsTab'
 import InventoryTab from './components/InventoryTab'
-import OrderHistoryTab from './components/OrderHistoryTab'
+import SalesSummaryTab from './components/SalesSummaryTab'
 import SchedulesTab from './components/SchedulesTab'
 import RecipeTab from './components/RecipeTab'
 import OrdersTab from './components/OrdersTab'
@@ -116,7 +116,7 @@ function App() {
             </button>
             <button onClick={() => setActiveTab('history')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'history' ? 'bg-distrito-accent text-distrito-dark font-bold shadow-[0_0_15px_rgba(255,204,0,0.4)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
               <History size={20} />
-              <span>Historial Órdenes</span>
+              <span>Resumen de Venta</span>
             </button>
           
           <button 
@@ -256,7 +256,7 @@ function App() {
             ) : activeTab === 'reports' ? (
               <ReportsTab data={data} />
             ) : activeTab === 'history' ? (
-              <OrderHistoryTab data={data} />
+              <SalesSummaryTab />
             ) : activeTab === 'recipes' ? (
               <RecipeTab data={data} />
             ) : activeTab === 'schedules' ? (
