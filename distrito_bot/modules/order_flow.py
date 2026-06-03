@@ -386,7 +386,7 @@ async def _send_welcome(phone: str) -> None:
     # Si el botón Menú está habilitado, lo forzamos.
     # Podemos tener máximo 3 botones.
     if is_menu_button_enabled():
-        buttons.append({"id": "ver_menu_general", "title": "Abrir Menú"})
+        buttons.append({"id": "ver_menu_general", "title": "Abrir Menu"})
         buttons.append({"id": "ver_cat_Combos", "title": "Ver Combos"})
         # Agregamos máximo 1 categoría más si existe (ya tenemos 2 botones)
         for cat in categories:
