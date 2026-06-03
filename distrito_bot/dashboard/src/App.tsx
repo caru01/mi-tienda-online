@@ -200,6 +200,7 @@ function App() {
         <div className="absolute bottom-[-20%] right-[-10%] w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="relative z-10 max-w-6xl mx-auto">
+          {activeTab === 'sales' ? (
               <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
                 <div className="flex justify-between items-center mb-6">
                   <h2 className="text-3xl font-bold">Kanban de Cocina</h2>
