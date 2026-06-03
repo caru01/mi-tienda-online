@@ -20,3 +20,6 @@ WHERE id = 1;
 ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS ycloud_api_key TEXT DEFAULT '';
 ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS whatsapp_phone_id TEXT DEFAULT '';
 ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS whatsapp_token TEXT DEFAULT '';
+
+-- Modo manual: deshabilita respuestas automaticas del bot
+ALTER TABLE bot_settings ADD COLUMN IF NOT EXISTS bot_mode_manual BOOLEAN DEFAULT FALSE;

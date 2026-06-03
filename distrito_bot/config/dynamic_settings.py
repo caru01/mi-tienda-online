@@ -137,3 +137,7 @@ def get_active_categories() -> list[str]:
     except Exception as e:
         logger.error(f"Error cargando categorias: {e}")
         return ["Combos"]
+
+def is_bot_manual_mode() -> bool:
+    data = _get_dynamic_settings()
+    return bool(data.get('bot_mode_manual', False))

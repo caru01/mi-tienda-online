@@ -36,11 +36,11 @@ export default function ConfigurationTab() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-4xl">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <h2 className="text-3xl font-bold">Configuración del Bot</h2>
         <button 
           onClick={handleSave}
-          className="bg-distrito-accent text-distrito-dark px-6 py-2 rounded-lg font-bold hover:shadow-[0_0_15px_rgba(255,204,0,0.4)] transition-all"
+          className="w-full md:w-auto bg-distrito-accent text-distrito-dark px-6 py-2 rounded-lg font-bold hover:shadow-[0_0_15px_rgba(255,204,0,0.4)] transition-all"
         >
           Guardar Cambios
         </button>
@@ -51,6 +51,19 @@ export default function ConfigurationTab() {
           {message}
         </div>
       )}
+
+      <div className="flex items-center justify-between p-4 bg-white/5 border border-white/10 rounded-xl">
+        <div>
+          <h4 className="font-bold">Modo Manual</h4>
+          <p className="text-sm text-gray-400">Si está activo, el bot no responderá automáticamente a los mensajes.</p>
+        </div>
+        <button 
+          onClick={() => setSettings({...settings, bot_mode_manual: !settings.bot_mode_manual})}
+          className={`px-4 py-2 rounded-lg font-bold transition-all ${settings.bot_mode_manual ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-green-500/20 text-green-400 border border-green-500/50'}`}
+        >
+          {settings.bot_mode_manual ? 'ON (Manual)' : 'OFF (Automático)'}
+        </button>
+      </div>
 
       {/* Variables de Entorno */}
       <div className="glass rounded-xl p-6 border border-white/10 shadow-xl space-y-4">

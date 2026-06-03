@@ -13,6 +13,7 @@ from modules.chat_history import record_message, update_pending_reply
 from modules.sales_parser import process_sale
 from modules.order_flow import handle_customer_message
 from modules.auto_reply import handle_off_hours, is_business_hours
+from config.dynamic_settings import is_bot_manual_mode
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -45,6 +46,13 @@ async def receive_webhook(request: Request):
         customer_phone = msg.get("from", "")
         if not customer_phone:
             return {"status": "ignored", "reason": "no_customer_phone"}
+
+        # Si el modo manual está activo, solo registra el mensaje pero NO responde
+        if is_bot_manual_mode():
+            await record_message(customer_phone, "inbound", msg.get("text", {}).get("body", "") if msg.get("type", "").lower() == "text" else "[interactivo]", msg.get("id"))
+            await update_pending_reply(customer_phone, "inbound")
+            logger.info(f"Modo manual activo: mensaje de {customer_phone} ignorado por el bot")
+            return {"status": "ok", "reason": "manual_mode"}
 
         msg_id   = msg.get("id")
         msg_type = msg.get("type", "").lower()

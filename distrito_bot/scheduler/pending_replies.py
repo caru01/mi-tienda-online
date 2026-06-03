@@ -24,7 +24,15 @@ async def check_and_reply_pending() -> None:
     """
     Tarea 1: Envía mensaje de cortesía a chats sin respuesta manual
     tras BACKUP_REPLY_MINUTES minutos.
+    SOLO se envía si el restaurante está abierto (evita mensajes en horario cerrado).
     """
+    from config.dynamic_settings import is_restaurant_open
+    
+    # No enviar backup reply si el restaurante está cerrado
+    if not is_restaurant_open():
+        logger.debug("Scheduler: restaurante cerrado, no se envía backup reply")
+        return
+
     db = get_supabase()
     cutoff = (
         datetime.now(timezone.utc) - timedelta(minutes=settings.backup_reply_minutes)
@@ -54,6 +62,7 @@ async def check_and_reply_pending() -> None:
 
     except Exception as e:
         logger.error(f"Error en scheduler pending_replies: {e}")
+
 
 
 async def check_conversation_timeouts() -> None:

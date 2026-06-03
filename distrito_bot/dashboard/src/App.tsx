@@ -7,6 +7,7 @@ import ReportsTab from './components/ReportsTab'
 import OrderHistoryTab from './components/OrderHistoryTab'
 import SchedulesTab from './components/SchedulesTab'
 import RecipeTab from './components/RecipeTab'
+import OrdersTab from './components/OrdersTab'
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
@@ -137,30 +138,20 @@ function App() {
     })
     fetchDashboardData()
   }
-
-  const handleOrderStatus = async (id: string, status: string, customer_phone: string) => {
-    await fetch(`${API_URL}/orders/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, status, customer_phone })
-    })
-    fetchDashboardData()
-  }
-
   return (
     <div className="min-h-screen bg-distrito-dark text-distrito-text font-sans">
-      {/* Sidebar */}
-      <aside className="fixed left-0 top-0 w-64 h-full glass border-r border-white/10 p-6 z-10">
+      {/* Sidebar — oculto en móvil, visible en desktop */}
+      <aside className="hidden md:flex fixed left-0 top-0 w-64 h-full glass border-r border-white/10 p-6 z-10 flex-col">
         <div className="flex items-center gap-3 mb-10">
           <Utensils className="text-distrito-accent w-8 h-8" />
-          <h1 className="text-2xl font-black tracking-tighter mb-12">
+          <h1 className="text-2xl font-black tracking-tighter">
             DISTRITO<span className="text-distrito-accent">.</span>BOT
           </h1>
         </div>
-          <nav className="space-y-4">
+          <nav className="space-y-1 flex-1">
             <button onClick={() => setActiveTab('sales')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'sales' ? 'bg-distrito-accent text-distrito-dark font-bold shadow-[0_0_15px_rgba(255,204,0,0.4)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
               <LayoutDashboard size={20} />
-              <span>Ventas Activas</span>
+              <span>Órdenes</span>
             </button>
             <button onClick={() => setActiveTab('reports')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'reports' ? 'bg-distrito-accent text-distrito-dark font-bold shadow-[0_0_15px_rgba(255,204,0,0.4)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
               <TrendingUp size={20} />
@@ -173,7 +164,7 @@ function App() {
           
           <button 
             onClick={() => setActiveTab('catalog')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'catalog' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'catalog' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
           >
             <ClipboardList className="w-5 h-5" />
             <span>Catálogo</span>
@@ -181,21 +172,21 @@ function App() {
           
           <button 
             onClick={() => setActiveTab('inventory')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'inventory' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'inventory' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
           >
             <PackageSearch className="w-5 h-5" />
             <span>Inventario</span>
           </button>
           <button 
             onClick={() => setActiveTab('recipes')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'recipes' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'recipes' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
           >
             <ChefHat className="w-5 h-5" />
             <span>Recetas</span>
           </button>
           <button 
             onClick={() => setActiveTab('schedules')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'schedules' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'schedules' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5 text-gray-400 hover:text-white'}`}
           >
             <Clock className="w-5 h-5" />
             <span>Horarios</span>
@@ -214,118 +205,34 @@ function App() {
         </nav>
       </aside>
 
+      {/* Barra de navegación inferior — solo móvil */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 glass border-t border-white/10 flex justify-around items-center px-2 py-2">
+        {[
+          { key: 'sales',     icon: <LayoutDashboard size={22}/>, label: 'Órdenes' },
+          { key: 'reports',   icon: <TrendingUp size={22}/>,     label: 'Reportes' },
+          { key: 'catalog',   icon: <ClipboardList size={22}/>,  label: 'Catálogo' },
+          { key: 'schedules', icon: <Clock size={22}/>,          label: 'Horarios' },
+          { key: 'settings',  icon: <Settings size={22}/>,       label: 'Config.' },
+        ].map(item => (
+          <button key={item.key} onClick={() => setActiveTab(item.key)}
+            className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-xl transition-all ${
+              activeTab === item.key ? 'text-distrito-accent' : 'text-gray-500'
+            }`}>
+            {item.icon}
+            <span className="text-[10px] font-bold">{item.label}</span>
+          </button>
+        ))}
+      </nav>
+
       {/* Main Content */}
-      <main className="ml-64 p-10 min-h-screen relative overflow-hidden">
+      <main className="md:ml-64 p-4 md:p-10 pb-24 md:pb-10 min-h-screen relative overflow-hidden">
         {/* Background glow effects */}
         <div className="absolute top-[-20%] left-[-10%] w-96 h-96 bg-distrito-accent/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-[-20%] right-[-10%] w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="relative z-10 max-w-6xl mx-auto">
           {activeTab === 'sales' ? (
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-3xl font-bold">Kanban de Cocina</h2>
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-start">
-                  
-                  {/* COLUMNA 1: POR ACEPTAR */}
-                  <div className="glass rounded-2xl p-4 min-h-[500px] border border-white/5 flex flex-col">
-                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
-                      <h3 className="font-bold text-lg text-yellow-400">Por Aceptar</h3>
-                      <span className="bg-yellow-400/20 text-yellow-400 text-xs px-2 py-1 rounded-full font-bold">
-                        {data.active_sales.filter((s:any) => s.status === 'por_aceptar').length}
-                      </span>
-                    </div>
-                    <div className="space-y-4 flex-1">
-                      {data.active_sales.filter((s:any) => s.status === 'por_aceptar').map((sale: any) => (
-                        <div key={sale.id} className="bg-black/40 rounded-xl p-4 border border-white/10 shadow-lg relative">
-                          <p className="text-sm text-distrito-accent font-bold">Orden #{sale.daily_order_number || '---'}</p>
-                          <p className="font-bold text-lg">{sale.customer_name || 'Sin nombre'} <span className="text-gray-400 text-sm">({sale.customer_phone})</span></p>
-                          <p className="text-sm font-semibold mt-1 mb-3 bg-white/10 inline-block px-2 py-0.5 rounded uppercase">
-                            {sale.payment_method}
-                          </p>
-                          
-                          {sale.payment_method === 'transferencia' ? (
-                            <button 
-                              onClick={() => handleOrderStatus(sale.id, 'en_preparacion', sale.customer_phone)}
-                              className="w-full bg-distrito-accent text-black font-bold py-2 rounded-lg hover:bg-yellow-400 transition-colors"
-                            >
-                              Transferencia Confirmada
-                            </button>
-                          ) : (
-                            <button 
-                              onClick={() => handleOrderStatus(sale.id, 'en_preparacion', sale.customer_phone)}
-                              className="w-full bg-green-500/20 text-green-400 border border-green-500/50 font-bold py-2 rounded-lg hover:bg-green-500/30 transition-colors"
-                            >
-                              Aceptar Pedido (Efectivo)
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* COLUMNA 2: EN PREPARACION */}
-                  <div className="glass rounded-2xl p-4 min-h-[500px] border border-white/5 flex flex-col">
-                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
-                      <h3 className="font-bold text-lg text-blue-400">En Preparación</h3>
-                      <span className="bg-blue-400/20 text-blue-400 text-xs px-2 py-1 rounded-full font-bold">
-                        {data.active_sales.filter((s:any) => s.status === 'en_preparacion' || s.status === 'preparando').length}
-                      </span>
-                    </div>
-                    <div className="space-y-4 flex-1">
-                      {data.active_sales.filter((s:any) => s.status === 'en_preparacion' || s.status === 'preparando').map((sale: any) => (
-                        <div key={sale.id} className="bg-black/40 rounded-xl p-4 border border-blue-500/30 shadow-lg cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setSelectedOrder(sale)}>
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <p className="text-sm text-blue-400 font-bold">Orden #{sale.daily_order_number || '---'}</p>
-                              <p className="font-bold text-lg">{sale.customer_name || 'Sin nombre'}</p>
-                            </div>
-                            <button onClick={(e) => { e.stopPropagation(); handlePrint(sale); }} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg">
-                              <Printer size={16} />
-                            </button>
-                          </div>
-                          
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); handleOrderStatus(sale.id, 'por_entregar', sale.customer_phone); }}
-                            className="w-full mt-4 bg-blue-500/20 text-blue-400 border border-blue-500/50 font-bold py-2 rounded-lg hover:bg-blue-500/30 transition-colors"
-                          >
-                            Pedido Despachado
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* COLUMNA 3: POR ENTREGAR */}
-                  <div className="glass rounded-2xl p-4 min-h-[500px] border border-white/5 flex flex-col">
-                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
-                      <h3 className="font-bold text-lg text-green-400">Por Entregar</h3>
-                      <span className="bg-green-400/20 text-green-400 text-xs px-2 py-1 rounded-full font-bold">
-                        {data.active_sales.filter((s:any) => s.status === 'por_entregar' || s.status === 'en_camino').length}
-                      </span>
-                    </div>
-                    <div className="space-y-4 flex-1">
-                      {data.active_sales.filter((s:any) => s.status === 'por_entregar' || s.status === 'en_camino').map((sale: any) => (
-                        <div key={sale.id} className="bg-black/40 rounded-xl p-4 border border-green-500/30 shadow-lg relative">
-                          <p className="text-sm text-green-400 font-bold">Orden #{sale.daily_order_number || '---'}</p>
-                          <p className="font-bold text-lg">{sale.customer_name || 'Sin nombre'}</p>
-                          <p className="text-sm text-gray-400 capitalize">{sale.delivery_type} {sale.delivery_barrio ? `- ${sale.delivery_barrio}` : ''}</p>
-                          
-                          <button 
-                            onClick={() => handleOrderStatus(sale.id, 'entregado', sale.customer_phone)}
-                            className="w-full mt-4 bg-green-500 text-black font-bold py-2 rounded-lg hover:bg-green-400 transition-colors"
-                          >
-                            Marcar Entregado (Finalizar)
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                </div>
-              </div>
+            <OrdersTab data={data} onRefresh={fetchDashboardData} />
             ) : activeTab === 'inventory' ? (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex justify-between items-center">
