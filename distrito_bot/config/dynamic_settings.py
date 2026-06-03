@@ -79,6 +79,12 @@ def get_backup_reply_message() -> str:
 def get_payment_transfer_text() -> str:
     return get_text("payment_transfer_text", base_settings.payment_transfer_text)
 
+def get_msg_order_accepted() -> str:
+    return get_text("msg_order_accepted", "✅ ¡Hola! Tu pedido ha sido confirmado y ya está en preparación. 🍔👨‍🍳")
+
+def get_msg_order_dispatched() -> str:
+    return get_text("msg_order_dispatched", "🛵 ¡Tu pedido acaba de salir de nuestra cocina! Nuestro domiciliario va en camino.")
+
 def get_pickup_address() -> str:
     return get_text("pickup_address", base_settings.pickup_address)
 

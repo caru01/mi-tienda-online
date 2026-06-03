@@ -213,6 +213,13 @@ async def _finalize_sale(customer_phone: str, session: dict) -> bool:
     is_vip = await _save_customer(customer_phone, session)
     
     try:
+        # Calcular daily_order_number
+        now = datetime.now(timezone.utc)
+        today_str = now.strftime('%Y-%m-%d')
+        # Buscamos cuantas ordenes hay hoy
+        sales_today = db.table("sales").select("id").gte("created_at", f"{today_str}T00:00:00Z").lte("created_at", f"{today_str}T23:59:59Z").execute()
+        daily_count = len(sales_today.data) + 1 if sales_today.data else 1
+
         # 1. Registrar Venta
         db.table("sales").insert({
             "customer_phone": customer_phone,
@@ -222,7 +229,8 @@ async def _finalize_sale(customer_phone: str, session: dict) -> bool:
             "payment_method": session.get("payment_method", ""),
             "delivery_type": session.get("delivery_type", ""),
             "delivery_barrio": session.get("delivery_barrio", ""),
-            "status": "preparando"
+            "status": "por_aceptar",
+            "daily_order_number": daily_count
         }).execute()
 
         # 2. Descontar Inventario
@@ -692,12 +700,6 @@ async def handle_customer_message(
             session["payment_method"] = "efectivo"
             is_vip = await _finalize_sale(customer_phone, session)
             
-            # Notificar a cocina (el ticket)
-            updated_session = await _get_session(customer_phone)
-            if is_vip:
-                updated_session["observations"] = (updated_session.get("observations") or "") + " ⭐ CLIENTE VIP (OBSEQUIO) ⭐"
-            await send_kitchen_ticket(updated_session, customer_phone)
-            
             delivery = session.get("delivery_type", "")
             if delivery == "recoger":
                 msg = (
@@ -722,12 +724,6 @@ async def handle_customer_message(
             await _update_session(customer_phone, {"state": "order_complete", "payment_method": "transferencia"})
             session["payment_method"] = "transferencia"
             is_vip = await _finalize_sale(customer_phone, session)
-            
-            # Notificar a cocina (el ticket)
-            updated_session = await _get_session(customer_phone)
-            if is_vip:
-                updated_session["observations"] = (updated_session.get("observations") or "") + " ⭐ CLIENTE VIP (OBSEQUIO) ⭐"
-            await send_kitchen_ticket(updated_session, customer_phone)
             
             await send_text_message(customer_phone, get_payment_transfer_text())
             

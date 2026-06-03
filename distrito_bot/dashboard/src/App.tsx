@@ -18,6 +18,7 @@ function App() {
     all_sales: []
   })
   const [ticketToPrint, setTicketToPrint] = useState<any>(null)
+  const [selectedOrder, setSelectedOrder] = useState<any>(null)
   
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [newProduct, setNewProduct] = useState({ name: '', description: '', emoji: '', price: '', category: 'Combos' })
@@ -199,69 +200,108 @@ function App() {
         <div className="absolute bottom-[-20%] right-[-10%] w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="relative z-10 max-w-6xl mx-auto">
-          {activeTab === 'sales' ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h2 className="text-3xl font-bold">Ventas Activas</h2>
-                <div className="grid gap-6">
-                  {data.active_sales.length === 0 && (
-                    <div className="text-center py-12 text-gray-500 glass rounded-2xl">
-                      No hay pedidos activos en este momento.
+              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-screen">
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-3xl font-bold">Kanban de Cocina</h2>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-start">
+                  
+                  {/* COLUMNA 1: POR ACEPTAR */}
+                  <div className="glass rounded-2xl p-4 min-h-[500px] border border-white/5 flex flex-col">
+                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+                      <h3 className="font-bold text-lg text-yellow-400">Por Aceptar</h3>
+                      <span className="bg-yellow-400/20 text-yellow-400 text-xs px-2 py-1 rounded-full font-bold">
+                        {data.active_sales.filter((s:any) => s.status === 'por_aceptar').length}
+                      </span>
                     </div>
-                  )}
-                  {data.active_sales.map((sale: any) => (
-                    <div key={sale.id} className="glass rounded-2xl p-6 border border-white/5 hover:border-distrito-accent/30 transition-colors">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <p className="text-sm text-distrito-accent font-bold mb-1">
-                            {format(new Date(sale.created_at), "h:mm a - d 'de' MMMM", { locale: es })}
+                    <div className="space-y-4 flex-1">
+                      {data.active_sales.filter((s:any) => s.status === 'por_aceptar').map((sale: any) => (
+                        <div key={sale.id} className="bg-black/40 rounded-xl p-4 border border-white/10 shadow-lg relative">
+                          <p className="text-sm text-distrito-accent font-bold">Orden #{sale.daily_order_number || '---'}</p>
+                          <p className="font-bold text-lg">{sale.customer_name || 'Sin nombre'} <span className="text-gray-400 text-sm">({sale.customer_phone})</span></p>
+                          <p className="text-sm font-semibold mt-1 mb-3 bg-white/10 inline-block px-2 py-0.5 rounded uppercase">
+                            {sale.payment_method}
                           </p>
-                          <p className="font-bold text-xl">{sale.customer_name || 'Sin nombre'} <span className="text-gray-400 text-base font-normal">({sale.customer_phone})</span></p>
-                          <p className="text-gray-400 mt-1 capitalize">
-                            {sale.delivery_type} {sale.delivery_barrio ? `- ${sale.delivery_barrio}` : ''}
-                          </p>
-                          <p className="text-sm font-semibold mt-1 bg-white/10 inline-block px-2 py-0.5 rounded">
-                            {sale.payment_method?.toUpperCase()}
-                          </p>
+                          
+                          {sale.payment_method === 'transferencia' ? (
+                            <button 
+                              onClick={() => handleOrderStatus(sale.id, 'en_preparacion', sale.customer_phone)}
+                              className="w-full bg-distrito-accent text-black font-bold py-2 rounded-lg hover:bg-yellow-400 transition-colors"
+                            >
+                              Transferencia Confirmada
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleOrderStatus(sale.id, 'en_preparacion', sale.customer_phone)}
+                              className="w-full bg-green-500/20 text-green-400 border border-green-500/50 font-bold py-2 rounded-lg hover:bg-green-500/30 transition-colors"
+                            >
+                              Aceptar Pedido (Efectivo)
+                            </button>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <p className="text-3xl font-black text-distrito-accent">
-                            ${Number(sale.total_amount).toLocaleString()}
-                          </p>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* COLUMNA 2: EN PREPARACION */}
+                  <div className="glass rounded-2xl p-4 min-h-[500px] border border-white/5 flex flex-col">
+                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+                      <h3 className="font-bold text-lg text-blue-400">En Preparación</h3>
+                      <span className="bg-blue-400/20 text-blue-400 text-xs px-2 py-1 rounded-full font-bold">
+                        {data.active_sales.filter((s:any) => s.status === 'en_preparacion' || s.status === 'preparando').length}
+                      </span>
+                    </div>
+                    <div className="space-y-4 flex-1">
+                      {data.active_sales.filter((s:any) => s.status === 'en_preparacion' || s.status === 'preparando').map((sale: any) => (
+                        <div key={sale.id} className="bg-black/40 rounded-xl p-4 border border-blue-500/30 shadow-lg cursor-pointer hover:border-blue-500 transition-colors" onClick={() => setSelectedOrder(sale)}>
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="text-sm text-blue-400 font-bold">Orden #{sale.daily_order_number || '---'}</p>
+                              <p className="font-bold text-lg">{sale.customer_name || 'Sin nombre'}</p>
+                            </div>
+                            <button onClick={(e) => { e.stopPropagation(); handlePrint(sale); }} className="text-gray-400 hover:text-white bg-white/5 p-2 rounded-lg">
+                              <Printer size={16} />
+                            </button>
+                          </div>
+                          
                           <button 
-                            onClick={() => handlePrint(sale)}
-                            className="mt-2 text-sm flex items-center space-x-1 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition-colors"
+                            onClick={(e) => { e.stopPropagation(); handleOrderStatus(sale.id, 'por_entregar', sale.customer_phone); }}
+                            className="w-full mt-4 bg-blue-500/20 text-blue-400 border border-blue-500/50 font-bold py-2 rounded-lg hover:bg-blue-500/30 transition-colors"
                           >
-                            <Printer size={14} />
-                            <span>Imprimir</span>
+                            Pedido Despachado
                           </button>
                         </div>
-                      </div>
-                      <div className="bg-black/30 rounded-xl p-4 font-mono text-sm whitespace-pre-wrap text-gray-300">
-                        {sale.order_detail}
-                      </div>
-                      <div className="mt-4 flex space-x-2 border-t border-white/10 pt-4">
-                        <span className="text-xs text-gray-500 self-center mr-2">Estado:</span>
-                        <button 
-                          onClick={() => handleOrderStatus(sale.id, 'preparando', sale.customer_phone)}
-                          className={`px-3 py-1.5 rounded text-sm font-bold transition-all ${sale.status === 'preparando' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
-                        >
-                          Preparando
-                        </button>
-                        <button 
-                          onClick={() => handleOrderStatus(sale.id, 'en_camino', sale.customer_phone)}
-                          className={`px-3 py-1.5 rounded text-sm font-bold transition-all ${sale.status === 'en_camino' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/50' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
-                        >
-                          En Camino (Notificar)
-                        </button>
-                        <button 
-                          onClick={() => handleOrderStatus(sale.id, 'entregado', sale.customer_phone)}
-                          className="px-3 py-1.5 rounded text-sm font-bold bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-all ml-auto"
-                        >
-                          ✓ Marcar Entregado
-                        </button>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* COLUMNA 3: POR ENTREGAR */}
+                  <div className="glass rounded-2xl p-4 min-h-[500px] border border-white/5 flex flex-col">
+                    <div className="flex items-center justify-between mb-4 border-b border-white/10 pb-2">
+                      <h3 className="font-bold text-lg text-green-400">Por Entregar</h3>
+                      <span className="bg-green-400/20 text-green-400 text-xs px-2 py-1 rounded-full font-bold">
+                        {data.active_sales.filter((s:any) => s.status === 'por_entregar' || s.status === 'en_camino').length}
+                      </span>
+                    </div>
+                    <div className="space-y-4 flex-1">
+                      {data.active_sales.filter((s:any) => s.status === 'por_entregar' || s.status === 'en_camino').map((sale: any) => (
+                        <div key={sale.id} className="bg-black/40 rounded-xl p-4 border border-green-500/30 shadow-lg relative">
+                          <p className="text-sm text-green-400 font-bold">Orden #{sale.daily_order_number || '---'}</p>
+                          <p className="font-bold text-lg">{sale.customer_name || 'Sin nombre'}</p>
+                          <p className="text-sm text-gray-400 capitalize">{sale.delivery_type} {sale.delivery_barrio ? `- ${sale.delivery_barrio}` : ''}</p>
+                          
+                          <button 
+                            onClick={() => handleOrderStatus(sale.id, 'entregado', sale.customer_phone)}
+                            className="w-full mt-4 bg-green-500 text-black font-bold py-2 rounded-lg hover:bg-green-400 transition-colors"
+                          >
+                            Marcar Entregado (Finalizar)
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                 </div>
               </div>
             ) : activeTab === 'inventory' ? (
@@ -421,6 +461,56 @@ function App() {
           </h3>
           <div className="line"></div>
           <p style={{ textAlign: 'center', fontSize: '10px' }}>¡Gracias por tu compra!</p>
+        </div>
+      )}
+      {/* Modal for Order Details */}
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-white/20 rounded-2xl w-full max-w-lg p-6 relative">
+            <button onClick={() => setSelectedOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+            <h2 className="text-2xl font-bold mb-2">Orden #{selectedOrder.daily_order_number || '---'}</h2>
+            <p className="text-gray-400 mb-6">{format(new Date(selectedOrder.created_at), "h:mm a - d 'de' MMMM", { locale: es })}</p>
+            
+            <div className="space-y-4 mb-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-500">Cliente</p>
+                  <p className="font-bold">{selectedOrder.customer_name || 'Sin nombre'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Teléfono</p>
+                  <p className="font-bold">{selectedOrder.customer_phone}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Método de Pago</p>
+                  <p className="font-bold uppercase text-distrito-accent">{selectedOrder.payment_method}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Entrega</p>
+                  <p className="font-bold capitalize">{selectedOrder.delivery_type}</p>
+                  {selectedOrder.delivery_barrio && <p className="text-sm text-gray-300">{selectedOrder.delivery_barrio}</p>}
+                </div>
+              </div>
+
+              <div className="bg-black/50 p-4 rounded-xl font-mono text-sm whitespace-pre-wrap border border-white/5">
+                <p className="font-bold text-white mb-2 pb-2 border-b border-white/10">ITEMS DEL PEDIDO:</p>
+                {selectedOrder.order_detail}
+              </div>
+
+              <div className="flex justify-between items-center text-xl">
+                <p className="font-bold text-gray-400">Total:</p>
+                <p className="font-black text-distrito-accent">${Number(selectedOrder.total_amount).toLocaleString()}</p>
+              </div>
+            </div>
+
+            <button 
+              onClick={() => { handlePrint(selectedOrder); setSelectedOrder(null); }}
+              className="w-full bg-distrito-accent text-black font-black py-4 rounded-xl flex items-center justify-center space-x-2 hover:bg-yellow-400 transition-colors"
+            >
+              <Printer size={20} />
+              <span>Imprimir Ticket de Cocina</span>
+            </button>
+          </div>
         </div>
       )}
     </div>

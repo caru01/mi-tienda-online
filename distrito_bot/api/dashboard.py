@@ -148,11 +148,17 @@ async def update_order_status(payload: dict) -> Dict[str, Any]:
     try:
         db.table("sales").update({"status": new_status}).eq("id", order_id).execute()
         
-        # Enviar WhatsApp si el estado es 'en_camino'
-        if new_status == "en_camino" and customer_phone:
+        if customer_phone:
             from services.ycloud_client import send_text_message
-            msg = "¡Tu pedido acaba de salir! Nuestro domiciliario va en camino 🛵"
-            await send_text_message(customer_phone, msg)
+            from config.dynamic_settings import get_msg_order_accepted, get_msg_order_dispatched
+            
+            if new_status == "en_preparacion":
+                msg = get_msg_order_accepted()
+                await send_text_message(customer_phone, msg)
+                
+            elif new_status == "por_entregar":
+                msg = get_msg_order_dispatched()
+                await send_text_message(customer_phone, msg)
             
         return {"status": "success"}
     except Exception as e:

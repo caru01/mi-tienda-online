@@ -15,6 +15,8 @@ interface BotSettings {
   off_hours_message: string
   backup_reply_message: string
   payment_transfer_text: string
+  msg_order_accepted: string
+  msg_order_dispatched: string
 }
 
 export default function ConfigurationTab() {
@@ -237,6 +239,23 @@ export default function ConfigurationTab() {
             value={settings.payment_transfer_text}
             onChange={(e) => setSettings({...settings, payment_transfer_text: e.target.value})}
             className="w-full h-32 bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white font-mono text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Mensaje de Pedido Aceptado (Pasa a preparación)</label>
+          <textarea 
+            value={settings.msg_order_accepted || ''}
+            onChange={(e) => setSettings({...settings, msg_order_accepted: e.target.value})}
+            className="w-full h-24 bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-1">Mensaje de Pedido en Camino (Despachado)</label>
+          <textarea 
+            value={settings.msg_order_dispatched || ''}
+            onChange={(e) => setSettings({...settings, msg_order_dispatched: e.target.value})}
+            className="w-full h-24 bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white"
           />
         </div>
       </div>
