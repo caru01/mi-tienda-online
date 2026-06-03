@@ -47,16 +47,19 @@ def is_restaurant_open() -> bool:
     tz = pytz.timezone(base_settings.timezone)
     now = datetime.now(tz)
     
-    business_days_str = data.get("business_days", base_settings.business_days)
+    business_days_str = data.get("business_days")
+    if business_days_str is None:
+        business_days_str = base_settings.business_days
+        
     days_list = [int(d.strip()) for d in business_days_str.split(",")]
     
     if now.weekday() not in days_list:
         return False
         
-    open_h = int(data.get("business_open_hour", base_settings.business_open_hour))
-    open_m = int(data.get("business_open_minute", base_settings.business_open_minute))
-    close_h = int(data.get("business_close_hour", base_settings.business_close_hour))
-    close_m = int(data.get("business_close_minute", base_settings.business_close_minute))
+    open_h = int(data.get("business_open_hour") if data.get("business_open_hour") is not None else base_settings.business_open_hour)
+    open_m = int(data.get("business_open_minute") if data.get("business_open_minute") is not None else base_settings.business_open_minute)
+    close_h = int(data.get("business_close_hour") if data.get("business_close_hour") is not None else base_settings.business_close_hour)
+    close_m = int(data.get("business_close_minute") if data.get("business_close_minute") is not None else base_settings.business_close_minute)
     
     open_time = now.replace(hour=open_h, minute=open_m, second=0, microsecond=0)
     close_time = now.replace(hour=close_h, minute=close_m, second=0, microsecond=0)
