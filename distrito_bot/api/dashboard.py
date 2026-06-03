@@ -11,19 +11,26 @@ router = APIRouter()
 @router.get("/api/dashboard/stats")
 async def get_dashboard_stats() -> Dict[str, Any]:
     db = get_supabase()
-    # Ventas totales
-    sales = db.table("sales").select("*").execute()
-    total_revenue = sum([s.get("total_amount", 0) for s in sales.data or []])
-    total_orders = len(sales.data or [])
+    from datetime import datetime, timezone
+
+    # Solo ventas de hoy para KPIs (liviano)
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    sales_today_res = db.table("sales").select("total_amount, payment_method, delivery_type, status").gte("created_at", f"{today}T00:00:00Z").execute()
+    sales_today = sales_today_res.data or []
+    total_revenue = sum([s.get("total_amount", 0) for s in sales_today])
+    total_orders = len(sales_today)
+
+    # Ultimas 200 ventas para historial y graficos (paginado)
+    all_sales_res = db.table("sales").select("*").order("created_at", desc=True).limit(200).execute()
 
     # Obtener inventario
     inventory = db.table("inventory_items").select("*").execute()
-    
-    # Obtener catálogo
+
+    # Obtener catalogo
     products = db.table("products").select("*").execute()
 
-    # Obtener ordenes activas
-    active_sales_res = db.table("sales").select("*").neq("status", "entregado").order("created_at", desc=True).execute()
+    # Obtener ordenes activas (excluye entregadas y canceladas)
+    active_sales_res = db.table("sales").select("*").not_.in_("status", ["entregado", "cancelado"]).order("created_at", desc=True).execute()
 
     return {
         "status": "ok",
@@ -32,7 +39,7 @@ async def get_dashboard_stats() -> Dict[str, Any]:
         "inventory": inventory.data or [],
         "products": products.data or [],
         "active_sales": active_sales_res.data or [],
-        "all_sales": sales.data or []
+        "all_sales": all_sales_res.data or []
     }
 
 @router.post("/api/dashboard/inventory/purchase")

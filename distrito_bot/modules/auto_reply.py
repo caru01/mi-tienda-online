@@ -49,9 +49,7 @@ def is_greeting(text: str) -> bool:
     Compara el texto (normalizado) contra la lista de palabras clave.
     """
     normalized = text.lower().strip()
-    for keyword in settings.greeting_keywords:
-        # Coincidencia si el texto comienza con la palabra clave
-        # (permite "hola!" o "hola, cómo están?" etc.)
+    for keyword in settings.flow_trigger_keywords:  # usa flow_trigger_keywords (el correcto)
         pattern = rf"^{re.escape(keyword)}\b"
         if re.match(pattern, normalized):
             return True
@@ -154,7 +152,8 @@ async def handle_combo_request(customer_phone: str) -> None:
         return
 
     try:
-        await send_text_message(customer_phone, settings.combos_menu_text)
+        from config.dynamic_settings import get_welcome_message
+        await send_text_message(customer_phone, get_welcome_message())
         _log_auto_reply(customer_phone, reply_type)
         logger.info(f"Menu de combos enviado a {customer_phone}")
     except Exception as e:

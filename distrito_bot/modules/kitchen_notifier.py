@@ -5,7 +5,8 @@ Se encarga de enviar notificaciones de nuevos pedidos (tickets) a la cocina.
 import logging
 from config.dynamic_settings import get_kitchen_phone
 from services.ycloud_client import send_text_message
-from datetime import datetime
+from datetime import datetime, timezone
+import pytz
 
 logger = logging.getLogger(__name__)
 
@@ -24,12 +25,13 @@ async def send_kitchen_ticket(session: dict, customer_phone: str) -> None:
     items = session.get("order_items_text") or "Sin items"
     obs = session.get("observations") or "Ninguna"
     total = session.get("order_total") or 0
-    now = datetime.now().strftime("%I:%M %p")
+    now_bogota = datetime.now(pytz.timezone("America/Bogota"))
+    now_str = now_bogota.strftime("%I:%M %p")
 
     # Formatear el ticket
     ticket_lines = [
         "🔔 *NUEVO PEDIDO* 🔔",
-        f"⏰ Hora: {now}",
+        f"⏰ Hora: {now_str}",
         f"👤 Cliente: {name}",
         f"📱 Teléfono: {customer_phone}",
         f"🚚 Tipo: {delivery_type.upper()}",
