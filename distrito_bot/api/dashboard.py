@@ -70,3 +70,30 @@ async def toggle_product(payload: dict) -> Dict[str, Any]:
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+@router.get("/api/dashboard/settings")
+async def get_settings() -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        res = db.table("bot_settings").select("*").eq("id", 1).single().execute()
+        return {"status": "ok", "settings": res.data}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/settings")
+async def save_settings(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        # Avoid updating id
+        if "id" in payload:
+            del payload["id"]
+        
+        db.table("bot_settings").update(payload).eq("id", 1).execute()
+        
+        # Invalidate cache locally
+        from config.dynamic_settings import _cache
+        _cache.clear()
+        
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

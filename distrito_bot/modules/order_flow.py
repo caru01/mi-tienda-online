@@ -25,6 +25,13 @@ from services.ycloud_client import (
     send_button_message,
     send_list_message,
 )
+from config.dynamic_settings import (
+    is_restaurant_open,
+    get_welcome_message,
+    get_off_hours_message,
+    get_pickup_address,
+    get_payment_transfer_text
+)
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
@@ -191,8 +198,8 @@ async def _save_customer(customer_phone: str, session: dict) -> None:
 # ─────────────────────────────────────────────────────────────
 
 def should_start_flow(body: str) -> bool:
-    normalized = body.lower().strip()
-    return any(kw in normalized for kw in settings.flow_trigger_keywords)
+    # AHORA CUALQUIER MENSAJE INICIA EL FLUJO
+    return True
 
 
 async def _detect_combo(body: str, i_type: str, i_id: str) -> str | None:
@@ -284,7 +291,7 @@ def _build_summary(session: dict, customer_phone: str) -> str:
         lines.append(f"💰 Total combos: *${total:,}*")
         lines.append("_(El domicilio lo cobra la empresa de delivery)_")
     else:
-        lines.append(f"📍 Recoger en: {settings.pickup_address}")
+        lines.append(f"📍 Recoger en: {get_pickup_address()}")
         lines.append(f"💰 Total: *${total:,}*")
 
     return "\n".join(lines)
@@ -297,7 +304,7 @@ def _build_summary(session: dict, customer_phone: str) -> str:
 async def _send_welcome(phone: str) -> None:
     await send_button_message(
         to=phone,
-        body_text=settings.welcome_message,
+        body_text=get_welcome_message(),
         buttons=[{"id": "ver_combos", "title": "Ver Combos"}],
     )
 
@@ -522,7 +529,7 @@ async def handle_customer_message(
             ok = await _update_session(customer_phone, {
                 "state": "waiting_name",
                 "delivery_type": "recoger",
-                "delivery_address": settings.pickup_address,
+                "delivery_address": get_pickup_address(),
                 "delivery_barrio": "La Esperanza",
             })
             if ok:
@@ -613,7 +620,7 @@ async def handle_customer_message(
             if delivery == "recoger":
                 msg = (
                     "Tu pedido esta en fila! 🎉🍔\n\n"
-                    f"Puedes recogerlo en:\n📍 *{settings.pickup_address}*\n\n"
+                    f"Puedes recogerlo en:\n📍 *{get_pickup_address()}*\n\n"
                     "En un momento te avisamos cuando este listo. ⏳"
                 )
             else:
@@ -632,7 +639,7 @@ async def handle_customer_message(
             updated_session = await _get_session(customer_phone)
             await send_kitchen_ticket(updated_session, customer_phone)
             
-            await send_text_message(customer_phone, settings.payment_transfer_text)
+            await send_text_message(customer_phone, get_payment_transfer_text())
             await send_text_message(
                 customer_phone,
                 "Envianos el *comprobante de pago* y confirmamos tu pedido de inmediato. 📸✅\n\n"

@@ -20,3 +20,11 @@
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
+
+@media print {
+  body * { visibility: hidden; }
+  .ticket-print, .ticket-print * { visibility: visible; }
+  .ticket-print { position: absolute; left: 0; top: 0; width: 80mm; font-family: monospace; font-size: 12px; color: black !important; background: white !important; padding: 10px; margin: 0; }
+  .ticket-print h2, .ticket-print h3 { font-size: 14px; text-align: center; margin: 5px 0; }
+  .ticket-print .line { border-top: 1px dashed black; margin: 5px 0; }
+}

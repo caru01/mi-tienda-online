@@ -3,7 +3,7 @@ modules/kitchen_notifier.py
 Se encarga de enviar notificaciones de nuevos pedidos (tickets) a la cocina.
 """
 import logging
-from config.settings import settings
+from config.dynamic_settings import get_kitchen_phone
 from services.ycloud_client import send_text_message
 from datetime import datetime
 
@@ -13,7 +13,7 @@ async def send_kitchen_ticket(session: dict, customer_phone: str) -> None:
     """
     Formatea y envía un ticket de pedido a la cocina vía WhatsApp (YCloud).
     """
-    kitchen_phone = settings.kitchen_phone_number
+    kitchen_phone = get_kitchen_phone()
     if not kitchen_phone:
         logger.warning("No hay número de cocina configurado. No se envía ticket.")
         return

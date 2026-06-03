@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react'
-import { LayoutDashboard, PackageSearch, ClipboardList, Utensils, TrendingUp } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { LayoutDashboard, PackageSearch, ClipboardList, Utensils, TrendingUp, Settings, Printer } from 'lucide-react'
+import { format } from 'date-fns'
+import { es } from 'date-fns/locale'
+import ConfigurationTab from './components/ConfigurationTab'
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
@@ -12,22 +15,49 @@ function App() {
     products: [],
     recent_sales: []
   })
+  const [ticketToPrint, setTicketToPrint] = useState<any>(null)
   
-  const fetchData = async () => {
+  const lastSaleIdRef = useRef<string | null>(null)
+
+  const fetchDashboardData = async (isPolling = false) => {
     try {
       const res = await fetch(`${API_URL}/stats`)
       const json = await res.json()
+      
+      if (isPolling && json.recent_sales && json.recent_sales.length > 0) {
+        const latestSaleId = json.recent_sales[0].id
+        if (lastSaleIdRef.current && lastSaleIdRef.current !== latestSaleId) {
+          const audio = new Audio('/distrito/assets/bell.mp3')
+          audio.play().catch(() => console.log('Auto-play blocked by browser'))
+        }
+        lastSaleIdRef.current = latestSaleId
+      } else if (!isPolling && json.recent_sales && json.recent_sales.length > 0) {
+        lastSaleIdRef.current = json.recent_sales[0].id
+      }
+      
       if (json.status === 'ok') {
         setData(json)
       }
-    } catch (e) {
-      console.error(e)
+    } catch (error) {
+      console.error('Error fetching data:', error)
     }
   }
 
   useEffect(() => {
-    fetchData()
+    fetchDashboardData()
+    const interval = setInterval(() => {
+      fetchDashboardData(true)
+    }, 10000)
+    return () => clearInterval(interval)
   }, [])
+
+  const handlePrint = (sale: any) => {
+    setTicketToPrint(sale)
+    setTimeout(() => {
+      window.print()
+      setTicketToPrint(null)
+    }, 500)
+  }
 
   const handlePurchase = async (item_id: number) => {
     const qty = prompt("Cantidad comprada:")
@@ -38,7 +68,7 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ item_id, quantity: parseFloat(qty) })
     })
-    fetchData()
+    fetchDashboardData()
   }
   
   const toggleProduct = async (product_id: string, currentStatus: boolean) => {
@@ -47,7 +77,7 @@ function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ product_id, is_active: !currentStatus })
     })
-    fetchData()
+    fetchDashboardData()
   }
 
   return (
@@ -83,6 +113,17 @@ function App() {
             <PackageSearch className="w-5 h-5" />
             <span>Inventario</span>
           </button>
+          <button
+              onClick={() => setActiveTab('settings')}
+              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${
+                activeTab === 'settings' 
+                  ? 'bg-distrito-accent/10 text-distrito-accent border border-distrito-accent/20' 
+                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+              <span className="font-medium">Configuración</span>
+            </button>
         </nav>
       </aside>
 
@@ -93,8 +134,7 @@ function App() {
         <div className="absolute bottom-[-20%] right-[-10%] w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
         
         <div className="relative z-10 max-w-6xl mx-auto">
-          {/* SALES TAB */}
-          {activeTab === 'sales' && (
+          {activeTab === 'sales' ? (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-3xl font-bold">Resumen de Ventas</h2>
               
@@ -121,66 +161,43 @@ function App() {
               </div>
 
               <div className="glass p-6 rounded-2xl mt-8">
-                <h3 className="text-xl font-bold mb-4">Últimas Ventas</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left">
-                    <thead>
-                      <tr className="border-b border-white/10 text-gray-400">
-                        <th className="pb-3 font-medium">Cliente</th>
-                        <th className="pb-3 font-medium">Método</th>
-                        <th className="pb-3 font-medium">Tipo</th>
-                        <th className="pb-3 font-medium">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.recent_sales.map((sale: any) => (
-                        <tr key={sale.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                          <td className="py-4">{sale.customer_name || 'Desconocido'}</td>
-                          <td className="py-4 capitalize">{sale.payment_method}</td>
-                          <td className="py-4 capitalize">{sale.delivery_type}</td>
-                          <td className="py-4 font-bold text-distrito-accent">${sale.total_amount?.toLocaleString()}</td>
-                        </tr>
-                      ))}
-                      {data.recent_sales.length === 0 && (
-                        <tr><td colSpan={4} className="py-4 text-center text-gray-500">No hay ventas registradas.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
+                <h3 className="text-xl font-bold mb-6 text-distrito-accent flex items-center space-x-2">
+                  <ClipboardList className="w-6 h-6" />
+                  <span>Últimos Pedidos</span>
+                </h3>
+                <div className="space-y-4">
+                  {data.recent_sales.map((sale: any) => (
+                    <div key={sale.id} className="p-4 bg-distrito-dark/50 rounded-xl border border-white/5 hover:border-distrito-accent/30 transition-colors flex justify-between items-start">
+                      <div>
+                        <div className="flex items-center space-x-3 mb-2">
+                          <span className="text-sm text-gray-400 font-mono">
+                            {format(new Date(sale.created_at), "dd MMM HH:mm", { locale: es })}
+                          </span>
+                          <span className="bg-distrito-accent/20 text-distrito-accent text-xs px-2 py-1 rounded-full font-bold">
+                            COMPLETADO
+                          </span>
+                        </div>
+                        <p className="text-white font-medium mb-1">Cliente: {sale.customer_phone}</p>
+                        <p className="text-sm text-gray-300 whitespace-pre-wrap">{sale.order_detail}</p>
+                      </div>
+                      <div className="text-right flex flex-col items-end">
+                        <p className="text-xl font-bold text-distrito-accent mb-3">
+                          ${parseFloat(sale.total_amount).toLocaleString()}
+                        </p>
+                        <button
+                          onClick={() => handlePrint(sale)}
+                          className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg text-sm transition-colors"
+                        >
+                          <Printer className="w-4 h-4" />
+                          <span>Imprimir</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
-
-          {/* CATALOG TAB */}
-          {activeTab === 'catalog' && (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-bold">Catálogo Dinámico</h2>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {data.products.map((prod: any) => (
-                  <div key={prod.id} className="glass p-6 rounded-2xl relative overflow-hidden group">
-                    <div className="flex justify-between items-start mb-4">
-                      <span className="text-4xl">{prod.emoji}</span>
-                      <button 
-                        onClick={() => toggleProduct(prod.id, prod.is_active)}
-                        className={`px-3 py-1 text-xs font-bold rounded-full transition-colors ${prod.is_active ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}
-                      >
-                        {prod.is_active ? 'ACTIVO' : 'INACTIVO'}
-                      </button>
-                    </div>
-                    <h3 className="text-xl font-bold mb-1">{prod.name}</h3>
-                    <p className="text-gray-400 text-sm mb-4 h-10">{prod.description}</p>
-                    <p className="text-2xl font-bold text-distrito-accent">${prod.price.toLocaleString()}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* INVENTORY TAB */}
-          {activeTab === 'inventory' && (
+          ) : activeTab === 'inventory' ? (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <h2 className="text-3xl font-bold">Inventario de Insumos</h2>
               
@@ -216,9 +233,61 @@ function App() {
                 </table>
               </div>
             </div>
-          )}
+          ) : activeTab === 'catalog' ? (
+              <div className="glass rounded-2xl p-8 border border-white/10 shadow-2xl">
+                <h2 className="text-2xl font-bold text-distrito-accent mb-6">Catálogo de Productos</h2>
+                <div className="grid gap-4">
+                  {data.products.map((item: any) => (
+                    <div key={item.id} className="flex items-center justify-between p-4 bg-distrito-dark/50 rounded-xl border border-white/5">
+                      <div className="flex items-center space-x-4">
+                        <span className="text-2xl">{item.emoji}</span>
+                        <div>
+                          <p className="font-bold text-white">{item.name}</p>
+                          <p className="text-sm text-gray-400">{item.description}</p>
+                          <p className="text-distrito-accent font-bold mt-1">${item.price.toLocaleString()}</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => toggleProduct(item.id, item.is_active)}
+                        className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
+                          item.is_active 
+                            ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' 
+                            : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
+                        }`}
+                      >
+                        {item.is_active ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : activeTab === 'settings' ? (
+              <ConfigurationTab />
+            ) : null
+          }
         </div>
       </main>
+
+      {/* COMPONENTE DE IMPRESIÓN (OCULTO EN PANTALLA) */}
+      {ticketToPrint && (
+        <div className="ticket-print">
+          <h2>DISTRITO BURGER</h2>
+          <h3>Ticket de Venta</h3>
+          <div className="line"></div>
+          <p><strong>Fecha:</strong> {format(new Date(ticketToPrint.created_at), "dd/MM/yyyy HH:mm")}</p>
+          <p><strong>Tel:</strong> {ticketToPrint.customer_phone}</p>
+          <div className="line"></div>
+          <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'monospace', fontSize: '12px' }}>
+            {ticketToPrint.order_detail}
+          </pre>
+          <div className="line"></div>
+          <h3 style={{ textAlign: 'right' }}>
+            TOTAL: ${parseFloat(ticketToPrint.total_amount).toLocaleString()}
+          </h3>
+          <div className="line"></div>
+          <p style={{ textAlign: 'center', fontSize: '10px' }}>¡Gracias por tu compra!</p>
+        </div>
+      )}
     </div>
   )
 }

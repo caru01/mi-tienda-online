@@ -17,6 +17,12 @@ from datetime import datetime, timezone, timedelta
 
 import pytz
 
+from config.dynamic_settings import (
+    is_restaurant_open,
+    get_welcome_message,
+    get_off_hours_message,
+    get_backup_reply_message
+)
 from config.settings import settings
 from services.supabase_client import get_supabase
 from services.ycloud_client import send_text_message, send_button_message
@@ -33,25 +39,8 @@ ANTI_SPAM_HOURS = 2  # Horas mínimas entre mensajes automáticos del mismo tipo
 def is_business_hours() -> bool:
     """
     Verifica si la hora actual está dentro del horario comercial configurado.
-    Horario Distrito Burger: Miércoles a Domingo, 6:00 PM – 10:00 PM (Bogotá).
     """
-    tz = pytz.timezone(settings.timezone)
-    now = datetime.now(tz)
-
-    if now.weekday() not in settings.business_days_list:
-        return False
-
-    open_time = now.replace(
-        hour=settings.business_open_hour,
-        minute=settings.business_open_minute,
-        second=0, microsecond=0,
-    )
-    close_time = now.replace(
-        hour=settings.business_close_hour,
-        minute=settings.business_close_minute,
-        second=0, microsecond=0,
-    )
-    return open_time <= now < close_time
+    return is_restaurant_open()
 
 
 def is_greeting(text: str) -> bool:
@@ -136,7 +125,7 @@ async def handle_greeting(customer_phone: str, body: str) -> None:
     try:
         await send_button_message(
             to=customer_phone,
-            body_text=settings.welcome_message,
+            body_text=get_welcome_message(),
             buttons=[
                 {"id": "ver_combos", "title": "Ver Combos"}
             ]
@@ -148,7 +137,7 @@ async def handle_greeting(customer_phone: str, body: str) -> None:
         logger.error(f"Error al enviar bienvenida a {customer_phone}: {e}")
         # Fallback: enviar texto plano si los botones fallan
         try:
-            await send_text_message(customer_phone, settings.welcome_message)
+            await send_text_message(customer_phone, get_welcome_message())
             _log_auto_reply(customer_phone, reply_type)
         except Exception as e2:
             logger.error(f"Error en fallback de bienvenida: {e2}")
@@ -187,7 +176,7 @@ async def handle_off_hours(customer_phone: str) -> None:
         return
 
     try:
-        await send_text_message(customer_phone, settings.off_hours_message)
+        await send_text_message(customer_phone, get_off_hours_message())
         _log_auto_reply(customer_phone, reply_type)
         logger.info(f"Mensaje fuera de horario enviado a {customer_phone}")
     except Exception as e:
@@ -205,7 +194,7 @@ async def send_backup_reply(customer_phone: str) -> None:
         return
 
     try:
-        await send_text_message(customer_phone, settings.backup_reply_message)
+        await send_text_message(customer_phone, get_backup_reply_message())
         _log_auto_reply(customer_phone, reply_type)
         logger.info(f"Mensaje de respaldo enviado a {customer_phone}")
     except Exception as e:
