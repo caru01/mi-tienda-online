@@ -45,13 +45,12 @@ def is_business_hours() -> bool:
 
 def is_greeting(text: str) -> bool:
     """
-    Detecta si el mensaje es un saludo.
-    Compara el texto (normalizado) contra la lista de palabras clave.
+    Detecta si el mensaje contiene una palabra clave para iniciar el flujo.
     """
     normalized = text.lower().strip()
-    for keyword in settings.flow_trigger_keywords:  # usa flow_trigger_keywords (el correcto)
-        pattern = rf"^{re.escape(keyword)}\b"
-        if re.match(pattern, normalized):
+    for keyword in settings.flow_trigger_keywords:
+        pattern = rf"\b{re.escape(keyword)}\b"
+        if re.search(pattern, normalized):
             return True
     return False
 

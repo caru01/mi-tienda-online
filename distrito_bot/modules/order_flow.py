@@ -41,6 +41,7 @@ from config.dynamic_settings import (
 )
 from config.settings import settings
 from modules.inventory_manager import deduct_inventory_for_order
+from modules.auto_reply import is_greeting
 
 logger = logging.getLogger(__name__)
 
@@ -261,8 +262,9 @@ async def _finalize_sale(customer_phone: str, session: dict) -> bool:
 # ─────────────────────────────────────────────────────────────
 
 def should_start_flow(body: str) -> bool:
-    # AHORA CUALQUIER MENSAJE INICIA EL FLUJO
-    return True
+    # Solo inicia el flujo si el mensaje contiene una palabra clave de saludo/pedido
+    if not body: return False
+    return is_greeting(body)
 
 
 async def _detect_combo(body: str, i_type: str, i_id: str) -> str | None:
@@ -283,9 +285,20 @@ def _detect_qty(body: str, i_type: str, i_id: str) -> int | None:
     if i_type == "list_reply" and i_id in QTY_MAP:
         return QTY_MAP[i_id]
     if body:
-        m = re.search(r"\b([1-5])\b", body)
+        normalized = body.lower().strip()
+        word_map = {
+            "un": 1, "uno": 1, "una": 1,
+            "dos": 2, "tres": 3, "cuatro": 4, "cinco": 5,
+            "seis": 6, "siete": 7, "ocho": 8, "nueve": 9, "diez": 10
+        }
+        if normalized in word_map:
+            return word_map[normalized]
+        
+        m = re.search(r"\b(\d+)\b", body)
         if m:
-            return int(m.group(1))
+            qty = int(m.group(1))
+            if 1 <= qty <= 20: # Límite razonable
+                return qty
     return None
 
 
@@ -557,11 +570,11 @@ async def handle_customer_message(
 
         quiere_mas = (
             answer_id == "add_combo_si"
-            or body_low in ("si", "sí", "s", "otro", "agregar", "mas", "más")
+            or body_low in ("si", "sí", "s", "otro", "agregar", "mas", "más", "claro", "dale", "sip", "obvio", "por supuesto", "de una")
         )
         quiere_continuar = (
             answer_id == "add_combo_no"
-            or body_low in ("no", "n", "continuar", "listo", "ya")
+            or body_low in ("no", "n", "continuar", "listo", "ya", "nop", "nada")
         )
 
         if quiere_mas:
