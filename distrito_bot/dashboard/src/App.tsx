@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { LayoutDashboard, PackageSearch, ClipboardList, Utensils, TrendingUp } from 'lucide-react'
 
-const API_URL = 'http://localhost:8000/api/dashboard'
+const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
 function App() {
   const [activeTab, setActiveTab] = useState('sales')

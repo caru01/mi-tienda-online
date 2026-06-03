@@ -399,8 +399,9 @@ async def handle_customer_message(
         return
 
     # ── IDLE / FINALIZADO: iniciar flujo ──────────────────────
-    if state in ("idle", "order_complete"):
+    if state in ("idle", "order_complete", "en_camino"):
         if should_start_flow(body) or interactive_type:
+            await reset_session(customer_phone)
             await _send_welcome(customer_phone)
             await _update_session(customer_phone, {"state": "waiting_combo_selection"})
         return
