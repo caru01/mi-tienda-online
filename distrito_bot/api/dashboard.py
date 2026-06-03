@@ -42,25 +42,79 @@ async def get_dashboard_stats() -> Dict[str, Any]:
         "all_sales": all_sales_res.data or []
     }
 
-@router.post("/api/dashboard/inventory/purchase")
-async def add_inventory(payload: dict) -> Dict[str, Any]:
+@router.get("/api/dashboard/purchases")
+async def get_purchases() -> Dict[str, Any]:
     db = get_supabase()
-    item_id = payload.get("item_id")
+    try:
+        # We need the item name too, Supabase allows joins: purchases!inner(inventory_item_id), inventory_items(name)
+        res = db.table("purchases").select("*, inventory_items(name, unit_measure)").order("purchase_date", desc=True).limit(100).execute()
+        return {"status": "ok", "purchases": res.data or []}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.get("/api/dashboard/purchases/stats")
+async def get_purchases_stats() -> Dict[str, Any]:
+    db = get_supabase()
+    from datetime import datetime, timezone, timedelta
+    try:
+        # Get purchases from the last 30 days
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        res = db.table("purchases").select("*, inventory_items(name)").gte("purchase_date", cutoff).execute()
+        
+        purchases = res.data or []
+        total_invested = sum([float(p.get("total_price", 0)) for p in purchases])
+        
+        # Most bought item
+        item_totals = {}
+        for p in purchases:
+            item_name = p.get("inventory_items", {}).get("name", "Desconocido")
+            item_totals[item_name] = item_totals.get(item_name, 0) + float(p.get("total_price", 0))
+            
+        most_bought_item = max(item_totals.items(), key=lambda x: x[1]) if item_totals else ("Ninguno", 0)
+        
+        return {
+            "status": "ok",
+            "total_invested_30d": total_invested,
+            "most_bought_item": most_bought_item[0],
+            "most_bought_item_total": most_bought_item[1]
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/purchases")
+async def register_purchase(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    item_id = payload.get("inventory_item_id")
     quantity = payload.get("quantity", 0)
+    unit_price = payload.get("unit_price", 0)
+    total_price = payload.get("total_price", 0)
+    purchase_date = payload.get("purchase_date") # ISO format or None for now
     
-    if not item_id or quantity <= 0:
+    if not item_id or float(quantity) <= 0 or float(unit_price) < 0:
         return {"status": "error", "message": "Datos inválidos"}
         
     try:
-        # Registrar transacción positiva
+        data_to_insert = {
+            "inventory_item_id": item_id,
+            "quantity": quantity,
+            "unit_price": unit_price,
+            "total_price": total_price
+        }
+        if purchase_date:
+            data_to_insert["purchase_date"] = purchase_date
+            
+        # Registrar la compra financiera
+        db.table("purchases").insert(data_to_insert).execute()
+        
+        # Registrar la transacción de inventario por retrocompatibilidad
         db.table("inventory_transactions").insert({
             "inventory_item_id": item_id,
             "quantity_change": quantity,
             "reason": "compra",
-            "reference_id": "dashboard"
+            "reference_id": "erp_dashboard"
         }).execute()
         
-        # Actualizar stock
+        # Actualizar stock actual
         item = db.table("inventory_items").select("current_stock").eq("id", item_id).single().execute()
         new_stock = float(item.data["current_stock"]) + float(quantity)
         

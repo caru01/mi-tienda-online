@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import ConfigurationTab from './components/ConfigurationTab'
 import ReportsTab from './components/ReportsTab'
+import InventoryTab from './components/InventoryTab'
 import OrderHistoryTab from './components/OrderHistoryTab'
 import SchedulesTab from './components/SchedulesTab'
 import RecipeTab from './components/RecipeTab'
@@ -26,9 +27,6 @@ function App() {
   
   const [showAddProduct, setShowAddProduct] = useState(false)
   const [newProduct, setNewProduct] = useState({ name: '', description: '', emoji: '', price: '', category: 'Combos' })
-  
-  const [showAddInventory, setShowAddInventory] = useState(false)
-  const [newInventory, setNewInventory] = useState({ name: '', unit_measure: '', current_stock: '', minimum_stock: '' })
   
   const lastSaleIdRef = useRef<string | null>(null)
 
@@ -72,18 +70,6 @@ function App() {
     }, 500)
   }
 
-  const handlePurchase = async (item_id: number) => {
-    const qty = prompt("Cantidad comprada:")
-    if (!qty) return
-    
-    await fetch(`${API_URL}/inventory/purchase`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item_id, quantity: parseFloat(qty) })
-    })
-    fetchDashboardData()
-  }
-  
   const toggleProduct = async (product_id: string, currentStatus: boolean) => {
     await fetch(`${API_URL}/products/toggle`, {
       method: 'POST',
@@ -109,35 +95,6 @@ function App() {
     fetchDashboardData()
   }
 
-  const handleAddInventory = async () => {
-    if (!newInventory.name) return
-    await fetch(`${API_URL}/inventory/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...newInventory,
-        current_stock: parseFloat(newInventory.current_stock || '0'),
-        minimum_stock: parseFloat(newInventory.minimum_stock || '0')
-      })
-    })
-    setShowAddInventory(false)
-    setNewInventory({ name: '', unit_measure: '', current_stock: '', minimum_stock: '' })
-    fetchDashboardData()
-  }
-
-  const handleUpdateInventoryStock = async (id: number, current_stock: number) => {
-    const newStockStr = prompt("Nuevo inventario actual:", current_stock.toString())
-    if (newStockStr === null) return
-    const newStock = parseFloat(newStockStr)
-    if (isNaN(newStock)) return
-
-    await fetch(`${API_URL}/inventory/update`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, current_stock: newStock })
-    })
-    fetchDashboardData()
-  }
   return (
     <div className="min-h-screen bg-distrito-dark text-distrito-text font-sans">
       {/* Sidebar — oculto en móvil, visible en desktop */}
@@ -234,75 +191,7 @@ function App() {
           {activeTab === 'sales' ? (
             <OrdersTab data={data} onRefresh={fetchDashboardData} />
             ) : activeTab === 'inventory' ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-3xl font-bold">Inventario de Insumos</h2>
-                  <button 
-                    onClick={() => setShowAddInventory(true)}
-                    className="bg-distrito-accent text-distrito-dark px-4 py-2 rounded-lg font-bold"
-                  >
-                    + Nuevo Insumo
-                  </button>
-                </div>
-                
-                {showAddInventory && (
-                  <div className="glass p-6 rounded-2xl border border-distrito-accent/50 shadow-[0_0_15px_rgba(255,204,0,0.3)]">
-                    <h3 className="text-xl font-bold mb-4">Agregar Nuevo Insumo</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                      <input placeholder="Nombre" className="bg-black/20 rounded p-2 text-white border border-white/10"
-                        value={newInventory.name} onChange={e => setNewInventory({...newInventory, name: e.target.value})} />
-                      <input placeholder="Unidad (kg, und...)" className="bg-black/20 rounded p-2 text-white border border-white/10"
-                        value={newInventory.unit_measure} onChange={e => setNewInventory({...newInventory, unit_measure: e.target.value})} />
-                      <input placeholder="Stock Actual" type="number" className="bg-black/20 rounded p-2 text-white border border-white/10"
-                        value={newInventory.current_stock} onChange={e => setNewInventory({...newInventory, current_stock: e.target.value})} />
-                      <input placeholder="Stock Mínimo" type="number" className="bg-black/20 rounded p-2 text-white border border-white/10"
-                        value={newInventory.minimum_stock} onChange={e => setNewInventory({...newInventory, minimum_stock: e.target.value})} />
-                    </div>
-                    <div className="flex justify-end space-x-2">
-                      <button onClick={() => setShowAddInventory(false)} className="px-4 py-2 text-gray-400 hover:text-white">Cancelar</button>
-                      <button onClick={handleAddInventory} className="bg-distrito-accent text-distrito-dark px-4 py-2 rounded font-bold">Guardar</button>
-                    </div>
-                  </div>
-                )}
-              
-              <div className="glass p-6 rounded-2xl">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-white/10 text-gray-400">
-                      <th className="pb-3 font-medium">Insumo</th>
-                      <th className="pb-3 font-medium">Stock Actual</th>
-                      <th className="pb-3 font-medium text-right">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.inventory.map((item: any) => (
-                      <tr key={item.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                        <td className="py-4 font-medium">{item.name}</td>
-                        <td className="py-4">
-                          <span className={`px-2 py-1 rounded text-sm ${item.current_stock < 20 ? 'bg-red-500/20 text-red-400' : 'text-gray-300'}`}>
-                            {item.current_stock} {item.unit}
-                          </span>
-                        </td>
-                          <td className="py-4 text-right">
-                            <button 
-                              onClick={() => handleUpdateInventoryStock(item.id, item.current_stock)}
-                              className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded text-sm transition-colors mr-2"
-                            >
-                              Editar
-                            </button>
-                            <button 
-                              onClick={() => handlePurchase(item.id)}
-                              className="px-3 py-1 bg-distrito-accent/20 text-distrito-accent hover:bg-distrito-accent/30 rounded text-sm transition-colors font-medium"
-                            >
-                              + Compra
-                            </button>
-                          </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              <InventoryTab />
             ) : activeTab === 'catalog' ? (
               <div className="glass rounded-2xl p-8 border border-white/10 shadow-2xl">
                 <div className="flex justify-between items-center mb-6">
