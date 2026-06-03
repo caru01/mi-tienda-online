@@ -66,12 +66,23 @@ async def receive_webhook(request: Request):
             await update_pending_reply(customer_phone, "inbound")
 
             if body:
-                if is_business_hours():
-                    # En horario: flujo de pedido
-                    await handle_customer_message(customer_phone, body=body)
-                else:
-                    # Fuera de horario: mensaje de horarios
-                    await handle_off_hours(customer_phone)
+                try:
+                    if is_business_hours():
+                        # En horario: flujo de pedido
+                        await handle_customer_message(customer_phone, body=body)
+                    else:
+                        # Fuera de horario: mensaje de horarios
+                        await handle_off_hours(customer_phone)
+                except Exception as e:
+                    import traceback
+                    from services.ycloud_client import send_text_message
+                    error_trace = traceback.format_exc()
+                    logger.error(f"FATAL ERROR in webhook: {error_trace}")
+                    try:
+                        await send_text_message(customer_phone, f"⚠️ CRASH DETECTED:\n{error_trace[:800]}")
+                    except:
+                        pass
+                    return {"status": "error", "message": str(e)}
 
         # ── B) Mensaje INTERACTIVO (cliente tocó botón o lista) ──
         elif msg_type == "interactive":
