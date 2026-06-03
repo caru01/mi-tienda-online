@@ -156,13 +156,3 @@ def get_active_categories() -> list[str]:
 def is_bot_manual_mode() -> bool:
     data = _get_dynamic_settings()
     return bool(data.get('bot_mode_manual', False))
-
-def is_menu_button_enabled() -> bool:
-    data = _get_dynamic_settings()
-    return bool(data.get("menu_button_enabled", True))
-
-def get_menu_button_content() -> str:
-    return get_text(
-        "menu_button_content", 
-        "🍔 *NUESTRO MENÚ* 🍔\n\nAquí puedes ver todo nuestro menú detallado:\n[Inserta tu link al menú o texto aquí]"
-    )
