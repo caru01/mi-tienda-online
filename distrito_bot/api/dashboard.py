@@ -22,13 +22,17 @@ async def get_dashboard_stats() -> Dict[str, Any]:
     # Obtener catálogo
     products = db.table("products").select("*").execute()
 
+    # Obtener ordenes activas
+    active_sales_res = db.table("sales").select("*").neq("status", "entregado").order("created_at", desc=True).execute()
+
     return {
         "status": "ok",
         "total_revenue": total_revenue,
         "total_orders": total_orders,
         "inventory": inventory.data or [],
         "products": products.data or [],
-        "recent_sales": sales.data[-5:] if sales.data else []
+        "active_sales": active_sales_res.data or [],
+        "all_sales": sales.data or []
     }
 
 @router.post("/api/dashboard/inventory/purchase")
@@ -130,6 +134,26 @@ async def update_inventory_item(payload: dict) -> Dict[str, Any]:
     current_stock = payload.get("current_stock")
     try:
         res = db.table("inventory_items").update({"current_stock": current_stock}).eq("id", item_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/orders/status")
+async def update_order_status(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    order_id = payload.get("id")
+    new_status = payload.get("status")
+    customer_phone = payload.get("customer_phone")
+    
+    try:
+        db.table("sales").update({"status": new_status}).eq("id", order_id).execute()
+        
+        # Enviar WhatsApp si el estado es 'en_camino'
+        if new_status == "en_camino" and customer_phone:
+            from services.ycloud_client import send_text_message
+            msg = "¡Tu pedido acaba de salir! Nuestro domiciliario va en camino 🛵"
+            await send_text_message(customer_phone, msg)
+            
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}

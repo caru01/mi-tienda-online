@@ -34,6 +34,7 @@ from config.dynamic_settings import (
     get_active_categories
 )
 from config.settings import settings
+from modules.inventory_manager import deduct_inventory_for_order
 
 logger = logging.getLogger(__name__)
 
@@ -161,13 +162,15 @@ async def reset_session(customer_phone: str) -> None:
     })
 
 
-async def _save_customer(customer_phone: str, session: dict) -> None:
-    """Guarda/actualiza el contacto en la tabla customers."""
+async def _save_customer(customer_phone: str, session: dict) -> bool:
+    """Guarda/actualiza el contacto en la tabla customers y retorna True si es cliente VIP (ej. 5to pedido)."""
     db = get_supabase()
     name   = session.get("customer_name") or ""
     barrio = session.get("delivery_barrio") or ""
     label  = f"{name} - {barrio} - Distrito Burger" if name else customer_phone
     now    = datetime.now(timezone.utc).isoformat()
+    is_vip = False
+    
     try:
         existing = (
             db.table("customers")
@@ -178,6 +181,9 @@ async def _save_customer(customer_phone: str, session: dict) -> None:
         )
         if existing.data:
             total = (existing.data[0].get("total_orders") or 0) + 1
+            if total > 0 and total % 5 == 0:
+                is_vip = True
+                
             db.table("customers").update({
                 "customer_name":    name,
                 "delivery_address": session.get("delivery_address"),
@@ -193,10 +199,47 @@ async def _save_customer(customer_phone: str, session: dict) -> None:
                 "delivery_address": session.get("delivery_address"),
                 "delivery_barrio":  barrio,
                 "whatsapp_label":   label,
+                "total_orders":     1,
             }).execute()
         logger.info(f"Cliente guardado: {label}")
     except Exception as e:
         logger.error(f"Error guardando cliente {customer_phone}: {e}")
+        
+    return is_vip
+
+async def _finalize_sale(customer_phone: str, session: dict) -> bool:
+    """Inserta la venta en BD, descuenta inventario y verifica fidelidad."""
+    db = get_supabase()
+    is_vip = await _save_customer(customer_phone, session)
+    
+    try:
+        # 1. Registrar Venta
+        db.table("sales").insert({
+            "customer_phone": customer_phone,
+            "order_detail": session.get("order_items_text", ""),
+            "total_amount": session.get("order_total", 0),
+            "customer_name": session.get("customer_name", ""),
+            "payment_method": session.get("payment_method", ""),
+            "delivery_type": session.get("delivery_type", ""),
+            "delivery_barrio": session.get("delivery_barrio", ""),
+            "status": "preparando"
+        }).execute()
+
+        # 2. Descontar Inventario
+        items_text = session.get("order_items_text", "")
+        for line in items_text.split('\n'):
+            match = re.search(r"(\d+)x\s+(.+?)\s+—", line)
+            if match:
+                qty = int(match.group(1))
+                c_name = match.group(2).strip()
+                prod_res = db.table("products").select("id").eq("name", c_name).execute()
+                if prod_res.data:
+                    c_id = prod_res.data[0]["id"]
+                    await deduct_inventory_for_order(c_id, qty, customer_phone)
+    except Exception as e:
+        logger.error(f"Error finalizando venta para {customer_phone}: {e}")
+        
+    return is_vip
 
 
 # ─────────────────────────────────────────────────────────────
@@ -646,10 +689,13 @@ async def handle_customer_message(
 
         if payment == "efectivo":
             await _update_session(customer_phone, {"state": "order_complete", "payment_method": "efectivo"})
-            await _save_customer(customer_phone, session)
+            session["payment_method"] = "efectivo"
+            is_vip = await _finalize_sale(customer_phone, session)
             
             # Notificar a cocina (el ticket)
             updated_session = await _get_session(customer_phone)
+            if is_vip:
+                updated_session["observations"] = (updated_session.get("observations") or "") + " ⭐ CLIENTE VIP (OBSEQUIO) ⭐"
             await send_kitchen_ticket(updated_session, customer_phone)
             
             delivery = session.get("delivery_type", "")
@@ -665,28 +711,38 @@ async def handle_customer_message(
                     "Pronto preparamos tu orden y te avisamos. ⏳\n\n"
                     "*Gracias por elegir Distrito Burger!* 🔥"
                 )
+                
+            if is_vip:
+                msg += "\n\n🎁 *¡Sorpresa!* Vemos que eres un cliente frecuente. Hoy hemos incluido un *obsequio especial* en tu pedido por tu fidelidad. ¡Disfrútalo!"
+                
             await send_text_message(customer_phone, msg)
+            return True
 
         elif payment == "transferencia":
             await _update_session(customer_phone, {"state": "order_complete", "payment_method": "transferencia"})
-            await _save_customer(customer_phone, session)
+            session["payment_method"] = "transferencia"
+            is_vip = await _finalize_sale(customer_phone, session)
             
             # Notificar a cocina (el ticket)
             updated_session = await _get_session(customer_phone)
+            if is_vip:
+                updated_session["observations"] = (updated_session.get("observations") or "") + " ⭐ CLIENTE VIP (OBSEQUIO) ⭐"
             await send_kitchen_ticket(updated_session, customer_phone)
             
             await send_text_message(customer_phone, get_payment_transfer_text())
-            await send_text_message(
-                customer_phone,
-                "Envianos el *comprobante de pago* y confirmamos tu pedido de inmediato. 📸✅\n\n"
-                "*Gracias por elegir Distrito Burger!* 🔥"
-            )
+            
+            msg = "Envianos el *comprobante de pago* y confirmamos tu pedido de inmediato. 📸✅\n\n*Gracias por elegir Distrito Burger!* 🔥"
+            if is_vip:
+                msg += "\n\n🎁 *¡Sorpresa!* Vemos que eres un cliente frecuente. Hoy hemos incluido un *obsequio especial* en tu pedido por tu fidelidad. ¡Disfrútalo!"
+                
+            await send_text_message(customer_phone, msg)
+            return True
         else:
             await _send_payment_buttons(
                 customer_phone,
                 _build_summary(session, customer_phone)
             )
-        return
+        return True
 
     # ── Estado desconocido ────────────────────────────────────
     logger.warning(f"Estado desconocido '{state}' para {customer_phone}")

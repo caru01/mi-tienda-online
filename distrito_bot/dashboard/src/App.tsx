@@ -3,6 +3,7 @@ import { LayoutDashboard, PackageSearch, ClipboardList, Utensils, TrendingUp, Se
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import ConfigurationTab from './components/ConfigurationTab'
+import ReportsTab from './components/ReportsTab'
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
@@ -13,7 +14,8 @@ function App() {
     total_orders: 0,
     inventory: [],
     products: [],
-    recent_sales: []
+    active_sales: [],
+    all_sales: []
   })
   const [ticketToPrint, setTicketToPrint] = useState<any>(null)
   
@@ -30,15 +32,15 @@ function App() {
       const res = await fetch(`${API_URL}/stats`)
       const json = await res.json()
       
-      if (isPolling && json.recent_sales && json.recent_sales.length > 0) {
-        const latestSaleId = json.recent_sales[0].id
+      if (isPolling && json.active_sales && json.active_sales.length > 0) {
+        const latestSaleId = json.active_sales[0].id
         if (lastSaleIdRef.current && lastSaleIdRef.current !== latestSaleId) {
           const audio = new Audio('/distrito/assets/bell.mp3')
           audio.play().catch(() => console.log('Auto-play blocked by browser'))
         }
         lastSaleIdRef.current = latestSaleId
-      } else if (!isPolling && json.recent_sales && json.recent_sales.length > 0) {
-        lastSaleIdRef.current = json.recent_sales[0].id
+      } else if (!isPolling && json.active_sales && json.active_sales.length > 0) {
+        lastSaleIdRef.current = json.active_sales[0].id
       }
       
       if (json.status === 'ok') {
@@ -132,23 +134,33 @@ function App() {
     fetchDashboardData()
   }
 
+  const handleOrderStatus = async (id: string, status: string, customer_phone: string) => {
+    await fetch(`${API_URL}/orders/status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status, customer_phone })
+    })
+    fetchDashboardData()
+  }
+
   return (
     <div className="min-h-screen bg-distrito-dark text-distrito-text font-sans">
       {/* Sidebar */}
       <aside className="fixed left-0 top-0 w-64 h-full glass border-r border-white/10 p-6 z-10">
         <div className="flex items-center gap-3 mb-10">
           <Utensils className="text-distrito-accent w-8 h-8" />
-          <h1 className="text-xl font-bold tracking-tight">Distrito Burger</h1>
-        </div>
-        
-        <nav className="flex flex-col gap-2">
-          <button 
-            onClick={() => setActiveTab('sales')}
-            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'sales' ? 'bg-distrito-accent text-black font-semibold' : 'hover:bg-white/5'}`}
-          >
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </button>
+          <h1 className="text-2xl font-black tracking-tighter mb-12">
+            DISTRITO<span className="text-distrito-accent">.</span>BOT
+          </h1>
+          <nav className="space-y-4">
+            <button onClick={() => setActiveTab('sales')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'sales' ? 'bg-distrito-accent text-distrito-dark font-bold shadow-[0_0_15px_rgba(255,204,0,0.4)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+              <LayoutDashboard size={20} />
+              <span>Ventas Activas</span>
+            </button>
+            <button onClick={() => setActiveTab('reports')} className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'reports' ? 'bg-distrito-accent text-distrito-dark font-bold shadow-[0_0_15px_rgba(255,204,0,0.4)]' : 'text-gray-400 hover:bg-white/5 hover:text-white'}`}>
+              <TrendingUp size={20} />
+              <span>Reportes (BI)</span>
+            </button>
           
           <button 
             onClick={() => setActiveTab('catalog')}
@@ -187,69 +199,71 @@ function App() {
         
         <div className="relative z-10 max-w-6xl mx-auto">
           {activeTab === 'sales' ? (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-              <h2 className="text-3xl font-bold">Resumen de Ventas</h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="glass p-6 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 font-medium mb-1">Ingresos Totales</p>
-                    <h3 className="text-4xl font-bold text-distrito-accent">${data.total_revenue.toLocaleString()}</h3>
-                  </div>
-                  <div className="w-14 h-14 rounded-full bg-distrito-accent/20 flex items-center justify-center">
-                    <TrendingUp className="w-7 h-7 text-distrito-accent" />
-                  </div>
-                </div>
-                
-                <div className="glass p-6 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-400 font-medium mb-1">Pedidos Completados</p>
-                    <h3 className="text-4xl font-bold">{data.total_orders}</h3>
-                  </div>
-                  <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center">
-                    <ClipboardList className="w-7 h-7 text-white" />
-                  </div>
-                </div>
-              </div>
-
-              <div className="glass p-6 rounded-2xl mt-8">
-                <h3 className="text-xl font-bold mb-6 text-distrito-accent flex items-center space-x-2">
-                  <ClipboardList className="w-6 h-6" />
-                  <span>Últimos Pedidos</span>
-                </h3>
-                <div className="space-y-4">
-                  {data.recent_sales.map((sale: any) => (
-                    <div key={sale.id} className="p-4 bg-distrito-dark/50 rounded-xl border border-white/5 hover:border-distrito-accent/30 transition-colors flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center space-x-3 mb-2">
-                          <span className="text-sm text-gray-400 font-mono">
-                            {format(new Date(sale.created_at), "dd MMM HH:mm", { locale: es })}
-                          </span>
-                          <span className="bg-distrito-accent/20 text-distrito-accent text-xs px-2 py-1 rounded-full font-bold">
-                            COMPLETADO
-                          </span>
+              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <h2 className="text-3xl font-bold">Ventas Activas</h2>
+                <div className="grid gap-6">
+                  {data.active_sales.length === 0 && (
+                    <div className="text-center py-12 text-gray-500 glass rounded-2xl">
+                      No hay pedidos activos en este momento.
+                    </div>
+                  )}
+                  {data.active_sales.map((sale: any) => (
+                    <div key={sale.id} className="glass rounded-2xl p-6 border border-white/5 hover:border-distrito-accent/30 transition-colors">
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <p className="text-sm text-distrito-accent font-bold mb-1">
+                            {format(new Date(sale.created_at), "h:mm a - d 'de' MMMM", { locale: es })}
+                          </p>
+                          <p className="font-bold text-xl">{sale.customer_name || 'Sin nombre'} <span className="text-gray-400 text-base font-normal">({sale.customer_phone})</span></p>
+                          <p className="text-gray-400 mt-1 capitalize">
+                            {sale.delivery_type} {sale.delivery_barrio ? `- ${sale.delivery_barrio}` : ''}
+                          </p>
+                          <p className="text-sm font-semibold mt-1 bg-white/10 inline-block px-2 py-0.5 rounded">
+                            {sale.payment_method?.toUpperCase()}
+                          </p>
                         </div>
-                        <p className="text-white font-medium mb-1">Cliente: {sale.customer_phone}</p>
-                        <p className="text-sm text-gray-300 whitespace-pre-wrap">{sale.order_detail}</p>
+                        <div className="text-right">
+                          <p className="text-3xl font-black text-distrito-accent">
+                            ${Number(sale.total_amount).toLocaleString()}
+                          </p>
+                          <button 
+                            onClick={() => handlePrint(sale)}
+                            className="mt-2 text-sm flex items-center space-x-1 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded transition-colors"
+                          >
+                            <Printer size={14} />
+                            <span>Imprimir</span>
+                          </button>
+                        </div>
                       </div>
-                      <div className="text-right flex flex-col items-end">
-                        <p className="text-xl font-bold text-distrito-accent mb-3">
-                          ${parseFloat(sale.total_amount).toLocaleString()}
-                        </p>
-                        <button
-                          onClick={() => handlePrint(sale)}
-                          className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg text-sm transition-colors"
+                      <div className="bg-black/30 rounded-xl p-4 font-mono text-sm whitespace-pre-wrap text-gray-300">
+                        {sale.order_detail}
+                      </div>
+                      <div className="mt-4 flex space-x-2 border-t border-white/10 pt-4">
+                        <span className="text-xs text-gray-500 self-center mr-2">Estado:</span>
+                        <button 
+                          onClick={() => handleOrderStatus(sale.id, 'preparando', sale.customer_phone)}
+                          className={`px-3 py-1.5 rounded text-sm font-bold transition-all ${sale.status === 'preparando' ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
                         >
-                          <Printer className="w-4 h-4" />
-                          <span>Imprimir</span>
+                          Preparando
+                        </button>
+                        <button 
+                          onClick={() => handleOrderStatus(sale.id, 'en_camino', sale.customer_phone)}
+                          className={`px-3 py-1.5 rounded text-sm font-bold transition-all ${sale.status === 'en_camino' ? 'bg-blue-500/20 text-blue-500 border border-blue-500/50' : 'bg-white/5 text-gray-400 hover:bg-white/10'}`}
+                        >
+                          En Camino (Notificar)
+                        </button>
+                        <button 
+                          onClick={() => handleOrderStatus(sale.id, 'entregado', sale.customer_phone)}
+                          className="px-3 py-1.5 rounded text-sm font-bold bg-green-500/10 text-green-500 hover:bg-green-500/20 transition-all ml-auto"
+                        >
+                          ✓ Marcar Entregado
                         </button>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
-            </div>
-          ) : activeTab === 'inventory' ? (
+            ) : activeTab === 'inventory' ? (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="flex justify-between items-center">
                   <h2 className="text-3xl font-bold">Inventario de Insumos</h2>
@@ -380,10 +394,11 @@ function App() {
                   ))}
                 </div>
               </div>
+            ) : activeTab === 'reports' ? (
+              <ReportsTab data={data} />
             ) : activeTab === 'settings' ? (
               <ConfigurationTab />
-            ) : null
-          }
+            ) : null}
         </div>
       </main>
 
