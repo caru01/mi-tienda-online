@@ -1,4 +1,4 @@
-import React from 'react'
+
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { format, parseISO, subDays } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -82,7 +82,7 @@ export default function ReportsTab({ data }: Props) {
               <YAxis stroke="#888" tickFormatter={(val) => `$${val/1000}k`} />
               <Tooltip 
                 contentStyle={{ backgroundColor: '#111', border: '1px solid #FFCC00', borderRadius: '8px' }}
-                formatter={(value: number) => [`$${value.toLocaleString()}`, 'Total']}
+                formatter={(value: any) => [`$${Number(value).toLocaleString()}`, 'Total']}
               />
               <Line type="monotone" dataKey="Total" stroke="#FFCC00" strokeWidth={3} dot={{ r: 6, fill: '#FFCC00' }} activeDot={{ r: 8 }} />
             </LineChart>
