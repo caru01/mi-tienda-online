@@ -46,13 +46,25 @@ async def process_sale(customer_phone: str, message_body: str) -> None:
             
         session = session_res.data[0]
         
+        # Validar que haya datos reales antes de insertar
+        order_detail = session.get("order_items_text", "").strip()
+        order_total = session.get("order_total", 0)
+        customer_name = session.get("customer_name", "").strip()
+        
+        if not order_detail or not order_total or order_total <= 0:
+            logger.warning(
+                f"⚠️ Sesión incompleta para {customer_phone}: "
+                f"order_detail='{order_detail}', total={order_total}. Venta NO registrada."
+            )
+            return
+        
         # Insertar venta en BD
         db.table("sales").insert({
             "customer_phone": customer_phone,
-            "order_detail": session.get("order_items_text", ""),
-            "total_amount": session.get("order_total", 0),
+            "order_detail": order_detail,
+            "total_amount": order_total,
             "combo_quantity": session.get("combo_quantity", 0),
-            "customer_name": session.get("customer_name", ""),
+            "customer_name": customer_name,
             "payment_method": session.get("payment_method", ""),
             "delivery_type": session.get("delivery_type", ""),
             "delivery_barrio": session.get("delivery_barrio", ""),

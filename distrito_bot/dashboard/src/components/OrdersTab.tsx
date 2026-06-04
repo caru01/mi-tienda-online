@@ -11,6 +11,9 @@ const TABS = [
   { key: 'por_entregar',  label: 'ENTREGAR',  color: 'green',  statuses: ['por_entregar', 'en_camino'] },
 ]
 
+// Filter out corrupt orders that have no real data
+const isValidOrder = (s: any) => !!s && !!s.id && !!s.customer_phone
+
 const TAB_COLORS: Record<string, string> = {
   yellow: 'text-yellow-400 border-yellow-400 bg-yellow-400',
   blue:   'text-blue-400   border-blue-400   bg-blue-400',
@@ -69,10 +72,10 @@ export default function OrdersTab({ data, onRefresh }: { data: any, onRefresh: (
   }
 
   const currentTab = TABS.find(t => t.key === activeKanban)!
-  const filtered = data.active_sales.filter((s: any) => currentTab.statuses.includes(s.status))
+  const filtered = data.active_sales.filter((s: any) => isValidOrder(s) && currentTab.statuses.includes(s.status))
 
   const countFor = (tab: typeof TABS[0]) =>
-    data.active_sales.filter((s: any) => tab.statuses.includes(s.status)).length
+    data.active_sales.filter((s: any) => isValidOrder(s) && tab.statuses.includes(s.status)).length
 
   return (
     <div className="flex flex-col h-full animate-in fade-in duration-300">
@@ -152,7 +155,10 @@ function OrderCard({ sale, tab, loading, onStatus, onPrint }: {
   onStatus: (id: string, status: string, phone: string) => void
   onPrint: (sale: any) => void
 }) {
-  const timeAgo = format(new Date(sale.created_at), "h:mm a", { locale: es })
+  // Safely parse the date, fallback to now if invalid
+  const safeDate = sale.created_at ? new Date(sale.created_at) : new Date()
+  const isValidDate = !isNaN(safeDate.getTime())
+  const timeAgo = isValidDate ? format(safeDate, "h:mm a", { locale: es }) : '--:--'
   const isTransfer = sale.payment_method === 'transferencia'
 
   return (

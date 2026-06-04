@@ -12,6 +12,9 @@ interface Props {
 }
 
 export default function ReportsTab({ data }: Props) {
+  // Filter out corrupt entries
+  const cleanSales = (data.all_sales || []).filter((s: any) => !!s && !!s.created_at)
+
   // Procesar ventas de los últimos 7 días
   const last7Days = Array.from({ length: 7 }).map((_, i) => {
     const d = subDays(new Date(), 6 - i)
@@ -19,24 +22,24 @@ export default function ReportsTab({ data }: Props) {
   })
 
   const salesByDay = last7Days.map(dayStr => {
-    const daySales = data.all_sales.filter(s => s.created_at.startsWith(dayStr))
-    const total = daySales.reduce((acc, s) => acc + Number(s.total_amount || 0), 0)
+    const daySales = cleanSales.filter((s: any) => s.created_at.startsWith(dayStr))
+    const total = daySales.reduce((acc: number, s: any) => acc + Number(s.total_amount || 0), 0)
     return {
       name: format(parseISO(dayStr), 'EEEE', { locale: es }),
       Total: total
     }
   })
 
-  const nequiTotal = data.all_sales
-    .filter(s => s.payment_method === 'transferencia')
-    .reduce((acc, s) => acc + Number(s.total_amount || 0), 0)
+  const nequiTotal = cleanSales
+    .filter((s: any) => s.payment_method === 'transferencia')
+    .reduce((acc: number, s: any) => acc + Number(s.total_amount || 0), 0)
 
-  const cashTotal = data.all_sales
-    .filter(s => s.payment_method === 'efectivo')
-    .reduce((acc, s) => acc + Number(s.total_amount || 0), 0)
+  const cashTotal = cleanSales
+    .filter((s: any) => s.payment_method === 'efectivo')
+    .reduce((acc: number, s: any) => acc + Number(s.total_amount || 0), 0)
 
-  const deliveryCount = data.all_sales.filter(s => s.delivery_type === 'domicilio').length
-  const pickupCount = data.all_sales.filter(s => s.delivery_type === 'recoger').length
+  const deliveryCount = cleanSales.filter((s: any) => s.delivery_type === 'domicilio').length
+  const pickupCount = cleanSales.filter((s: any) => s.delivery_type === 'recoger').length
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
