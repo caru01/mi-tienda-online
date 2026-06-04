@@ -171,6 +171,15 @@ async def save_settings(payload: dict) -> Dict[str, Any]:
         if "id" in payload:
             del payload["id"]
         
+        # ── PROTECCIÓN CRÍTICA: No sobrescribir credenciales vacías ──
+        # Si el usuario guarda estos campos en blanco, NO los pisamos
+        # (así evitamos borrar las credenciales reales por error en el UI)
+        PROTECTED_IF_EMPTY = ["ycloud_api_key", "whatsapp_phone_id", "whatsapp_token"]
+        for field in PROTECTED_IF_EMPTY:
+            val = payload.get(field, None)
+            if val is not None and str(val).strip() == "":
+                del payload[field]
+                
         db.table("bot_settings").update(payload).eq("id", 1).execute()
         
         # Invalidate cache locally
