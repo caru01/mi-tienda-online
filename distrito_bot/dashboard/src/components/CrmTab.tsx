@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Users, Megaphone, Send, Clock, Star, Save, MessageSquareText } from 'lucide-react'
+import { Users, Megaphone, Send, Clock, Star, Save, MessageSquareText, Search, UploadCloud, MessageCircle } from 'lucide-react'
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
@@ -7,6 +7,7 @@ export default function CrmTab() {
   const [customers, setCustomers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
   const [messagesSentToday, setMessagesSentToday] = useState(0)
   const DAILY_LIMIT = 1000 // Límite YCloud / Meta Tier 1 usual
   
@@ -20,6 +21,7 @@ export default function CrmTab() {
   const [campaignName, setCampaignName] = useState('')
   const [messageBody, setMessageBody] = useState('')
   const [imageUrl, setImageUrl] = useState('')
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [intervalSecs, setIntervalSecs] = useState(2.0)
   const [sendingBroadcast, setSendingBroadcast] = useState(false)
 
@@ -40,16 +42,54 @@ export default function CrmTab() {
 
   // Filtrado
   const filteredCustomers = customers.filter(c => {
-    if (filter === 'all') return true
-    if (filter === 'vip') return c.total_orders >= 5
-    if (filter === 'new') return c.total_orders === 1
+    // Filtro por botones
+    let matchesFilter = true
+    if (filter === 'vip') matchesFilter = c.total_orders >= 5
+    if (filter === 'new') matchesFilter = c.total_orders === 1
     if (filter === 'dormant') {
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      return new Date(c.last_order_at) < thirtyDaysAgo
+      matchesFilter = new Date(c.last_order_at) < thirtyDaysAgo
     }
-    return true
+    
+    // Filtro por búsqueda de texto
+    let matchesSearch = true
+    if (searchTerm.trim() !== '') {
+      const term = searchTerm.toLowerCase()
+      const name = (c.customer_name || '').toLowerCase()
+      const phone = (c.customer_phone || '').toLowerCase()
+      const barrio = (c.delivery_barrio || '').toLowerCase()
+      matchesSearch = name.includes(term) || phone.includes(term) || barrio.includes(term)
+    }
+
+    return matchesFilter && matchesSearch
   })
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    setUploadingImage(true)
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    try {
+      const res = await fetch(`${API_URL}/crm/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      const data = await res.json()
+      if (data.status === 'success') {
+        setImageUrl(data.url)
+      } else {
+        alert('Error subiendo imagen: ' + data.message)
+      }
+    } catch (error) {
+      alert('Error de red al subir la imagen')
+    } finally {
+      setUploadingImage(false)
+    }
+  }
 
   const handleSaveNotes = async () => {
     if (!selectedCustomer) return
@@ -142,12 +182,32 @@ export default function CrmTab() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-400 mb-1">URL de Imagen (Opcional)</label>
-              <input 
-                value={imageUrl} onChange={e => setImageUrl(e.target.value)}
-                placeholder="https://tudominio.com/promo.jpg" 
-                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white" 
-              />
+              <label className="block text-xs text-gray-400 mb-1">Imagen de la Campaña (Opcional)</label>
+              {imageUrl ? (
+                <div className="relative border border-white/10 rounded-xl overflow-hidden bg-black/40 p-2">
+                  <img src={imageUrl} alt="Campaña" className="w-full h-24 object-cover rounded-lg" />
+                  <button 
+                    onClick={() => setImageUrl('')}
+                    className="absolute top-3 right-3 bg-red-500 text-white text-xs px-2 py-1 rounded-full font-bold shadow-lg"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              ) : (
+                <div className="w-full bg-black/40 border border-white/10 border-dashed rounded-xl p-3 text-center transition-all hover:bg-white/5 relative">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageUpload}
+                    disabled={uploadingImage}
+                    className="absolute inset-0 opacity-0 cursor-pointer disabled:cursor-not-allowed" 
+                  />
+                  <div className="flex flex-col items-center justify-center text-gray-400 py-2">
+                    <UploadCloud size={24} className="mb-1" />
+                    <span className="text-sm font-bold">{uploadingImage ? 'Subiendo...' : 'Seleccionar Imagen'}</span>
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">Intervalo de Envío (Segundos)</label>
@@ -195,24 +255,41 @@ export default function CrmTab() {
         </div>
       )}
 
-      {/* Panel de Filtros Rapidos */}
-      <div className="flex overflow-x-auto gap-2 pb-2">
-        {[
-          { id: 'all', icon: <Users size={16}/>, label: 'Todos', count: customers.length },
-          { id: 'vip', icon: <Star size={16}/>, label: 'VIPs', count: customers.filter(c => c.total_orders >= 5).length },
-          { id: 'new', icon: <Star size={16}/>, label: 'Nuevos', count: customers.filter(c => c.total_orders === 1).length },
-          { id: 'dormant', icon: <Clock size={16}/>, label: 'Inactivos', count: customers.filter(c => new Date(c.last_order_at) < new Date(Date.now() - 30*24*60*60*1000)).length },
-        ].map(f => (
-          <button
-            key={f.id}
-            onClick={() => setFilter(f.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-bold whitespace-nowrap transition-all ${
-              filter === f.id ? 'bg-distrito-accent text-black border-distrito-accent' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
-            }`}
-          >
-            {f.icon} {f.label} <span className="bg-black/20 px-2 py-0.5 rounded-full text-xs">{f.count}</span>
-          </button>
-        ))}
+      {/* Buscador y Filtros Rápidos */}
+      <div className="flex flex-col md:flex-row gap-4 mb-4">
+        {/* Barra de Búsqueda */}
+        <div className="flex-1 relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="text-gray-500" size={18} />
+          </div>
+          <input
+            type="text"
+            className="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-distrito-accent transition-colors"
+            placeholder="Buscar cliente por nombre, teléfono o barrio..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+
+        {/* Filtros Rapidos */}
+        <div className="flex overflow-x-auto gap-2 pb-2 md:pb-0 items-center">
+          {[
+            { id: 'all', icon: <Users size={16}/>, label: 'Todos', count: customers.length },
+            { id: 'vip', icon: <Star size={16}/>, label: 'VIPs', count: customers.filter(c => c.total_orders >= 5).length },
+            { id: 'new', icon: <Star size={16}/>, label: 'Nuevos', count: customers.filter(c => c.total_orders === 1).length },
+            { id: 'dormant', icon: <Clock size={16}/>, label: 'Inactivos', count: customers.filter(c => new Date(c.last_order_at) < new Date(Date.now() - 30*24*60*60*1000)).length },
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-bold whitespace-nowrap transition-all ${
+                filter === f.id ? 'bg-distrito-accent text-black border-distrito-accent' : 'bg-white/5 text-gray-400 border-white/10 hover:bg-white/10'
+              }`}
+            >
+              {f.icon} {f.label} <span className="bg-black/20 px-2 py-0.5 rounded-full text-xs">{f.count}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Tabla de Clientes */}
@@ -225,7 +302,7 @@ export default function CrmTab() {
                 <th className="px-6 py-4 font-black">Teléfono</th>
                 <th className="px-6 py-4 font-black text-center">Pedidos</th>
                 <th className="px-6 py-4 font-black">Última Compra</th>
-                <th className="px-6 py-4 font-black text-center">Notas</th>
+                <th className="px-6 py-4 font-black text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -234,9 +311,14 @@ export default function CrmTab() {
                   <td className="px-6 py-4">
                     <div className="font-bold text-white flex items-center gap-2">
                       {c.customer_name || 'Sin nombre'}
-                      {c.total_orders >= 5 && <span title="VIP"><Star size={14} className="text-distrito-accent fill-distrito-accent" /></span>}
                     </div>
-                    <div className="text-xs text-gray-500">{c.delivery_barrio || 'Sin dirección'}</div>
+                    {/* Etiquetas Visuales */}
+                    <div className="flex gap-1 mt-1">
+                      {c.total_orders >= 5 && <span className="bg-distrito-accent text-black text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"><Star size={10}/> VIP</span>}
+                      {c.total_orders === 1 && <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">NUEVO</span>}
+                      {new Date(c.last_order_at) < new Date(Date.now() - 30*24*60*60*1000) && <span className="bg-gray-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">INACTIVO</span>}
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">{c.delivery_barrio || 'Sin dirección'}</div>
                   </td>
                   <td className="px-6 py-4 text-white font-mono">{c.customer_phone}</td>
                   <td className="px-6 py-4 text-center">
@@ -248,13 +330,24 @@ export default function CrmTab() {
                     {new Date(c.last_order_at).toLocaleDateString()} a las {new Date(c.last_order_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <button 
-                      onClick={() => { setSelectedCustomer(c); setNotes(c.notes || ''); }}
-                      className={`p-2 rounded-xl transition-all ${c.notes ? 'text-distrito-accent bg-distrito-accent/10' : 'text-gray-500 hover:bg-white/10'}`}
-                      title="Ver/Editar Notas"
-                    >
-                      <MessageSquareText size={18} />
-                    </button>
+                    <div className="flex justify-center items-center gap-2">
+                      <button 
+                        onClick={() => { setSelectedCustomer(c); setNotes(c.notes || ''); }}
+                        className={`p-2 rounded-xl transition-all ${c.notes ? 'text-distrito-accent bg-distrito-accent/10' : 'text-gray-500 hover:bg-white/10'}`}
+                        title="Ver/Editar Notas"
+                      >
+                        <MessageSquareText size={18} />
+                      </button>
+                      <a 
+                        href={`https://wa.me/${c.customer_phone.replace('+', '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2 rounded-xl text-green-400 bg-green-500/10 hover:bg-green-500/20 transition-all"
+                        title="Chatear en WhatsApp"
+                      >
+                        <MessageCircle size={18} />
+                      </a>
+                    </div>
                   </td>
                 </tr>
               ))}

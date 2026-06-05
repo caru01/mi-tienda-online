@@ -2,7 +2,7 @@
 api/dashboard.py
 Endpoints para el Dashboard Web.
 """
-from fastapi import APIRouter
+from fastapi import APIRouter, File, UploadFile
 from services.supabase_client import get_supabase
 from typing import Dict, Any
 
@@ -467,5 +467,31 @@ async def send_crm_broadcast(payload: dict) -> Dict[str, Any]:
         }).execute()
         
         return {"status": "success", "sent_count": sent_count}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/crm/upload")
+async def upload_crm_image(file: UploadFile = File(...)) -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        import uuid
+        import os
+        content = await file.read()
+        file_ext = os.path.splitext(file.filename)[1]
+        if not file_ext:
+            file_ext = ".jpg"
+        file_name = f"{uuid.uuid4().hex}{file_ext}"
+        
+        # Subir a supabase storage (requiere bucket publico crm_assets)
+        db.storage.from_("crm_assets").upload(
+            file_name, 
+            content, 
+            {"content-type": file.content_type}
+        )
+        
+        # Obtener url publica
+        public_url = db.storage.from_("crm_assets").get_public_url(file_name)
+        
+        return {"status": "success", "url": public_url}
     except Exception as e:
         return {"status": "error", "message": str(e)}
