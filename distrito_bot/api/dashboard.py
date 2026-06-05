@@ -204,6 +204,31 @@ async def add_product(payload: dict) -> Dict[str, Any]:
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@router.post("/api/dashboard/products/update")
+async def update_product(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        product_id = payload.get("id")
+        if not product_id:
+            return {"status": "error", "message": "Missing product id"}
+        update_data = {k: v for k, v in payload.items() if k != "id"}
+        db.table("products").update(update_data).eq("id", product_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/products/delete")
+async def delete_product(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        product_id = payload.get("product_id")
+        if not product_id:
+            return {"status": "error", "message": "Missing product_id"}
+        db.table("products").delete().eq("id", product_id).execute()
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @router.post("/api/dashboard/inventory/add")
 async def add_inventory_item(payload: dict) -> Dict[str, Any]:
     db = get_supabase()

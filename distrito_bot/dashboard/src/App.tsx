@@ -7,6 +7,7 @@ import SalesSummaryTab from './components/SalesSummaryTab'
 import SchedulesTab from './components/SchedulesTab'
 import RecipeTab from './components/RecipeTab'
 import OrdersTab from './components/OrdersTab'
+import CatalogTab from './components/CatalogTab'
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
@@ -48,9 +49,6 @@ function App() {
   const alertCountRef = useRef(0)
   const knownSaleIdsRef = useRef<Set<string>>(new Set())
   const isFirstLoadRef = useRef(true)
-
-  const [showAddProduct, setShowAddProduct] = useState(false)
-  const [newProduct, setNewProduct] = useState({ name: '', description: '', emoji: '', price: '', category: 'Combos' })
 
   // ── Fetch principal ─────────────────────────────────────────────────────────
   const fetchDashboardData = useCallback(async (isPolling = false) => {
@@ -129,27 +127,6 @@ function App() {
       if (alertTimerRef.current) clearInterval(alertTimerRef.current)
     }
   }, [fetchDashboardData, fetchStoreStatus])
-
-  const toggleProduct = async (product_id: string, currentStatus: boolean) => {
-    await fetch(`${API_URL}/products/toggle`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ product_id, is_active: !currentStatus })
-    })
-    fetchDashboardData()
-  }
-
-  const handleAddProduct = async () => {
-    if (!newProduct.name || !newProduct.price) return
-    await fetch(`${API_URL}/products/add`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...newProduct, price: parseFloat(newProduct.price), is_active: true })
-    })
-    setShowAddProduct(false)
-    setNewProduct({ name: '', description: '', emoji: '', price: '', category: 'Combos' })
-    fetchDashboardData()
-  }
 
   // ── Sidebar nav items en el orden correcto ──────────────────────────────────
   const navItems = [
@@ -262,66 +239,7 @@ function App() {
           ) : activeTab === 'inventory' ? (
             <InventoryTab />
           ) : activeTab === 'catalog' ? (
-            <div className="glass rounded-2xl p-6 border border-white/10 shadow-2xl">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-distrito-accent">Menú / Carta de Productos</h2>
-                <button
-                  onClick={() => setShowAddProduct(true)}
-                  className="bg-distrito-accent text-distrito-dark px-4 py-2 rounded-lg font-bold"
-                >
-                  + Nuevo Producto
-                </button>
-              </div>
-
-              {showAddProduct && (
-                <div className="glass p-6 rounded-2xl border border-distrito-accent/50 shadow-[0_0_15px_rgba(255,204,0,0.3)] mb-6">
-                  <h3 className="text-xl font-bold mb-4">Agregar Nuevo Producto</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <input placeholder="Nombre" className="bg-black/20 rounded p-2 text-white border border-white/10"
-                      value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} />
-                    <input placeholder="Precio" type="number" className="bg-black/20 rounded p-2 text-white border border-white/10"
-                      value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
-                    <input placeholder="Descripción corta" className="bg-black/20 rounded p-2 text-white border border-white/10 md:col-span-2"
-                      value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} />
-                    <input placeholder="Emoji 🍔" className="bg-black/20 rounded p-2 text-white border border-white/10"
-                      value={newProduct.emoji} onChange={e => setNewProduct({...newProduct, emoji: e.target.value})} />
-                    <input placeholder="Categoría (Ej: Combos, Bebidas)" className="bg-black/20 rounded p-2 text-white border border-white/10"
-                      value={newProduct.category} onChange={e => setNewProduct({...newProduct, category: e.target.value})} />
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <button onClick={() => setShowAddProduct(false)} className="px-4 py-2 text-gray-400 hover:text-white">Cancelar</button>
-                    <button onClick={handleAddProduct} className="bg-distrito-accent text-distrito-dark px-4 py-2 rounded font-bold">Guardar</button>
-                  </div>
-                </div>
-              )}
-              <div className="grid gap-4">
-                {data.products.map((item: any) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 bg-distrito-dark/50 rounded-xl border border-white/5">
-                    <div className="flex items-center space-x-4">
-                      <span className="text-2xl">{item.emoji}</span>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <p className="font-bold text-white">{item.name}</p>
-                          <span className="text-xs bg-white/10 px-2 py-0.5 rounded-full text-gray-300">{item.category || 'Combos'}</span>
-                        </div>
-                        <p className="text-sm text-gray-400">{item.description}</p>
-                        <p className="text-distrito-accent font-bold mt-1">${item.price.toLocaleString()}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => toggleProduct(item.id, item.is_active)}
-                      className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
-                        item.is_active
-                          ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                          : 'bg-green-500/10 text-green-400 hover:bg-green-500/20'
-                      }`}
-                    >
-                      {item.is_active ? 'Desactivar' : 'Activar'}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <CatalogTab />
           ) : activeTab === 'reports' ? (
             <ReportsTab data={data} />
           ) : activeTab === 'history' ? (
