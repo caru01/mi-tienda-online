@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Users, Megaphone, Send, Clock, Star, Save, MessageSquareText, Search, UploadCloud, MessageCircle } from 'lucide-react'
 
-const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
+import { API_URL } from '../config';
 
 export default function CrmTab() {
   const [customers, setCustomers] = useState<any[]>([])

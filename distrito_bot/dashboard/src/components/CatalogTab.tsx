@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Save, X, MessageSquarePlus, ToggleLeft, ToggleRight } from 'lucide-react'
 
-const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
+import { API_URL } from '../config';
 
 const EMPTY_PRODUCT = { name: '', description: '', emoji: '🍔', price: '', category: 'Combos' }
 

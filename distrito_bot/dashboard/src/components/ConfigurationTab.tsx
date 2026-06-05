@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard';
+import { API_URL } from '../config';
 
 export default function ConfigurationTab() {
   const [settings, setSettings] = useState<any>(null)

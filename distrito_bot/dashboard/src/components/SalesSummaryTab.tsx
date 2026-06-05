@@ -3,7 +3,7 @@ import { format, startOfMonth } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { Calendar, Filter, DollarSign, ShoppingBag, Download } from 'lucide-react'
 
-const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
+import { API_URL } from '../config';
 
 export default function SalesSummaryTab() {
   const [sales, setSales] = useState<any[]>([])

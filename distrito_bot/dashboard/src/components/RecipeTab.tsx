@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChefHat, Save, Plus, Trash2 } from 'lucide-react';
 
-const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard';
+import { API_URL } from '../config';
 
 export default function RecipeTab({ data }: { data: any }) {
   const [recipes, setRecipes] = useState<any[]>([]);

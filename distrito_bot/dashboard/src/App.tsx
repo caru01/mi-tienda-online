@@ -11,7 +11,7 @@ import CatalogTab from './components/CatalogTab'
 import CrmTab from './components/CrmTab'
 import { Users } from 'lucide-react'
 
-const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
+const API_URL = import.meta.env.PROD ? '/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
 // ─── Genera un beep sintetizado (no necesita archivo externo) ─────────────────
 function playAlertBeep() {
