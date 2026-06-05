@@ -137,7 +137,7 @@ def get_kitchen_phone() -> str:
     return get_text("kitchen_phone", base_settings.kitchen_phone_number)
 
 def get_active_categories() -> list[str]:
-    """Obtiene las categorias únicas de los productos activos."""
+    """Obtiene las categorias únicas de los productos activos, excluyendo las ocultas del mensaje de bienvenida."""
     try:
         db = get_supabase()
         res = db.table("products").select("category").eq("is_active", True).execute()
@@ -146,12 +146,22 @@ def get_active_categories() -> list[str]:
             cat = row.get("category")
             if cat:
                 categories.add(cat)
-        # Convertir a lista y ordenar, por defecto si esta vacio devolvemos ['Combos']
-        cat_list = sorted(list(categories))
-        return cat_list if cat_list else ["Combos"]
+
+        # Leer categorías ocultas de la configuración
+        hidden_raw = _get_dynamic_settings().get("welcome_hidden_categories", "") or ""
+        hidden = {c.strip() for c in hidden_raw.split(",") if c.strip()}
+
+        # Filtrar ocultas
+        cat_list = sorted([c for c in categories if c not in hidden])
+        return cat_list if cat_list else []
     except Exception as e:
         logger.error(f"Error cargando categorias: {e}")
         return ["Combos"]
+
+def get_welcome_hidden_categories() -> list[str]:
+    """Retorna la lista de categorías ocultas del mensaje de bienvenida."""
+    raw = _get_dynamic_settings().get("welcome_hidden_categories", "") or ""
+    return [c.strip() for c in raw.split(",") if c.strip()]
 
 def is_bot_manual_mode() -> bool:
     data = _get_dynamic_settings()

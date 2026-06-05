@@ -60,6 +60,54 @@ async def get_sales_history(start_date: str = None, end_date: str = None) -> Dic
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@router.get("/api/dashboard/categories")
+async def get_categories() -> Dict[str, Any]:
+    """Devuelve todas las categorías de productos activos con su estado (visible/oculta en bienvenida)."""
+    db = get_supabase()
+    try:
+        # Obtener todas las categorías únicas de productos activos
+        res = db.table("products").select("category").eq("is_active", True).execute()
+        cats = sorted({row["category"] for row in (res.data or []) if row.get("category")})
+
+        # Obtener categorías ocultas
+        settings_res = db.table("bot_settings").select("welcome_hidden_categories").eq("id", 1).single().execute()
+        hidden_raw = (settings_res.data or {}).get("welcome_hidden_categories", "") or ""
+        hidden = {c.strip() for c in hidden_raw.split(",") if c.strip()}
+
+        categories = [{"name": c, "visible": c not in hidden} for c in cats]
+        return {"status": "ok", "categories": categories}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/categories/toggle")
+async def toggle_category_visibility(payload: dict) -> Dict[str, Any]:
+    """Activa o desactiva una categoría del mensaje de bienvenida."""
+    db = get_supabase()
+    try:
+        category = payload.get("category", "").strip()
+        visible = payload.get("visible", True)
+
+        # Leer estado actual
+        res = db.table("bot_settings").select("welcome_hidden_categories").eq("id", 1).single().execute()
+        hidden_raw = (res.data or {}).get("welcome_hidden_categories", "") or ""
+        hidden = {c.strip() for c in hidden_raw.split(",") if c.strip()}
+
+        if visible:
+            hidden.discard(category)
+        else:
+            hidden.add(category)
+
+        new_hidden = ",".join(sorted(hidden))
+        db.table("bot_settings").update({"welcome_hidden_categories": new_hidden}).eq("id", 1).execute()
+
+        # Invalidar caché
+        from config.dynamic_settings import _cache
+        _cache.clear()
+
+        return {"status": "ok", "hidden_categories": list(hidden)}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @router.get("/api/dashboard/purchases")
 async def get_purchases() -> Dict[str, Any]:
     db = get_supabase()

@@ -5,9 +5,13 @@ const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://local
 
 const EMPTY_PRODUCT = { name: '', description: '', emoji: '🍔', price: '', category: 'Combos' }
 
+type Category = { name: string; visible: boolean }
+
 export default function CatalogTab() {
   const [products, setProducts] = useState<any[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [togglingCat, setTogglingCat] = useState<string | null>(null)
 
   // Modal crear/editar
   const [modal, setModal] = useState<'create' | 'edit' | null>(null)
@@ -18,17 +22,20 @@ export default function CatalogTab() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
-  // Categorías activas para el panel de botones de bienvenida
-  const categories = [...new Set(products.map(p => p.category || 'Combos'))]
 
-  const fetchProducts = async () => {
-    const res = await fetch(`${API_URL}/stats`)
-    const data = await res.json()
-    if (data.status === 'ok') setProducts(data.products || [])
+  const fetchData = async () => {
+    const [statsRes, catsRes] = await Promise.all([
+      fetch(`${API_URL}/stats`),
+      fetch(`${API_URL}/categories`),
+    ])
+    const statsJson = await statsRes.json()
+    const catsJson = await catsRes.json()
+    if (statsJson.status === 'ok') setProducts(statsJson.products || [])
+    if (catsJson.status === 'ok') setCategories(catsJson.categories || [])
     setLoading(false)
   }
 
-  useEffect(() => { fetchProducts() }, [])
+  useEffect(() => { fetchData() }, [])
 
   const handleSave = async () => {
     if (!editingProduct.name || !editingProduct.price) return
@@ -49,7 +56,7 @@ export default function CatalogTab() {
       }
       setModal(null)
       setEditingProduct(EMPTY_PRODUCT)
-      await fetchProducts()
+      await fetchData()
     } finally {
       setSaving(false)
     }
@@ -61,7 +68,7 @@ export default function CatalogTab() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ product_id: id, is_active: !is_active })
     })
-    await fetchProducts()
+    await fetchData()
   }
 
   const handleDelete = async () => {
@@ -74,7 +81,7 @@ export default function CatalogTab() {
         body: JSON.stringify({ product_id: deleteId })
       })
       setDeleteId(null)
-      await fetchProducts()
+      await fetchData()
     } finally {
       setDeleting(false)
     }
@@ -91,6 +98,20 @@ export default function CatalogTab() {
     const cat = p.category || 'Combos'
     if (!grouped[cat]) grouped[cat] = []
     grouped[cat].push(p)
+  }
+
+  const handleCategoryToggle = async (category: string, currentVisible: boolean) => {
+    setTogglingCat(category)
+    try {
+      await fetch(`${API_URL}/categories/toggle`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, visible: !currentVisible })
+      })
+      await fetchData()
+    } finally {
+      setTogglingCat(null)
+    }
   }
 
   if (loading) return <div className="animate-pulse text-gray-400 p-8">Cargando productos...</div>
@@ -121,19 +142,34 @@ export default function CatalogTab() {
             <p className="text-xs text-gray-400">Cada categoría activa aparece automáticamente como un botón cuando el cliente escribe "Hola". Máximo 3 botones.</p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2">
           {categories.length === 0 ? (
             <span className="text-xs text-gray-500">Crea productos con distintas categorías para generar botones</span>
-          ) : categories.slice(0, 3).map(cat => (
-            <div key={cat} className="flex items-center gap-2 bg-distrito-accent/10 border border-distrito-accent/30 px-3 py-1.5 rounded-xl">
-              <span className="text-xs font-black text-distrito-accent">📲 Ver {cat}</span>
+          ) : categories.map(cat => (
+            <div key={cat.name} className={`flex items-center justify-between px-4 py-2.5 rounded-xl border transition-all ${
+              cat.visible 
+                ? 'bg-distrito-accent/10 border-distrito-accent/30' 
+                : 'bg-white/5 border-white/10 opacity-60'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className={`font-black text-sm ${cat.visible ? 'text-distrito-accent' : 'text-gray-400'}`}>
+                  📲 Ver {cat.name}
+                </span>
+                {!cat.visible && <span className="text-[10px] bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full uppercase font-bold">Oculto</span>}
+              </div>
+              
+              <button
+                disabled={togglingCat === cat.name}
+                onClick={() => handleCategoryToggle(cat.name, cat.visible)}
+                className={`p-1.5 rounded-xl transition-all ${
+                  togglingCat === cat.name ? 'opacity-50 cursor-wait' :
+                  cat.visible ? 'text-green-400 hover:bg-green-500/10' : 'text-gray-500 hover:bg-white/10'
+                }`}
+              >
+                {cat.visible ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+              </button>
             </div>
           ))}
-          {categories.length > 3 && (
-            <div className="flex items-center px-3 py-1.5 rounded-xl bg-white/5 border border-white/10">
-              <span className="text-xs text-gray-400">+{categories.length - 3} categorías (ocultas por límite de WhatsApp)</span>
-            </div>
-          )}
         </div>
         <p className="text-xs text-gray-600 mt-3">
           💡 Para agregar un botón nuevo, crea un producto con una categoría distinta. Ej: categoría "Bebidas" → botón "Ver Bebidas".
@@ -273,7 +309,7 @@ export default function CatalogTab() {
                     onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
                   />
                   <datalist id="category-list">
-                    {categories.map(c => <option key={c} value={c} />)}
+                    {categories.map(c => <option key={c.name} value={c.name} />)}
                   </datalist>
                 </div>
               </div>
