@@ -44,11 +44,11 @@ export default function InventoryTab() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [newItem, setNewItem] = useState({ name: '', unit_measure: '', current_stock: 0, minimum_stock: 0 });
 
-
+  const API_URL = import.meta.env.PROD ? '/api/dashboard' : 'http://localhost:8000/api/dashboard';
 
   const fetchPurchases = async () => {
     try {
-      const res = await fetch('/api/dashboard/purchases');
+      const res = await fetch(`${API_URL}/purchases`);
       const data = await res.json();
       if (data.status === 'ok') setPurchases(data.purchases);
     } catch (err) {
@@ -58,7 +58,7 @@ export default function InventoryTab() {
 
   const fetchStats = async () => {
     try {
-      const res = await fetch('/api/dashboard/purchases/stats');
+      const res = await fetch(`${API_URL}/purchases/stats`);
       const data = await res.json();
       if (data.status === 'ok') setStats(data);
     } catch (err) {
@@ -69,7 +69,7 @@ export default function InventoryTab() {
   useEffect(() => {
     fetchPurchases();
     fetchStats();
-    fetch('/api/dashboard/stats').then(res => res.json()).then(data => {
+    fetch(`${API_URL}/stats`).then(res => res.json()).then(data => {
       if(data.status === 'ok') setItems(data.inventory);
     });
   }, []);
@@ -90,7 +90,7 @@ export default function InventoryTab() {
         purchase_date: new Date(purchaseDate).toISOString()
       };
       
-      const res = await fetch('/api/dashboard/purchases', {
+      const res = await fetch(`${API_URL}/purchases`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -107,7 +107,7 @@ export default function InventoryTab() {
         fetchPurchases();
         fetchStats();
         // Refresh inventory
-        fetch('/api/dashboard/stats').then(res => res.json()).then(d => {
+        fetch(`${API_URL}/stats`).then(res => res.json()).then(d => {
           if(d.status === 'ok') setItems(d.inventory);
         });
       } else {
@@ -122,7 +122,7 @@ export default function InventoryTab() {
   const handleAddItem = async () => {
     // Legacy function to add a new inventory item
     try {
-      const res = await fetch('/api/dashboard/inventory/add', {
+      const res = await fetch(`${API_URL}/inventory/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newItem)
@@ -131,7 +131,7 @@ export default function InventoryTab() {
       if (data.status === 'success') {
         setShowAddItem(false);
         setNewItem({ name: '', unit_measure: '', current_stock: 0, minimum_stock: 0 });
-        fetch('/api/dashboard/stats').then(res => res.json()).then(d => {
+        fetch(`${API_URL}/stats`).then(res => res.json()).then(d => {
           if(d.status === 'ok') setItems(d.inventory);
         });
       } else {
