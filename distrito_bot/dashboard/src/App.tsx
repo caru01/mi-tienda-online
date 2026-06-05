@@ -217,7 +217,7 @@ function App() {
         {[
           { key: 'sales',     icon: <LayoutDashboard size={20}/>, label: 'Órdenes' },
           { key: 'catalog',   icon: <ClipboardList size={20}/>,   label: 'Menú' },
-          { key: 'history',   icon: <History size={20}/>,         label: 'Ventas' },
+          { key: 'crm',       icon: <Users size={20}/>,           label: 'CRM' },
           { key: 'schedules', icon: <Clock size={20}/>,           label: 'Horarios' },
           { key: 'settings',  icon: <Settings size={20}/>,        label: 'Config.' },
         ].map(item => (

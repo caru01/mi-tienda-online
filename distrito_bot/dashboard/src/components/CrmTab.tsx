@@ -7,6 +7,8 @@ export default function CrmTab() {
   const [customers, setCustomers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState('all')
+  const [messagesSentToday, setMessagesSentToday] = useState(0)
+  const DAILY_LIMIT = 1000 // Límite YCloud / Meta Tier 1 usual
   
   // Modal notas
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null)
@@ -17,6 +19,8 @@ export default function CrmTab() {
   const [showBroadcast, setShowBroadcast] = useState(false)
   const [campaignName, setCampaignName] = useState('')
   const [messageBody, setMessageBody] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
+  const [intervalSecs, setIntervalSecs] = useState(2.0)
   const [sendingBroadcast, setSendingBroadcast] = useState(false)
 
   const fetchCustomers = async () => {
@@ -25,6 +29,7 @@ export default function CrmTab() {
       const data = await res.json()
       if (data.status === 'ok') {
         setCustomers(data.customers || [])
+        setMessagesSentToday(data.messages_sent_today || 0)
       }
     } finally {
       setLoading(false)
@@ -64,10 +69,17 @@ export default function CrmTab() {
     if (!confirm(`¿Seguro que deseas enviar este mensaje a ${filteredCustomers.length} clientes en el segmento "${filter}"?`)) return
     
     setSendingBroadcast(true)
+    const payload = { 
+      campaign_name: campaignName, 
+      message_body: messageBody, 
+      target_segment: filter,
+      image_url: imageUrl,
+      interval: intervalSecs
+    }
     const res = await fetch(`${API_URL}/crm/broadcast`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ campaign_name: campaignName, message_body: messageBody, target_segment: filter })
+      body: JSON.stringify(payload)
     })
     const data = await res.json()
     setSendingBroadcast(false)
@@ -77,6 +89,8 @@ export default function CrmTab() {
       setShowBroadcast(false)
       setCampaignName('')
       setMessageBody('')
+      setImageUrl('')
+      fetchCustomers() // Para actualizar el contador de mensajes
     } else {
       alert(`Error al enviar: ${data.message}`)
     }
@@ -127,6 +141,23 @@ export default function CrmTab() {
                 <option value="dormant">Inactivos +30 días ({customers.filter(c => new Date(c.last_order_at) < new Date(Date.now() - 30*24*60*60*1000)).length})</option>
               </select>
             </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">URL de Imagen (Opcional)</label>
+              <input 
+                value={imageUrl} onChange={e => setImageUrl(e.target.value)}
+                placeholder="https://tudominio.com/promo.jpg" 
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white" 
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Intervalo de Envío (Segundos)</label>
+              <input 
+                type="number" step="0.5" min="1"
+                value={intervalSecs} onChange={e => setIntervalSecs(parseFloat(e.target.value))}
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white" 
+              />
+              <p className="text-[10px] text-gray-500 mt-1">Tiempo de espera entre cada mensaje para evitar baneos por Spam (Recomendado: 2s)</p>
+            </div>
           </div>
           <div className="mb-4">
             <label className="block text-xs text-gray-400 mb-1">Cuerpo del Mensaje (Soporta *negrita*, _cursiva_ y emojis)</label>
@@ -137,10 +168,22 @@ export default function CrmTab() {
               className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white resize-none"
             />
           </div>
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-yellow-400 max-w-lg">
-              ⚠️ Cuidado: Enviar mensajes masivos consume saldo de WhatsApp API. Asegúrate de enviar mensajes relevantes para no ser reportado por spam.
+          <div className="mb-4 bg-black/30 rounded-xl p-4 border border-white/5">
+            <div className="flex justify-between text-xs mb-2">
+              <span className="text-gray-400">Mensajes Enviados Hoy (Estimado)</span>
+              <span className="text-white font-bold">{messagesSentToday} / {DAILY_LIMIT}</span>
+            </div>
+            <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+              <div 
+                className={`h-full ${messagesSentToday > DAILY_LIMIT * 0.8 ? 'bg-red-500' : 'bg-green-500'}`} 
+                style={{ width: `${Math.min((messagesSentToday / DAILY_LIMIT) * 100, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-[10px] text-yellow-400 mt-2">
+              ⚠️ Las cuentas nuevas de WhatsApp API (Tier 1) pueden enviar hasta 1,000 mensajes diarios a clientes. Mantén el intervalo alto para evitar bloqueos por SPAM.
             </p>
+          </div>
+          <div className="flex items-center justify-end">
             <button
               onClick={handleSendBroadcast}
               disabled={sendingBroadcast || !messageBody || !campaignName}

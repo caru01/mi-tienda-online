@@ -378,7 +378,14 @@ async def get_crm_customers() -> Dict[str, Any]:
     db = get_supabase()
     try:
         res = db.table("customers").select("*").order("last_order_at", desc=True).execute()
-        return {"status": "ok", "customers": res.data or []}
+        
+        # Calculate messages sent today for limits
+        from datetime import datetime, timezone
+        today_str = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+        campaigns_res = db.table("crm_campaigns").select("sent_count").gte("created_at", f"{today_str}T00:00:00Z").execute()
+        messages_sent_today = sum([c.get("sent_count", 0) for c in (campaigns_res.data or [])])
+        
+        return {"status": "ok", "customers": res.data or [], "messages_sent_today": messages_sent_today}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -405,8 +412,11 @@ async def send_crm_broadcast(payload: dict) -> Dict[str, Any]:
         message_body = payload.get("message_body", "")
         target_segment = payload.get("target_segment", "all")
         
-        if not message_body:
-            return {"status": "error", "message": "El mensaje no puede estar vacío."}
+        image_url = payload.get("image_url", "").strip()
+        interval = float(payload.get("interval", 2.0))
+
+        if not message_body and not image_url:
+            return {"status": "error", "message": "El mensaje o la imagen no pueden estar vacíos."}
 
         # Obtener los clientes según el segmento
         query = db.table("customers").select("customer_phone, total_orders, last_order_at")
@@ -429,7 +439,7 @@ async def send_crm_broadcast(payload: dict) -> Dict[str, Any]:
             return {"status": "error", "message": "No hay clientes en este segmento."}
 
         # Enviar mensaje a cada cliente
-        from services.ycloud_client import send_text_message
+        from services.ycloud_client import send_text_message, send_image_message
         import asyncio
         
         sent_count = 0
@@ -437,9 +447,12 @@ async def send_crm_broadcast(payload: dict) -> Dict[str, Any]:
             phone = c.get("customer_phone")
             if phone:
                 try:
-                    await send_text_message(phone, message_body)
+                    if image_url:
+                        await send_image_message(phone, image_url)
+                    if message_body:
+                        await send_text_message(phone, message_body)
                     sent_count += 1
-                    await asyncio.sleep(0.5) # Pequeña pausa para no saturar YCloud API
+                    await asyncio.sleep(interval) # Intervalo para evitar spam
                 except Exception as ex:
                     import logging
                     logging.getLogger(__name__).error(f"Error enviando broadcast a {phone}: {ex}")
