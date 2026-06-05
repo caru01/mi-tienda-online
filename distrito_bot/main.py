@@ -75,6 +75,11 @@ app.add_middleware(
 app.include_router(webhook_router)
 app.include_router(dashboard_router)
 
+# Montar carpeta de medios del bot
+media_path = os.path.join(os.path.dirname(__file__), "assets")
+if os.path.exists(media_path):
+    app.mount("/media", StaticFiles(directory=media_path), name="media")
+
 
 # ── Rutas API ────────────────────────────────────────────────────────────────
 @app.get("/api")

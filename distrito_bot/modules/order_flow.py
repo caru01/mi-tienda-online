@@ -411,6 +411,16 @@ async def _send_combos_list(phone: str, category: str = None) -> None:
         await send_text_message(phone, f"No hay productos activos en {category or 'el catálogo'} en este momento.")
         return
 
+    # Enviar imagen de combos si la categoría es Combos o no se especificó (catálogo general)
+    from services.ycloud_client import send_image_message
+    if not category or category.lower() == "combos":
+        # Usamos la URL pública de Render para la imagen
+        image_url = "https://distrito.onrender.com/media/COMBOS.jpeg"
+        try:
+            await send_image_message(phone, image_url, caption="🍔 Nuestros increíbles combos")
+        except Exception as e:
+            logger.error(f"No se pudo enviar la imagen de combos: {e}")
+
     cat_title = category if category else "Combos"
     await send_list_message(
         to=phone,

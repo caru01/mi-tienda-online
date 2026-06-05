@@ -8,6 +8,8 @@ import SchedulesTab from './components/SchedulesTab'
 import RecipeTab from './components/RecipeTab'
 import OrdersTab from './components/OrdersTab'
 import CatalogTab from './components/CatalogTab'
+import CrmTab from './components/CrmTab'
+import { Users } from 'lucide-react'
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
@@ -134,6 +136,7 @@ function App() {
     { key: 'catalog',   icon: <ClipboardList size={20}/>,   label: 'Menú / Carta' },
     { key: 'history',   icon: <History size={20}/>,         label: 'Resumen de Venta' },
     { key: 'schedules', icon: <Clock size={20}/>,           label: 'Horarios' },
+    { key: 'crm',       icon: <Users size={20}/>,           label: 'WhatsApp CRM' },
     { key: 'reports',   icon: <TrendingUp size={20}/>,      label: 'Reportes (BI)' },
     { key: 'inventory', icon: <PackageSearch size={20}/>,   label: 'Inventario' },
     { key: 'recipes',   icon: <ChefHat size={20}/>,         label: 'Recetas' },
@@ -242,6 +245,8 @@ function App() {
             <CatalogTab />
           ) : activeTab === 'reports' ? (
             <ReportsTab data={data} />
+          ) : activeTab === 'crm' ? (
+            <CrmTab />
           ) : activeTab === 'history' ? (
             <SalesSummaryTab />
           ) : activeTab === 'recipes' ? (

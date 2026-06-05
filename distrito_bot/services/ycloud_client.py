@@ -58,6 +58,20 @@ async def send_text_message(to: str, text: str) -> dict:
         "text": {"body": text}
     })
 
+async def send_image_message(to: str, image_url: str, caption: str = "") -> dict:
+    """
+    Envía una imagen a través de WhatsApp mediante URL pública.
+    """
+    payload = {
+        "to": to,
+        "from": get_whatsapp_phone_id(),
+        "type": "image",
+        "image": {"link": image_url}
+    }
+    if caption:
+        payload["image"]["caption"] = caption
+    return await _post(payload)
+
 
 async def send_button_message(to: str, body_text: str, buttons: list[dict]) -> dict:
     """

@@ -370,3 +370,89 @@ async def save_recipe(payload: dict) -> Dict[str, Any]:
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+# ── CRM Endpoints ────────────────────────────────────────────────────────────
+
+@router.get("/api/dashboard/crm/customers")
+async def get_crm_customers() -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        res = db.table("customers").select("*").order("last_order_at", desc=True).execute()
+        return {"status": "ok", "customers": res.data or []}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/crm/customers/notes")
+async def update_customer_notes(payload: dict) -> Dict[str, Any]:
+    db = get_supabase()
+    try:
+        phone = payload.get("customer_phone")
+        notes = payload.get("notes", "")
+        if not phone:
+            return {"status": "error", "message": "Falta el teléfono del cliente"}
+        
+        db.table("customers").update({"notes": notes}).eq("customer_phone", phone).execute()
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+@router.post("/api/dashboard/crm/broadcast")
+async def send_crm_broadcast(payload: dict) -> Dict[str, Any]:
+    """Envía un mensaje masivo a un segmento de clientes y registra la campaña."""
+    db = get_supabase()
+    try:
+        campaign_name = payload.get("campaign_name", "Campaña sin nombre")
+        message_body = payload.get("message_body", "")
+        target_segment = payload.get("target_segment", "all")
+        
+        if not message_body:
+            return {"status": "error", "message": "El mensaje no puede estar vacío."}
+
+        # Obtener los clientes según el segmento
+        query = db.table("customers").select("customer_phone, total_orders, last_order_at")
+        
+        if target_segment == "vip":
+            query = query.gte("total_orders", 5)
+        elif target_segment == "dormant":
+            # Más de 30 días sin comprar
+            from datetime import datetime, timedelta, timezone
+            thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+            query = query.lte("last_order_at", thirty_days_ago)
+        elif target_segment == "new":
+            # Solo 1 compra
+            query = query.eq("total_orders", 1)
+            
+        res = query.execute()
+        customers = res.data or []
+        
+        if not customers:
+            return {"status": "error", "message": "No hay clientes en este segmento."}
+
+        # Enviar mensaje a cada cliente
+        from services.ycloud_client import send_text_message
+        import asyncio
+        
+        sent_count = 0
+        for c in customers:
+            phone = c.get("customer_phone")
+            if phone:
+                try:
+                    await send_text_message(phone, message_body)
+                    sent_count += 1
+                    await asyncio.sleep(0.5) # Pequeña pausa para no saturar YCloud API
+                except Exception as ex:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error enviando broadcast a {phone}: {ex}")
+
+        # Registrar la campaña
+        db.table("crm_campaigns").insert({
+            "campaign_name": campaign_name,
+            "message_body": message_body,
+            "target_segment": target_segment,
+            "sent_count": sent_count,
+            "status": "completed"
+        }).execute()
+        
+        return {"status": "success", "sent_count": sent_count}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

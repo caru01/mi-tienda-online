@@ -17,6 +17,9 @@ export default function CatalogTab() {
   const [modal, setModal] = useState<'create' | 'edit' | null>(null)
   const [editingProduct, setEditingProduct] = useState<any>(EMPTY_PRODUCT)
   const [saving, setSaving] = useState(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+
+  const FOOD_EMOJIS = ['🍔', '🍕', '🌭', '🍟', '🌮', '🌯', '🥗', '🍗', '🥩', '🥓', '🥪', '🥙', '🥤', '🍺', '🍻', '🍹', '🍷', '☕', '🍩', '🍪', '🍰', '🧁', '🍦', '🍨', '🍧', '🥞', '🧇', '🥑', '🌶️', '🧀']
 
   // Modal eliminar
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -258,14 +261,37 @@ export default function CatalogTab() {
 
             <div className="space-y-3">
               <div className="grid grid-cols-4 gap-3">
-                <div className="col-span-1">
+                <div className="col-span-1 relative">
                   <label className="block text-xs text-gray-400 mb-1">Emoji</label>
-                  <input
-                    className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-center text-2xl"
-                    value={editingProduct.emoji}
-                    onChange={e => setEditingProduct({ ...editingProduct, emoji: e.target.value })}
-                    maxLength={2}
-                  />
+                  <button
+                    onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                    className="w-full bg-black/40 border border-white/10 hover:bg-white/10 transition-colors rounded-xl p-3 text-center text-2xl"
+                  >
+                    {editingProduct.emoji}
+                  </button>
+                  
+                  {showEmojiPicker && (
+                    <div className="absolute top-full left-0 mt-2 bg-gray-800 border border-white/10 rounded-xl p-3 shadow-2xl z-50 w-64">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs text-gray-400 font-bold">Selecciona un emoji</span>
+                        <button onClick={() => setShowEmojiPicker(false)} className="text-gray-500 hover:text-white"><X size={14}/></button>
+                      </div>
+                      <div className="grid grid-cols-6 gap-2">
+                        {FOOD_EMOJIS.map(em => (
+                          <button
+                            key={em}
+                            onClick={() => {
+                              setEditingProduct({ ...editingProduct, emoji: em })
+                              setShowEmojiPicker(false)
+                            }}
+                            className="text-xl hover:bg-white/10 rounded-lg p-1 transition-colors"
+                          >
+                            {em}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="col-span-3">
                   <label className="block text-xs text-gray-400 mb-1">Nombre *</label>
