@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_URL } from '../config';
 
 interface InventoryItem {
   id: number;
@@ -44,7 +45,7 @@ export default function InventoryTab() {
   const [showAddItem, setShowAddItem] = useState(false);
   const [newItem, setNewItem] = useState({ name: '', unit_measure: '', current_stock: 0, minimum_stock: 0 });
 
-  const API_URL = import.meta.env.PROD ? '/api/dashboard' : 'http://localhost:8000/api/dashboard';
+  
 
   const fetchPurchases = async () => {
     try {
