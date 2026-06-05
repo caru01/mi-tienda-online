@@ -22,7 +22,7 @@ export default defineConfig({
       }
     })
   ],
-  base: '/distrito/',
+  base: '/',
   build: {
     chunkSizeWarningLimit: 1000
   }
