@@ -122,7 +122,7 @@ export default function InventoryTab() {
   const handleAddItem = async () => {
     // Legacy function to add a new inventory item
     try {
-      const res = await fetch('/api/dashboard/inventory', {
+      const res = await fetch('/api/dashboard/inventory/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newItem)
