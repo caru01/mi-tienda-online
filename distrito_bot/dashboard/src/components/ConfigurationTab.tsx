@@ -19,13 +19,18 @@ export default function ConfigurationTab() {
   const handleSave = async () => {
     setMessage('')
     try {
-      await fetch(`${API_URL}/settings`, {
+      const res = await fetch(`${API_URL}/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings)
       });
-      setMessage('✅ Configuración guardada correctamente')
-      setTimeout(() => setMessage(''), 3000)
+      const data = await res.json()
+      if (data.status === 'success') {
+        setMessage('✅ Configuración guardada correctamente')
+        setTimeout(() => setMessage(''), 3000)
+      } else {
+        setMessage('❌ Error: ' + (data.message || 'No se pudo guardar'))
+      }
     } catch (e) {
       console.error(e)
       setMessage('❌ Error al guardar')
