@@ -113,7 +113,7 @@ async def get_purchases() -> Dict[str, Any]:
     db = get_supabase()
     try:
         # We need the item name too, Supabase allows joins: purchases!inner(inventory_item_id), inventory_items(name)
-        res = db.table("purchases").select("*, inventory_items(name, unit_measure)").order("purchase_date", desc=True).limit(100).execute()
+        res = db.table("purchases").select("*, inventory_items(name, unit)").order("purchase_date", desc=True).limit(100).execute()
         return {"status": "ok", "purchases": res.data or []}
     except Exception as e:
         return {"status": "error", "message": str(e)}

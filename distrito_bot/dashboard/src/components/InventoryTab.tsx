@@ -4,9 +4,8 @@ import { API_URL } from '../config';
 interface InventoryItem {
   id: number;
   name: string;
-  unit_measure: string;
+  unit: string;
   current_stock: number;
-  minimum_stock: number;
 }
 
 interface Purchase {
@@ -19,7 +18,7 @@ interface Purchase {
   created_at: string;
   inventory_items?: {
     name: string;
-    unit_measure: string;
+    unit: string;
   };
 }
 
@@ -43,7 +42,7 @@ export default function InventoryTab() {
 
   // States for the new item form
   const [showAddItem, setShowAddItem] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', unit_measure: '', current_stock: 0, minimum_stock: 0 });
+  const [newItem, setNewItem] = useState({ name: '', unit: '', current_stock: 0 });
 
   
 
@@ -121,17 +120,21 @@ export default function InventoryTab() {
   };
 
   const handleAddItem = async () => {
-    // Legacy function to add a new inventory item
     try {
+      const payload = {
+        name: newItem.name,
+        unit: newItem.unit,
+        current_stock: Number(newItem.current_stock)
+      };
       const res = await fetch(`${API_URL}/inventory/add`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newItem)
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.status === 'success') {
         setShowAddItem(false);
-        setNewItem({ name: '', unit_measure: '', current_stock: 0, minimum_stock: 0 });
+        setNewItem({ name: '', unit: '', current_stock: 0 });
         fetch(`${API_URL}/stats`).then(res => res.json()).then(d => {
           if(d.status === 'ok') setItems(d.inventory);
         });
@@ -185,7 +188,7 @@ export default function InventoryTab() {
               >
                 <option value="">-- Seleccionar Insumo --</option>
                 {items.map(item => (
-                  <option key={item.id} value={item.id}>{item.name} ({item.current_stock} {item.unit_measure} en stock)</option>
+                  <option key={item.id} value={item.id}>{item.name} ({item.current_stock} {item.unit} en stock)</option>
                 ))}
               </select>
             </div>
@@ -252,7 +255,7 @@ export default function InventoryTab() {
                 <input placeholder="Nombre (Ej: Pan)" className="w-full bg-black/40 border border-white/10 rounded p-2 text-white text-sm"
                   value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
                 <input placeholder="Unidad (Ej: und)" className="w-full bg-black/40 border border-white/10 rounded p-2 text-white text-sm"
-                  value={newItem.unit_measure} onChange={e => setNewItem({...newItem, unit_measure: e.target.value})} />
+                  value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})} />
                 <button onClick={handleAddItem} className="w-full bg-white/20 hover:bg-white/30 py-2 rounded font-bold text-sm transition-all">Crear Insumo Base</button>
               </div>
             )}
@@ -297,7 +300,7 @@ export default function InventoryTab() {
                         </td>
                         <td className="py-4 px-4 text-right">
                           <span className="bg-white/10 px-2 py-1 rounded text-sm font-mono">
-                            {p.quantity} {p.inventory_items?.unit_measure}
+                            {p.quantity} {p.inventory_items?.unit}
                           </span>
                         </td>
                         <td className="py-4 px-4 text-right text-gray-400">

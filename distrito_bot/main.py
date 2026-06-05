@@ -10,7 +10,7 @@ Inicia:
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -70,6 +70,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Middleware para limpiar el prefijo /distrito en producción ─────────────────
+@app.middleware("http")
+async def strip_distrito_prefix(request: Request, call_next):
+    path = request.scope.get("path", "")
+    if path.startswith("/distrito"):
+        new_path = path[len("/distrito"):]
+        if not new_path:
+            new_path = "/"
+        request.scope["path"] = new_path
+        if "raw_path" in request.scope:
+            request.scope["raw_path"] = new_path.encode("ascii")
+    return await call_next(request)
 
 # Registrar rutas
 app.include_router(webhook_router)
