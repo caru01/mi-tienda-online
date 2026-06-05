@@ -18,11 +18,11 @@ class Settings(BaseSettings):
 
     # ── Horario comercial ────────────────────────────────────────
     timezone: str = "America/Bogota"
-    business_open_hour: int = 6       # 6:00 AM
+    business_open_hour: int = 18       # 6:00 PM
     business_open_minute: int = 0
     business_close_hour: int = 22     # 10:00 PM
     business_close_minute: int = 0
-    business_days: str = "0,1,2,3,4,5,6"  # Lunes a Domingo
+    business_days: str = "2,3,4,5,6"  # Miércoles a Domingo
 
     # ── Comportamiento del bot ───────────────────────────────────
     backup_reply_minutes: int = 3

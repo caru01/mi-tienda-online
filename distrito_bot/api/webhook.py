@@ -73,6 +73,7 @@ async def receive_webhook(request: Request):
                     else:
                         # Fuera de horario: mensaje de horarios
                         await handle_off_hours(customer_phone)
+                        await update_pending_reply(customer_phone, "outbound")
                 except Exception as e:
                     import traceback
                     from services.ycloud_client import send_text_message
@@ -122,6 +123,7 @@ async def receive_webhook(request: Request):
             else:
                 # Fuera de horario: mensaje de horarios
                 await handle_off_hours(customer_phone)
+                await update_pending_reply(customer_phone, "outbound")
 
         else:
             logger.debug(f"Tipo de mensaje ignorado: {msg_type}")
