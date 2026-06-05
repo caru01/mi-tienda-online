@@ -284,7 +284,7 @@ async def add_inventory_item(payload: dict) -> Dict[str, Any]:
         if "id" in payload:
             del payload["id"]
         res = db.table("inventory_items").insert(payload).execute()
-        return {"status": "success", "item": res.data[0]}
+        return {"status": "success", "item": res.data[0] if res.data else None}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
