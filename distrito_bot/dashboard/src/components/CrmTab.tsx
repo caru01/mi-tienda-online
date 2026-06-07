@@ -49,7 +49,7 @@ export default function CrmTab() {
     if (filter === 'dormant') {
       const thirtyDaysAgo = new Date()
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      matchesFilter = new Date(c.last_order_at) < thirtyDaysAgo
+      matchesFilter = c.last_interaction_at ? new Date(c.last_interaction_at) < thirtyDaysAgo : true
     }
     
     // Filtro por búsqueda de texto
@@ -178,7 +178,7 @@ export default function CrmTab() {
                 <option value="all">Todos los clientes ({customers.length})</option>
                 <option value="vip">Clientes VIP ({customers.filter(c => c.total_orders >= 5).length})</option>
                 <option value="new">Clientes Nuevos ({customers.filter(c => c.total_orders === 1).length})</option>
-                <option value="dormant">Inactivos +30 días ({customers.filter(c => new Date(c.last_order_at) < new Date(Date.now() - 30*24*60*60*1000)).length})</option>
+                <option value="dormant">Inactivos +30 días ({customers.filter(c => c.last_interaction_at ? new Date(c.last_interaction_at) < new Date(Date.now() - 30*24*60*60*1000) : true).length})</option>
               </select>
             </div>
             <div>
@@ -277,7 +277,7 @@ export default function CrmTab() {
             { id: 'all', icon: <Users size={16}/>, label: 'Todos', count: customers.length },
             { id: 'vip', icon: <Star size={16}/>, label: 'VIPs', count: customers.filter(c => c.total_orders >= 5).length },
             { id: 'new', icon: <Star size={16}/>, label: 'Nuevos', count: customers.filter(c => c.total_orders === 1).length },
-            { id: 'dormant', icon: <Clock size={16}/>, label: 'Inactivos', count: customers.filter(c => new Date(c.last_order_at) < new Date(Date.now() - 30*24*60*60*1000)).length },
+            { id: 'dormant', icon: <Clock size={16}/>, label: 'Inactivos', count: customers.filter(c => c.last_interaction_at ? new Date(c.last_interaction_at) < new Date(Date.now() - 30*24*60*60*1000) : true).length },
           ].map(f => (
             <button
               key={f.id}
@@ -301,7 +301,7 @@ export default function CrmTab() {
                 <th className="px-6 py-4 font-black">Cliente</th>
                 <th className="px-6 py-4 font-black">Teléfono</th>
                 <th className="px-6 py-4 font-black text-center">Pedidos</th>
-                <th className="px-6 py-4 font-black">Última Compra</th>
+                <th className="px-6 py-4 font-black">Último Mensaje</th>
                 <th className="px-6 py-4 font-black text-center">Acciones</th>
               </tr>
             </thead>
@@ -316,7 +316,7 @@ export default function CrmTab() {
                     <div className="flex gap-1 mt-1">
                       {c.total_orders >= 5 && <span className="bg-distrito-accent text-black text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1"><Star size={10}/> VIP</span>}
                       {c.total_orders === 1 && <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">NUEVO</span>}
-                      {new Date(c.last_order_at) < new Date(Date.now() - 30*24*60*60*1000) && <span className="bg-gray-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">INACTIVO</span>}
+                      {c.last_interaction_at && new Date(c.last_interaction_at) < new Date(Date.now() - 30*24*60*60*1000) && <span className="bg-gray-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full">INACTIVO</span>}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">{c.delivery_barrio || 'Sin dirección'}</div>
                   </td>
@@ -327,7 +327,11 @@ export default function CrmTab() {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-xs whitespace-nowrap">
-                    {new Date(c.last_order_at).toLocaleDateString()} a las {new Date(c.last_order_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    {c.last_interaction_at ? (
+                      `${new Date(c.last_interaction_at).toLocaleDateString()} a las ${new Date(c.last_interaction_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`
+                    ) : (
+                      'Sin mensajes'
+                    )}
                   </td>
                   <td className="px-6 py-4 text-center">
                     <div className="flex justify-center items-center gap-2">

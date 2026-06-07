@@ -50,6 +50,28 @@ async def record_message(
             f"Tel: {customer_phone} | ID: {ycloud_message_id}"
         )
 
+        # ── REGISTRO/ACTUALIZACIÓN EN CUSTOMERS (CRM) ───────────────────
+        try:
+            now = datetime.now(timezone.utc).isoformat()
+            res_cust = db.table("customers").select("customer_phone").eq("customer_phone", customer_phone).limit(1).execute()
+            if not res_cust.data:
+                db.table("customers").insert({
+                    "customer_phone": customer_phone,
+                    "customer_name": "",
+                    "whatsapp_label": customer_phone,
+                    "first_order_at": now,
+                    "last_interaction_at": now,
+                    "total_orders": 0,
+                    "notes": ""
+                }).execute()
+                logger.info(f"🆕 CRM: Nuevo prospecto registrado: {customer_phone}")
+            else:
+                db.table("customers").update({
+                    "last_interaction_at": now
+                }).eq("customer_phone", customer_phone).execute()
+        except Exception as ex_crm:
+            logger.error(f"⚠️ Error actualizando CRM (customers) para {customer_phone}: {ex_crm}")
+
     except Exception as e:
         logger.error(f"❌ Error al guardar mensaje en BD: {e}")
         # No relanzamos la excepción para no interrumpir el flujo del webhook

@@ -12,6 +12,7 @@ router = APIRouter()
 async def get_dashboard_stats() -> Dict[str, Any]:
     db = get_supabase()
     from datetime import datetime, timezone
+    from config.dynamic_settings import is_restaurant_open
 
     # Solo ventas de hoy para KPIs (liviano)
     today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
@@ -39,7 +40,8 @@ async def get_dashboard_stats() -> Dict[str, Any]:
         "inventory": inventory.data or [],
         "products": products.data or [],
         "active_sales": active_sales_res.data or [],
-        "all_sales": all_sales_res.data or []
+        "all_sales": all_sales_res.data or [],
+        "is_store_open": is_restaurant_open()
     }
 
 @router.get("/api/dashboard/sales/history")
@@ -206,8 +208,13 @@ async def toggle_product(payload: dict) -> Dict[str, Any]:
 async def get_settings() -> Dict[str, Any]:
     db = get_supabase()
     try:
+        from config.dynamic_settings import is_restaurant_open
         res = db.table("bot_settings").select("*").eq("id", 1).single().execute()
-        return {"status": "ok", "settings": res.data}
+        return {
+            "status": "ok",
+            "settings": res.data,
+            "is_store_open": is_restaurant_open()
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -231,10 +238,13 @@ async def save_settings(payload: dict) -> Dict[str, Any]:
         db.table("bot_settings").update(payload).eq("id", 1).execute()
         
         # Invalidate cache locally
-        from config.dynamic_settings import _cache
+        from config.dynamic_settings import _cache, is_restaurant_open
         _cache.clear()
         
-        return {"status": "success"}
+        return {
+            "status": "success",
+            "is_store_open": is_restaurant_open()
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -377,7 +387,7 @@ async def save_recipe(payload: dict) -> Dict[str, Any]:
 async def get_crm_customers() -> Dict[str, Any]:
     db = get_supabase()
     try:
-        res = db.table("customers").select("*").order("last_order_at", desc=True).execute()
+        res = db.table("customers").select("*").order("last_interaction_at", desc=True).execute()
         
         # Calculate messages sent today for limits
         from datetime import datetime, timezone
@@ -424,10 +434,10 @@ async def send_crm_broadcast(payload: dict) -> Dict[str, Any]:
         if target_segment == "vip":
             query = query.gte("total_orders", 5)
         elif target_segment == "dormant":
-            # Más de 30 días sin comprar
+            # Más de 30 días sin interactuar (mensajes)
             from datetime import datetime, timedelta, timezone
             thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-            query = query.lte("last_order_at", thirty_days_ago)
+            query = query.lte("last_interaction_at", thirty_days_ago)
         elif target_segment == "new":
             # Solo 1 compra
             query = query.eq("total_orders", 1)

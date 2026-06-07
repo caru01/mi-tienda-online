@@ -45,6 +45,7 @@ function App() {
     all_sales: []
   })
   const [isOpen, setIsOpen] = useState<boolean | null>(null)
+  const [isStoreOpen, setIsStoreOpen] = useState<boolean | null>(null)
   const [togglingStore, setTogglingStore] = useState(false)
   const [newOrderIds, setNewOrderIds] = useState<Set<string>>(new Set())
   const alertTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -90,6 +91,9 @@ function App() {
         isFirstLoadRef.current = false
       }
 
+      if (json.is_store_open !== undefined) {
+        setIsStoreOpen(json.is_store_open)
+      }
       setData(json)
     } catch (error) {
       console.error('Error fetching data:', error)
@@ -101,7 +105,10 @@ function App() {
     try {
       const res = await fetch(`${API_URL}/settings`)
       const json = await res.json()
-      if (json.status === 'ok') setIsOpen(json.settings?.is_open ?? true)
+      if (json.status === 'ok') {
+        setIsOpen(json.settings?.is_open ?? true)
+        setIsStoreOpen(json.is_store_open ?? json.settings?.is_open ?? true)
+      }
     } catch (e) { console.error(e) }
   }, [])
 
@@ -110,12 +117,20 @@ function App() {
     setTogglingStore(true)
     const newVal = !isOpen
     try {
-      await fetch(`${API_URL}/settings`, {
+      const res = await fetch(`${API_URL}/settings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_open: newVal })
       })
-      setIsOpen(newVal)
+      const json = await res.json()
+      if (json.status === 'success') {
+        setIsOpen(newVal)
+        if (json.is_store_open !== undefined) {
+          setIsStoreOpen(json.is_store_open)
+        } else {
+          setIsStoreOpen(newVal)
+        }
+      }
     } catch (e) { console.error(e) }
     setTogglingStore(false)
   }
@@ -163,15 +178,15 @@ function App() {
         {/* Botón Abrir/Cerrar tienda */}
         <button
           onClick={toggleStore}
-          disabled={togglingStore || isOpen === null}
+          disabled={togglingStore || isStoreOpen === null}
           className={`w-full flex items-center gap-2 px-4 py-3 rounded-xl font-black text-sm mb-6 transition-all border ${
-            isOpen
+            isStoreOpen
               ? 'bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20'
               : 'bg-red-500/10 text-red-400 border-red-500/30 hover:bg-red-500/20'
           }`}
         >
           <Store size={18} />
-          <span>{isOpen ? '✅ Tienda Abierta' : '🔴 Tienda Cerrada'}</span>
+          <span>{isStoreOpen ? '✅ Tienda Abierta' : '🔴 Tienda Cerrada'}</span>
         </button>
 
         <nav className="space-y-1 flex-1">
@@ -200,15 +215,15 @@ function App() {
         </div>
         <button
           onClick={toggleStore}
-          disabled={togglingStore || isOpen === null}
+          disabled={togglingStore || isStoreOpen === null}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold text-xs border transition-all ${
-            isOpen
+            isStoreOpen
               ? 'bg-green-500/10 text-green-400 border-green-500/30'
               : 'bg-red-500/10 text-red-400 border-red-500/30'
           }`}
         >
           <Store size={14} />
-          <span>{isOpen ? 'Abierta' : 'Cerrada'}</span>
+          <span>{isStoreOpen ? 'Abierta' : 'Cerrada'}</span>
         </button>
       </div>
 

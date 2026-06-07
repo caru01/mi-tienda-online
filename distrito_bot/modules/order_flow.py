@@ -146,6 +146,9 @@ async def _update_session(customer_phone: str, updates: dict) -> bool:
     db = get_supabase()
     updates["customer_phone"] = customer_phone
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+    # Reset retry_count on state change if not explicitly overridden
+    if "state" in updates and "retry_count" not in updates:
+        updates["retry_count"] = 0
     try:
         db.table("conversation_sessions").upsert(
             updates, on_conflict="customer_phone"
@@ -197,6 +200,7 @@ async def _save_customer(customer_phone: str, session: dict) -> bool:
                 "delivery_barrio":  barrio,
                 "whatsapp_label":   label,
                 "last_order_at":    now,
+                "last_interaction_at": now,
                 "total_orders":     total,
             }).eq("customer_phone", customer_phone).execute()
         else:
@@ -206,7 +210,11 @@ async def _save_customer(customer_phone: str, session: dict) -> bool:
                 "delivery_address": session.get("delivery_address"),
                 "delivery_barrio":  barrio,
                 "whatsapp_label":   label,
+                "first_order_at":   now,
+                "last_order_at":    now,
+                "last_interaction_at": now,
                 "total_orders":     1,
+                "notes":            ""
             }).execute()
         logger.info(f"Cliente guardado: {label}")
     except Exception as e:
@@ -484,6 +492,82 @@ async def _send_payment_buttons(phone: str, summary: str) -> None:
 
 
 # ─────────────────────────────────────────────────────────────
+# Prevención de Bucles y Auxiliares de Selección
+# ─────────────────────────────────────────────────────────────
+
+async def _detect_combo_selection_attempt(body: str) -> str | None:
+    if not body:
+        return None
+    normalized = body.lower().strip()
+    
+    # Comprobar nombres directos
+    if "parche xl" in normalized or "parchexl" in normalized:
+        return "combo_parche_xl"
+    if "parche" in normalized:
+        return "combo_parche"
+    if "duo" in normalized or "dúo" in normalized:
+        return "combo_duo"
+    if "personal" in normalized:
+        return "combo_personal"
+        
+    # Comprobar patrón combo + número, ej. "combo 3", "combo numero 3", "el 3"
+    m = re.search(r"combo\s*(?:n[uú]mero\s*)?\b([1-4])\b", normalized)
+    if m:
+        num = m.group(1)
+        mapping = {
+            "1": "combo_personal",
+            "2": "combo_duo",
+            "3": "combo_parche",
+            "4": "combo_parche_xl"
+        }
+        return mapping.get(num)
+        
+    return None
+
+
+async def _handle_invalid_input(customer_phone: str, session: dict, state: str) -> None:
+    current_retry = session.get("retry_count") or 0
+    if current_retry >= 2:
+        # Escalación
+        await reset_session(customer_phone)
+        msg = (
+            "Parece que hay problemas para procesar tu respuesta. 📴\n\n"
+            "Te hemos comunicado con un *asesor humano* para que te ayude manualmente. "
+            "Por favor espera un momento o escribe *reiniciar* si deseas empezar de nuevo. 🍔"
+        )
+        await send_text_message(customer_phone, msg)
+    else:
+        # Incrementar reintentos y repetir el prompt del estado actual
+        await _update_session(customer_phone, {"retry_count": current_retry + 1, "state": state})
+        if state == "waiting_combo_selection":
+            await _send_combos_list(customer_phone)
+        elif state == "waiting_quantity":
+            await _send_qty_list(customer_phone, session.get("selected_combo_name", "el combo"))
+        elif state == "waiting_add_combo":
+            await send_button_message(
+                to=customer_phone,
+                body_text="Deseas agregar otro combo al pedido?",
+                buttons=[
+                    {"id": "add_combo_si", "title": "Si, agregar otro"},
+                    {"id": "add_combo_no", "title": "No, continuar"},
+                ],
+            )
+        elif state == "waiting_delivery_type":
+            await _send_delivery_buttons(customer_phone)
+        elif state == "waiting_name":
+            await send_text_message(customer_phone, get_msg_ask_name())
+        elif state == "waiting_address":
+            await send_text_message(
+                customer_phone,
+                "Por favor escribe una direccion mas completa. 📍\n_(Ej: Calle 15 #12-34)_"
+            )
+        elif state == "waiting_barrio":
+            await send_text_message(customer_phone, get_msg_ask_neighborhood())
+        elif state == "waiting_payment":
+            await _send_payment_buttons(customer_phone, _build_summary(session, customer_phone))
+
+
+# ─────────────────────────────────────────────────────────────
 # Máquina de estados
 # ─────────────────────────────────────────────────────────────
 
@@ -498,6 +582,17 @@ async def handle_customer_message(
     state   = session.get("state", "idle")
 
     logger.info(f"[{customer_phone}] {state} | body='{body[:25]}' | id={interactive_id}")
+
+    # ── DETECCIÓN DE CANCELACIÓN GLOBAL ───────────────────────
+    if body:
+        body_clean = body.lower().strip()
+        if body_clean in ["cancelar", "reiniciar", "salir", "cancelar pedido"]:
+            await reset_session(customer_phone)
+            await send_text_message(
+                customer_phone,
+                "Tu pedido actual ha sido cancelado. ❌ Si deseas ordenar nuevamente, escribe cualquier mensaje para iniciar de nuevo. 🍔"
+            )
+            return True
 
     # ── DETECCIÓN DE ASESOR ───────────────────────────────────
     if body and "asesor" in body.lower():
@@ -533,7 +628,7 @@ async def handle_customer_message(
     if state == "waiting_combo_selection":
         if interactive_type == "button_reply" and interactive_id == "ver_combos":
             await _send_combos_list(customer_phone)
-            return
+            return True
 
         combo_id = await _detect_combo(body, interactive_type, interactive_id)
         if combo_id:
@@ -551,11 +646,29 @@ async def handle_customer_message(
             )
             await _send_qty_list(customer_phone, combo["name"])
         else:
-            await _send_combos_list(customer_phone)
-        return
+            await _handle_invalid_input(customer_phone, session, state)
+        return True
 
     # ── CANTIDAD ──────────────────────────────────────────────
     if state == "waiting_quantity":
+        # Verificar intento de cambiar/seleccionar combo en lugar de ingresar cantidad
+        combo_attempt = await _detect_combo_selection_attempt(body)
+        if combo_attempt:
+            combos = await get_db_combos()
+            combo = combos.get(combo_attempt)
+            if combo:
+                await _update_session(customer_phone, {
+                    "selected_combo_id":   combo_attempt,
+                    "selected_combo_name": combo["name"],
+                    "combo_price":         combo["price"],
+                })
+                await send_text_message(
+                    customer_phone,
+                    f"Cambiado al combo: {combo['emoji']} *{combo['name']}* — ${combo['price']:,}\n_{combo['desc']}_"
+                )
+                await _send_qty_list(customer_phone, combo["name"])
+                return True
+
         qty = _detect_qty(body, interactive_type, interactive_id)
         if qty:
             combo_id   = session.get("selected_combo_id", "")
@@ -566,12 +679,11 @@ async def handle_customer_message(
                 "combo_quantity":   (session.get("combo_quantity") or 0) + qty,
                 "order_items_text": items_text,
                 "order_total":      total,
-                # Almacenar ultimo combo añadido para descuentos de inventario si fuera necesario (aunque se recomienda descontar todo al final)
             })
             await _ask_add_combo(customer_phone, items_text, total)
         else:
-            await _send_qty_list(customer_phone, session.get("selected_combo_name", "el combo"))
-        return
+            await _handle_invalid_input(customer_phone, session, state)
+        return True
 
     # ── ¿AGREGAR OTRO COMBO? ──────────────────────────────────
     if state == "waiting_add_combo":
@@ -604,15 +716,8 @@ async def handle_customer_message(
                 "Si no tienes ninguna, escribe *no* o *ninguna*"
             )
         else:
-            await send_button_message(
-                to=customer_phone,
-                body_text="Deseas agregar otro combo al pedido?",
-                buttons=[
-                    {"id": "add_combo_si", "title": "Si, agregar otro"},
-                    {"id": "add_combo_no", "title": "No, continuar"},
-                ],
-            )
-        return
+            await _handle_invalid_input(customer_phone, session, state)
+        return True
 
     # ── OBSERVACIONES ─────────────────────────────────────────
     if state == "waiting_observations":
@@ -623,7 +728,7 @@ async def handle_customer_message(
         })
         if ok:
             await _send_delivery_buttons(customer_phone)
-        return
+        return True
 
     # ── TIPO DE ENTREGA ───────────────────────────────────────
     if state == "waiting_delivery_type":
@@ -653,15 +758,15 @@ async def handle_customer_message(
                     get_msg_ask_name()
                 )
         else:
-            await _send_delivery_buttons(customer_phone)
-        return
+            await _handle_invalid_input(customer_phone, session, state)
+        return True
 
     # ── NOMBRE (domicilio) ────────────────────────────────────
     if state == "waiting_name":
         name = body.strip() if body else ""
         if len(name) < 2:
-            await send_text_message(customer_phone, get_msg_ask_name())
-            return
+            await _handle_invalid_input(customer_phone, session, state)
+            return True
         ok = await _update_session(customer_phone, {
             "customer_name": name,
         })
@@ -678,18 +783,14 @@ async def handle_customer_message(
                     customer_phone,
                     get_msg_ask_address()
                 )
-        return
+        return True
 
     # ── DIRECCIÓN (domicilio) ─────────────────────────────────
     if state == "waiting_address":
         address = body.strip() if body else ""
         if len(address) < 5:
-            await send_text_message(
-                customer_phone,
-                "Por favor escribe una direccion mas completa. 📍\n"
-                "_(Ej: Calle 15 #12-34)_"
-            )
-            return
+            await _handle_invalid_input(customer_phone, session, state)
+            return True
         ok = await _update_session(customer_phone, {
             "state": "waiting_barrio",
             "delivery_address": address,
@@ -697,15 +798,15 @@ async def handle_customer_message(
         if ok:
             await send_text_message(customer_phone, get_msg_ask_neighborhood())
         else:
-            await send_text_message(customer_phone, "Hubo un error, intenta de nuevo con tu direccion.")
-        return
+            await _handle_invalid_input(customer_phone, session, state)
+        return True
 
     # ── BARRIO (domicilio) ────────────────────────────────────
     if state == "waiting_barrio":
         barrio = body.strip() if body else ""
         if len(barrio) < 2:
-            await send_text_message(customer_phone, get_msg_ask_neighborhood())
-            return
+            await _handle_invalid_input(customer_phone, session, state)
+            return True
         updated = {**session, "delivery_barrio": barrio}
         ok = await _update_session(customer_phone, {
             "state": "waiting_payment",
