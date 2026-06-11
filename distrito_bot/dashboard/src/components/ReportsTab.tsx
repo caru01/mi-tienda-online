@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts'
-import { format, parseISO, subDays, startOfWeek, startOfMonth } from 'date-fns'
+import { format, parseISO, subDays } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { API_URL } from '../config'
 
