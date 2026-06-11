@@ -8,6 +8,10 @@ Responsabilidades:
 - Actualizar la tabla `pending_replies` en función de la dirección del mensaje.
 """
 import logging
+from services.ycloud_client import send_text_message
+
+# In‑memory cache to avoid volver a preguntar al mismo número en una ejecución
+PROGRESSIVE_PROFILE_PROMPTED = set()
 from datetime import datetime, timezone
 
 from services.supabase_client import get_supabase
@@ -61,13 +65,18 @@ async def record_message(
                     "whatsapp_label": customer_phone,
                     "first_order_at": now,
                     "last_order_at": now,
-                    "total_orders": 0,
-                    "notes": ""
+                    "total_orders": 1,
+                    "notes": "",
+                    "direccion_frecuente": "",
+                    "fecha_registro": now,
+                    "categoria": "Nuevo",
+                    "total_pedidos": 1
                 }).execute()
                 logger.info(f"🆕 CRM: Nuevo prospecto registrado: {customer_phone}")
             else:
                 db.table("customers").update({
-                    "last_order_at": now
+                    "last_order_at": now,
+                    "total_pedidos": db.table("customers").select("total_pedidos").eq("customer_phone", customer_phone).single().execute().data.get("total_pedidos", 0) + 1
                 }).eq("customer_phone", customer_phone).execute()
         except Exception as ex_crm:
             logger.error(f"⚠️ Error actualizando CRM (customers) para {customer_phone}: {ex_crm}")
@@ -87,6 +96,14 @@ async def update_pending_reply(customer_phone: str, direction: str) -> None:
 
     try:
         if direction == "inbound":
+            # 1️⃣ Perfilado progresivo: preguntar nombre si falta y no se ha preguntado ya
+            cust = db.table("customers").select("customer_name").eq("customer_phone", customer_phone).single().execute()
+            if cust.data and not cust.data.get("customer_name") and customer_phone not in PROGRESSIVE_PROFILE_PROMPTED:
+                await send_text_message(
+                    customer_phone,
+                    "¡Hola! Veo que ya has pedido antes, pero no tengo tu nombre registrado. ¿Cómo te llamas?"
+                )
+                PROGRESSIVE_PROFILE_PROMPTED.add(customer_phone)
             # El cliente escribió → marcar como no resuelto y actualizar timestamp
             db.table("pending_replies").upsert(
                 {
