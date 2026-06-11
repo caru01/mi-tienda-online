@@ -387,7 +387,7 @@ async def save_recipe(payload: dict) -> Dict[str, Any]:
 async def get_crm_customers() -> Dict[str, Any]:
     db = get_supabase()
     try:
-        res = db.table("customers").select("*").order("last_interaction_at", desc=True).execute()
+        res = db.table("customers").select("*").order("last_order_at", desc=True).execute()
         
         # Calculate messages sent today for limits
         from datetime import datetime, timezone

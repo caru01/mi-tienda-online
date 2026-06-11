@@ -60,14 +60,14 @@ async def record_message(
                     "customer_name": "",
                     "whatsapp_label": customer_phone,
                     "first_order_at": now,
-                    "last_interaction_at": now,
+                    "last_order_at": now,
                     "total_orders": 0,
                     "notes": ""
                 }).execute()
                 logger.info(f"🆕 CRM: Nuevo prospecto registrado: {customer_phone}")
             else:
                 db.table("customers").update({
-                    "last_interaction_at": now
+                    "last_order_at": now
                 }).eq("customer_phone", customer_phone).execute()
         except Exception as ex_crm:
             logger.error(f"⚠️ Error actualizando CRM (customers) para {customer_phone}: {ex_crm}")
