@@ -95,13 +95,16 @@ def get_payment_transfer_text() -> str:
     return get_text("payment_transfer_text", base_settings.payment_transfer_text)
 
 def get_msg_order_accepted() -> str:
-    return get_text("msg_order_accepted", "Tu pedido esta en fila! 🎉🍔\n\nPronto preparamos tu orden y te avisamos. ⏳\n\nGracias por elegir Distrito Burger! 🔥")
+    return get_text("msg_order_accepted", "🟡 Pedido recibido\n\nHola {cliente}\n\nHemos recibido tu pedido correctamente.\n\nNuestro equipo ya comenzó a prepararlo.\n\nTiempo estimado:\n20 a 30 minutos.")
 
 def get_msg_order_dispatched() -> str:
-    return get_text("msg_order_dispatched", "🛵 ¡Tu pedido acaba de salir de nuestra cocina! Nuestro domiciliario va en camino.")
+    return get_text("msg_order_dispatched", "🚚 Pedido en camino\n\nHola {cliente}\n\nTu pedido ya salió para entrega.\n\nGracias por tu compra.")
 
 def get_msg_ready_pickup() -> str:
-    return get_text("msg_ready_pickup", "🛍️ ¡Tu pedido ya está listo! Puedes pasar a recogerlo por nuestro local.")
+    return get_text("msg_ready_pickup", "🟢 Pedido listo para entregar\n\nHola {cliente}\n\nTu pedido ya está listo.\n\nPuedes pasar a recogerlo en nuestro local.\n\nTe esperamos 🍔")
+
+def get_msg_order_delivered() -> str:
+    return get_text("msg_order_delivered", "✅ Pedido entregado\n\nGracias por elegir Distrito BG 🍔\n\nEsperamos verte nuevamente pronto.")
 
 def get_msg_ask_name() -> str:
     return get_text("msg_ask_name", "Para tomar tu pedido, ¿Me regalas tu nombre y apellido? 📝")

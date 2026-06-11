@@ -321,22 +321,27 @@ async def update_order_status(payload: dict) -> Dict[str, Any]:
         
         if customer_phone:
             from services.ycloud_client import send_text_message
-            from config.dynamic_settings import get_msg_order_accepted, get_msg_order_dispatched, get_msg_ready_pickup
+            from config.dynamic_settings import get_msg_order_accepted, get_msg_order_dispatched, get_msg_ready_pickup, get_msg_order_delivered
+            
+            # Fetch customer_name and delivery_type
+            order_res = db.table("sales").select("customer_name, delivery_type").eq("id", order_id).single().execute()
+            customer_name = order_res.data.get("customer_name", "") if order_res.data else ""
+            deliv = order_res.data.get("delivery_type", "") if order_res.data else ""
             
             if new_status == "en_preparacion":
-                msg = get_msg_order_accepted()
+                msg = get_msg_order_accepted().replace("{cliente}", customer_name)
                 await send_text_message(customer_phone, msg)
                 
             elif new_status == "por_entregar":
-                # Necesitamos saber si es recoger o domicilio
-                order = db.table("sales").select("delivery_type").eq("id", order_id).single().execute()
-                deliv = order.data.get("delivery_type", "") if order.data else ""
-                
                 if deliv == "recoger":
-                    msg = get_msg_ready_pickup()
+                    msg = get_msg_ready_pickup().replace("{cliente}", customer_name)
                 else:
-                    msg = get_msg_order_dispatched()
+                    msg = get_msg_order_dispatched().replace("{cliente}", customer_name)
                     
+                await send_text_message(customer_phone, msg)
+                
+            elif new_status == "entregado":
+                msg = get_msg_order_delivered()
                 await send_text_message(customer_phone, msg)
             
         return {"status": "success"}

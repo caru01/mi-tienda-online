@@ -386,18 +386,11 @@ def _build_summary(session: dict, customer_phone: str) -> str:
 # ─────────────────────────────────────────────────────────────
 
 async def _send_welcome(phone: str) -> None:
-    categories = get_active_categories()[:3]  # Máximo 3 botones permitidos por WhatsApp
-    buttons = []
+    buttons = [
+        {"id": "ver_combos", "title": "🍔 VER COMBOS"},
+        {"id": "hablar_asesor", "title": "👨‍💼 HABLAR CON ASESOR"}
+    ]
     
-    if not categories:
-        buttons.append({"id": "ver_cat_Combos", "title": "Ver Combos"})
-    else:
-        for cat in categories:
-            # WhatsApp ID limits length, clean it up
-            safe_cat_id = f"ver_cat_{cat}"[:256]
-            title = f"Ver {cat}"[:20]
-            buttons.append({"id": safe_cat_id, "title": title})
-
     await send_button_message(
         to=phone,
         body_text=get_welcome_message(),
@@ -595,7 +588,7 @@ async def handle_customer_message(
             return True
 
     # ── DETECCIÓN DE ASESOR ───────────────────────────────────
-    if body and "asesor" in body.lower():
+    if (body and "asesor" in body.lower()) or (interactive_type == "button_reply" and interactive_id == "hablar_asesor"):
         await reset_session(customer_phone)
         await send_text_message(
             customer_phone, 
@@ -836,23 +829,27 @@ async def handle_customer_message(
             return True
 
         elif payment == "transferencia":
-            await _update_session(customer_phone, {"state": "order_complete", "payment_method": "transferencia"})
-            session["payment_method"] = "transferencia"
-            is_vip = await _finalize_sale(customer_phone, session)
-            
+            await _update_session(customer_phone, {"state": "esperando_comprobante", "payment_method": "transferencia"})
             await send_text_message(customer_phone, get_payment_transfer_text())
-            
-            msg = get_msg_order_registered()
-            if is_vip:
-                msg += "\n\n🎁 *¡Sorpresa!* Vemos que eres un cliente frecuente. Hoy hemos incluido un *obsequio especial* en tu pedido por tu fidelidad. ¡Disfrútalo!"
-                
-            await send_text_message(customer_phone, msg)
             return True
         else:
             await _send_payment_buttons(
                 customer_phone,
                 _build_summary(session, customer_phone)
             )
+        return True
+
+    # ── ESPERANDO COMPROBANTE ─────────────────────────────────
+    if state == "esperando_comprobante":
+        await _update_session(customer_phone, {"state": "order_complete"})
+        session["payment_method"] = "transferencia"
+        is_vip = await _finalize_sale(customer_phone, session)
+        
+        msg = get_msg_order_registered()
+        if is_vip:
+            msg += "\n\n🎁 *¡Sorpresa!* Vemos que eres un cliente frecuente. Hoy hemos incluido un *obsequio especial* en tu pedido por tu fidelidad. ¡Disfrútalo!"
+            
+        await send_text_message(customer_phone, msg)
         return True
 
     # ── Estado desconocido ────────────────────────────────────
