@@ -6,6 +6,7 @@ interface InventoryItem {
   name: string;
   unit: string;
   current_stock: number;
+  minimum_stock?: number;
 }
 
 interface Purchase {
@@ -15,6 +16,7 @@ interface Purchase {
   unit_price: number;
   total_price: number;
   purchase_date: string;
+  supplier?: string;
   created_at: string;
   inventory_items?: {
     name: string;
@@ -38,11 +40,12 @@ export default function InventoryTab() {
   const [quantity, setQuantity] = useState<number | ''>('');
   const [unitPrice, setUnitPrice] = useState<number | ''>('');
   const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [supplier, setSupplier] = useState<string>('');
   const [loading, setLoading] = useState(false);
 
   // States for the new item form
   const [showAddItem, setShowAddItem] = useState(false);
-  const [newItem, setNewItem] = useState({ name: '', unit: '', current_stock: 0 });
+  const [newItem, setNewItem] = useState({ name: '', unit: '', current_stock: 0, minimum_stock: 0 });
 
   
 
@@ -87,7 +90,8 @@ export default function InventoryTab() {
         quantity: Number(quantity),
         unit_price: Number(unitPrice),
         total_price: Number(quantity) * Number(unitPrice),
-        purchase_date: new Date(purchaseDate).toISOString()
+        purchase_date: new Date(purchaseDate).toISOString(),
+        supplier: supplier
       };
       
       const res = await fetch(`${API_URL}/purchases`, {
@@ -103,6 +107,7 @@ export default function InventoryTab() {
         setSelectedItemId('');
         setQuantity('');
         setUnitPrice('');
+        setSupplier('');
         // Refresh data
         fetchPurchases();
         fetchStats();
@@ -124,7 +129,8 @@ export default function InventoryTab() {
       const payload = {
         name: newItem.name,
         unit: newItem.unit,
-        current_stock: Number(newItem.current_stock)
+        current_stock: Number(newItem.current_stock),
+        minimum_stock: Number(newItem.minimum_stock)
       };
       const res = await fetch(`${API_URL}/inventory/add`, {
         method: 'POST',
@@ -134,7 +140,7 @@ export default function InventoryTab() {
       const data = await res.json();
       if (data.status === 'success') {
         setShowAddItem(false);
-        setNewItem({ name: '', unit: '', current_stock: 0 });
+        setNewItem({ name: '', unit: '', current_stock: 0, minimum_stock: 0 });
         fetch(`${API_URL}/stats`).then(res => res.json()).then(d => {
           if(d.status === 'ok') setItems(d.inventory);
         });
@@ -153,6 +159,40 @@ export default function InventoryTab() {
   return (
     <div className="space-y-6 animate-fade-in text-white pb-20 md:pb-0">
       
+      {/* ALERTAS DE INVENTARIO */}
+      {(() => {
+        const outOfStock = items.filter(i => i.current_stock <= 0);
+        const lowStock = items.filter(i => i.current_stock > 0 && i.current_stock <= (i.minimum_stock || 0));
+        
+        if (outOfStock.length === 0 && lowStock.length === 0) return null;
+
+        return (
+          <div className="bg-red-900/30 border border-red-500/50 rounded-2xl p-6">
+            <h3 className="text-red-400 font-bold text-lg mb-4 flex items-center gap-2">
+              <span>⚠️</span> Alertas de Inventario
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {outOfStock.length > 0 && (
+                <div className="bg-black/40 rounded-xl p-4">
+                  <h4 className="text-red-500 font-bold mb-2">Agotados:</h4>
+                  <ul className="list-disc list-inside text-sm text-red-200">
+                    {outOfStock.map(i => <li key={i.id}>{i.name} (0 {i.unit})</li>)}
+                  </ul>
+                </div>
+              )}
+              {lowStock.length > 0 && (
+                <div className="bg-black/40 rounded-xl p-4">
+                  <h4 className="text-orange-400 font-bold mb-2">Stock Bajo:</h4>
+                  <ul className="list-disc list-inside text-sm text-orange-200">
+                    {lowStock.map(i => <li key={i.id}>{i.name} ({i.current_stock} {i.unit} / Min: {i.minimum_stock})</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* C. PANEL DE METRICAS FINANCIERAS */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="glass p-6 rounded-2xl border border-distrito-accent/20">
@@ -232,6 +272,17 @@ export default function InventoryTab() {
                 onChange={e => setPurchaseDate(e.target.value)}
               />
             </div>
+            
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">Proveedor (Opcional)</label>
+              <input 
+                type="text" 
+                className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:border-distrito-accent focus:ring-1 focus:ring-distrito-accent transition-all"
+                placeholder="Ej: Distribuidora XYZ"
+                value={supplier}
+                onChange={e => setSupplier(e.target.value)}
+              />
+            </div>
 
             <button 
               onClick={handleSavePurchase}
@@ -256,6 +307,18 @@ export default function InventoryTab() {
                   value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
                 <input placeholder="Unidad (Ej: und)" className="w-full bg-black/40 border border-white/10 rounded p-2 text-white text-sm"
                   value={newItem.unit} onChange={e => setNewItem({...newItem, unit: e.target.value})} />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-400">Stock Inicial</label>
+                    <input type="number" placeholder="Ej: 0" className="w-full bg-black/40 border border-white/10 rounded p-2 text-white text-sm"
+                      value={newItem.current_stock} onChange={e => setNewItem({...newItem, current_stock: Number(e.target.value)})} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">Stock Mínimo</label>
+                    <input type="number" placeholder="Ej: 5" className="w-full bg-black/40 border border-white/10 rounded p-2 text-white text-sm"
+                      value={newItem.minimum_stock} onChange={e => setNewItem({...newItem, minimum_stock: Number(e.target.value)})} />
+                  </div>
+                </div>
                 <button onClick={handleAddItem} className="w-full bg-white/20 hover:bg-white/30 py-2 rounded font-bold text-sm transition-all">Crear Insumo Base</button>
               </div>
             )}
@@ -275,6 +338,7 @@ export default function InventoryTab() {
                 <tr className="border-b border-white/10 text-gray-400 text-sm uppercase tracking-wider">
                   <th className="pb-3 px-4 font-medium">Fecha</th>
                   <th className="pb-3 px-4 font-medium">Insumo</th>
+                  <th className="pb-3 px-4 font-medium">Proveedor</th>
                   <th className="pb-3 px-4 font-medium text-right">Cant.</th>
                   <th className="pb-3 px-4 font-medium text-right">P. Unitario</th>
                   <th className="pb-3 px-4 font-medium text-right">Total</th>
@@ -297,6 +361,9 @@ export default function InventoryTab() {
                         </td>
                         <td className="py-4 px-4 font-medium">
                           {p.inventory_items?.name || 'Insumo Eliminado'}
+                        </td>
+                        <td className="py-4 px-4 text-sm text-gray-300">
+                          {p.supplier || '-'}
                         </td>
                         <td className="py-4 px-4 text-right">
                           <span className="bg-white/10 px-2 py-1 rounded text-sm font-mono">

@@ -40,7 +40,6 @@ from config.dynamic_settings import (
     get_msg_order_registered
 )
 from config.settings import settings
-from modules.inventory_manager import deduct_inventory_for_order
 from modules.auto_reply import is_greeting
 
 logger = logging.getLogger(__name__)
@@ -92,7 +91,7 @@ async def get_db_combos(category: str = None) -> dict:
             
         res = query.execute()
         for row in (res.data or []):
-            combos[row["id"]] = {
+            combos[str(row["id"])] = {
                 "name": row["name"],
                 "price": row["price"],
                 "desc": row["description"] or "",
@@ -248,17 +247,7 @@ async def _finalize_sale(customer_phone: str, session: dict) -> bool:
             "daily_order_number": daily_count
         }).execute()
 
-        # 2. Descontar Inventario
-        items_text = session.get("order_items_text", "")
-        for line in items_text.split('\n'):
-            match = re.search(r"(\d+)x\s+(.+?)\s+—", line)
-            if match:
-                qty = int(match.group(1))
-                c_name = match.group(2).strip()
-                prod_res = db.table("products").select("id").eq("name", c_name).execute()
-                if prod_res.data:
-                    c_id = prod_res.data[0]["id"]
-                    await deduct_inventory_for_order(c_id, qty, customer_phone)
+        # 2. El inventario ya no se descuenta aquí, se descuenta al pasar a Entregado.
     except Exception as e:
         logger.error(f"Error finalizando venta para {customer_phone}: {e}")
         
@@ -595,6 +584,32 @@ async def handle_customer_message(
             "Te estamos comunicando con un asesor humano. Por favor, espera un momento. 👨‍💻"
         )
         return True
+
+    # ── RECUPERACIÓN DE CARRITOS ABANDONADOS ──────────────────
+    if interactive_type == "button_reply":
+        if interactive_id == "recovery_cancel":
+            await reset_session(customer_phone)
+            # Log metrics as cancelled
+            db = get_supabase()
+            db.table("abandoned_orders_log").update({"status": "cancelled"}).eq("customer_phone", customer_phone).eq("status", "abandoned").execute()
+            await send_text_message(
+                customer_phone,
+                "✅ Pedido cancelado correctamente.\n\nCuando quieras volver a ordenar estaremos disponibles.\nGracias por visitar Distrito BG 🍔"
+            )
+            return True
+        elif interactive_id == "recovery_continue":
+            db = get_supabase()
+            db.table("conversation_sessions").update({"recovery_status": "recovered", "updated_at": datetime.now(timezone.utc).isoformat(), "retry_count": 0}).eq("customer_phone", customer_phone).execute()
+            db.table("abandoned_orders_log").update({"status": "recovered"}).eq("customer_phone", customer_phone).eq("status", "abandoned").execute()
+            
+            await send_text_message(
+                customer_phone,
+                "🍔 Perfecto.\n\nRetomemos tu pedido donde lo dejaste."
+            )
+            # Resend the prompt for the current state without triggering an error limit
+            session["retry_count"] = -1
+            await _handle_invalid_input(customer_phone, session, state)
+            return True
 
     # ── IDLE / FINALIZADO: iniciar flujo ──────────────────────
     if state in ("idle", "order_complete", "en_camino"):

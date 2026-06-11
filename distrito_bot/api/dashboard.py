@@ -44,6 +44,47 @@ async def get_dashboard_stats() -> Dict[str, Any]:
         "is_store_open": is_restaurant_open()
     }
 
+@router.get("/api/dashboard/recovery-stats")
+async def get_recovery_stats() -> Dict[str, Any]:
+    db = get_supabase()
+    from datetime import datetime, timezone
+    today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+    
+    try:
+        # Pedidos Confirmados: Ventas creadas hoy
+        sales_res = db.table("sales").select("id").gte("created_at", f"{today}T00:00:00Z").execute()
+        confirmados = len(sales_res.data or [])
+
+        # Pedidos Abandonados y Recuperados: de abandoned_orders_log
+        log_res = db.table("abandoned_orders_log").select("*").gte("created_at", f"{today}T00:00:00Z").execute()
+        logs = log_res.data or []
+        
+        abandonados = len(logs)
+        recuperados = len([log for log in logs if log.get("status") == "recovered"])
+        
+        # Pedidos Iniciados
+        # Podemos estimarlo como confirmados + abandonados - recuperados 
+        # (ya que los recuperados terminan siendo confirmados o siguen pendientes, pero empezaron como abandonados).
+        # Por simplicidad, "Iniciados" = Confirmados + Abandonados que no se recuperaron.
+        iniciados = confirmados + (abandonados - recuperados)
+        
+        tasa = 0
+        if abandonados > 0:
+            tasa = round((recuperados / abandonados) * 100, 1)
+            
+        return {
+            "status": "ok",
+            "stats": {
+                "iniciados": iniciados,
+                "confirmados": confirmados,
+                "abandonados": abandonados,
+                "recuperados": recuperados,
+                "tasa": tasa
+            }
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 @router.get("/api/dashboard/sales/history")
 async def get_sales_history(start_date: str = None, end_date: str = None) -> Dict[str, Any]:
     db = get_supabase()
@@ -158,6 +199,8 @@ async def register_purchase(payload: dict) -> Dict[str, Any]:
     total_price = payload.get("total_price", 0)
     purchase_date = payload.get("purchase_date") # ISO format or None for now
     
+    supplier = payload.get("supplier")
+    
     if not item_id or float(quantity) <= 0 or float(unit_price) < 0:
         return {"status": "error", "message": "Datos inválidos"}
         
@@ -170,6 +213,8 @@ async def register_purchase(payload: dict) -> Dict[str, Any]:
         }
         if purchase_date:
             data_to_insert["purchase_date"] = purchase_date
+        if supplier:
+            data_to_insert["supplier"] = supplier
             
         # Registrar la compra financiera
         db.table("purchases").insert(data_to_insert).execute()
@@ -257,9 +302,21 @@ async def add_product(payload: dict) -> Dict[str, Any]:
         if "category" not in payload or not payload["category"]:
             payload["category"] = "Combos"
             
-        res = db.table("products").insert(payload).execute()
+        # Intentar remover emoji si no existe la columna en DB
+        # Para evitar el error de Supabase si la tabla products no tiene emoji
+        try:
+            res = db.table("products").insert(payload).execute()
+        except Exception as insert_e:
+            if "emoji" in payload and "does not exist" in str(insert_e).lower():
+                del payload["emoji"]
+                res = db.table("products").insert(payload).execute()
+            else:
+                raise insert_e
+
         return {"status": "success", "product": res.data[0]}
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error agregando producto: {e}")
         return {"status": "error", "message": str(e)}
 
 @router.post("/api/dashboard/products/update")
@@ -270,9 +327,20 @@ async def update_product(payload: dict) -> Dict[str, Any]:
         if not product_id:
             return {"status": "error", "message": "Missing product id"}
         update_data = {k: v for k, v in payload.items() if k != "id"}
-        db.table("products").update(update_data).eq("id", product_id).execute()
+        
+        try:
+            db.table("products").update(update_data).eq("id", product_id).execute()
+        except Exception as update_e:
+            if "emoji" in update_data and "does not exist" in str(update_e).lower():
+                del update_data["emoji"]
+                db.table("products").update(update_data).eq("id", product_id).execute()
+            else:
+                raise update_e
+                
         return {"status": "success"}
     except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error actualizando producto: {e}")
         return {"status": "error", "message": str(e)}
 
 @router.post("/api/dashboard/products/delete")
@@ -302,9 +370,13 @@ async def add_inventory_item(payload: dict) -> Dict[str, Any]:
 async def update_inventory_item(payload: dict) -> Dict[str, Any]:
     db = get_supabase()
     item_id = payload.get("id")
-    current_stock = payload.get("current_stock")
+    update_data = {}
+    if "current_stock" in payload:
+        update_data["current_stock"] = payload.get("current_stock")
+    if "minimum_stock" in payload:
+        update_data["minimum_stock"] = payload.get("minimum_stock")
     try:
-        res = db.table("inventory_items").update({"current_stock": current_stock}).eq("id", item_id).execute()
+        res = db.table("inventory_items").update(update_data).eq("id", item_id).execute()
         return {"status": "success"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -323,8 +395,8 @@ async def update_order_status(payload: dict) -> Dict[str, Any]:
             from services.ycloud_client import send_text_message
             from config.dynamic_settings import get_msg_order_accepted, get_msg_order_dispatched, get_msg_ready_pickup, get_msg_order_delivered
             
-            # Fetch customer_name and delivery_type
-            order_res = db.table("sales").select("customer_name, delivery_type").eq("id", order_id).single().execute()
+            # Fetch customer_name, delivery_type and order_detail
+            order_res = db.table("sales").select("customer_name, delivery_type, order_detail").eq("id", order_id).single().execute()
             customer_name = order_res.data.get("customer_name", "") if order_res.data else ""
             deliv = order_res.data.get("delivery_type", "") if order_res.data else ""
             
@@ -343,6 +415,20 @@ async def update_order_status(payload: dict) -> Dict[str, Any]:
             elif new_status == "entregado":
                 msg = get_msg_order_delivered()
                 await send_text_message(customer_phone, msg)
+                
+                # Descontar inventario automáticamente cuando se entrega
+                import re
+                from modules.inventory_manager import deduct_inventory_for_order
+                order_detail = order_res.data.get("order_detail", "") if order_res.data else ""
+                for line in order_detail.split('\n'):
+                    match = re.search(r"(\d+)x\s+(.+?)\s+—", line)
+                    if match:
+                        qty = int(match.group(1))
+                        c_name = match.group(2).strip()
+                        prod_res = db.table("products").select("id").eq("name", c_name).execute()
+                        if prod_res.data:
+                            c_id = prod_res.data[0]["id"]
+                            await deduct_inventory_for_order(c_id, qty, customer_phone)
             
         return {"status": "success"}
     except Exception as e:

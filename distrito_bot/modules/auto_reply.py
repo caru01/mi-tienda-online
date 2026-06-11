@@ -181,19 +181,3 @@ async def handle_off_hours(customer_phone: str) -> None:
         logger.error(f"Error al enviar mensaje off_hours a {customer_phone}: {e}")
 
 
-async def send_backup_reply(customer_phone: str) -> None:
-    """
-    Envía el mensaje de cortesía por saturación.
-    Llamado por el scheduler cuando detecta un chat sin respuesta.
-    """
-    reply_type = "backup"
-    if _was_auto_replied_recently(customer_phone, reply_type):
-        logger.debug(f"Anti-spam: ya se envio backup a {customer_phone} recientemente")
-        return
-
-    try:
-        await send_text_message(customer_phone, get_backup_reply_message())
-        _log_auto_reply(customer_phone, reply_type)
-        logger.info(f"Mensaje de respaldo enviado a {customer_phone}")
-    except Exception as e:
-        logger.error(f"Error al enviar backup reply a {customer_phone}: {e}")

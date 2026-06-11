@@ -44,22 +44,32 @@ export default function CatalogTab() {
     if (!editingProduct.name || !editingProduct.price) return
     setSaving(true)
     try {
+      let res;
       if (modal === 'create') {
-        await fetch(`${API_URL}/products/add`, {
+        res = await fetch(`${API_URL}/products/add`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...editingProduct, price: parseFloat(editingProduct.price), is_active: true })
         })
       } else if (modal === 'edit') {
-        await fetch(`${API_URL}/products/update`, {
+        res = await fetch(`${API_URL}/products/update`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...editingProduct, price: parseFloat(editingProduct.price) })
         })
       }
+      
+      const data = await res?.json()
+      if (data?.status === 'error') {
+        alert("Error al guardar: " + data.message)
+        return
+      }
+
       setModal(null)
       setEditingProduct(EMPTY_PRODUCT)
       await fetchData()
+    } catch (e) {
+      alert("Error de red al guardar el producto.")
     } finally {
       setSaving(false)
     }
