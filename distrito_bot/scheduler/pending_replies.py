@@ -37,8 +37,11 @@ async def check_abandoned_orders() -> None:
     """
     Tarea 1: Busca carritos abandonados (15 min) que tengan combos seleccionados.
     """
-    from config.dynamic_settings import is_restaurant_open
+    from config.dynamic_settings import is_restaurant_open, is_bot_manual_mode
     if not is_restaurant_open():
+        return
+    if is_bot_manual_mode():
+        logger.info("Scheduler: modo manual activo – omitiendo envío de recuperación de abandonos")
         return
 
     db = get_supabase()
@@ -104,9 +107,11 @@ async def check_conversation_timeouts() -> None:
     """
     from modules.order_flow import reset_session
     from services.ycloud_client import send_text_message
+    from config.dynamic_settings import is_bot_manual_mode
 
     db = get_supabase()
     now = datetime.now(timezone.utc)
+    manual_mode = is_bot_manual_mode()
 
     try:
         result = db.table("conversation_sessions").select("*").execute()
@@ -126,12 +131,13 @@ async def check_conversation_timeouts() -> None:
             else:
                 # Si no llegó a la fase de abandono (ej: no seleccionó combo), se cierra a los 10 min
                 if elapsed_mins >= 10 and not row.get("selected_combo_id"):
-                    await send_text_message(
-                        phone,
-                        "⏰ *Chat finalizado por inactividad.*\n\n"
-                        "Si deseas hacer un pedido, escribe *hola* cuando quieras "
-                        "y con gusto te atendemos! 🍔🔥"
-                    )
+                    if not manual_mode:
+                        await send_text_message(
+                            phone,
+                            "⏰ *Chat finalizado por inactividad.*\n\n"
+                            "Si deseas hacer un pedido, escribe *hola* cuando quieras "
+                            "y con gusto te atendemos! 🍔🔥"
+                        )
                     await reset_session(phone)
                     logger.info(f"Sesion cerrada por inactividad (10 min): {phone}")
 
@@ -140,8 +146,11 @@ async def check_conversation_timeouts() -> None:
 
 
 async def check_en_camino_timeouts() -> None:
+    """
+    Tarea 3: Cierra sesiones en estado 'en_camino' después de 5 minutos.
+    NO envía mensaje al cliente para evitar envíos repetidos.
+    """
     from modules.order_flow import reset_session
-    from services.ycloud_client import send_text_message
     db = get_supabase()
     cutoff = (datetime.now(timezone.utc) - timedelta(minutes=5)).isoformat()
     try:
@@ -149,10 +158,12 @@ async def check_en_camino_timeouts() -> None:
         sessions = result.data or []
         for row in sessions:
             phone = row["customer_phone"]
-            await send_text_message(phone, "Tu pedido debería estar cerca o entregado. El chat ha finalizado.")
+            # Mensaje eliminado: causaba envíos repetidos al cliente.
+            # Solo reseteamos la sesión silenciosamente.
             await reset_session(phone)
+            logger.info(f"Sesion en_camino cerrada silenciosamente: {phone}")
     except Exception as e:
-        pass
+        logger.error(f"Error en check_en_camino_timeouts: {e}")
 
 
 def start_scheduler(app_state: dict) -> None:
@@ -166,4 +177,3 @@ def start_scheduler(app_state: dict) -> None:
     scheduler.start()
     app_state["scheduler"] = scheduler
     logger.info("Scheduler iniciado: recuperacion de abandonos y timeouts activos.")
-

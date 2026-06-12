@@ -21,7 +21,8 @@ from config.dynamic_settings import (
     is_restaurant_open,
     get_welcome_message,
     get_off_hours_message,
-    get_backup_reply_message
+    get_backup_reply_message,
+    is_bot_manual_mode
 )
 from config.settings import settings
 from services.supabase_client import get_supabase
@@ -97,7 +98,11 @@ async def handle_inbound_message(customer_phone: str, body: str) -> None:
     """
     Punto de entrada principal para mensajes ENTRANTES.
     Decide qué respuesta automática aplicar según el horario y el contenido.
+    Si el modo manual está activo, no se envía nada pero se registra el log.
     """
+    if is_bot_manual_mode():
+        logger.info(f"Modo manual activo – mensaje de {customer_phone} recibido pero no respondido automáticamente")
+        return
     if is_business_hours():
         # En horario abierto: detectar saludo y mostrar menú
         await handle_greeting(customer_phone, body)

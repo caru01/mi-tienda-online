@@ -37,7 +37,8 @@ from config.dynamic_settings import (
     get_msg_ask_address,
     get_msg_ask_neighborhood,
     get_msg_ask_payment,
-    get_msg_order_registered
+    get_msg_order_registered,
+    is_bot_manual_mode
 )
 from config.settings import settings
 from modules.auto_reply import is_greeting
@@ -564,6 +565,11 @@ async def handle_customer_message(
     state   = session.get("state", "idle")
 
     logger.info(f"[{customer_phone}] {state} | body='{body[:25]}' | id={interactive_id}")
+
+    # Si el modo manual está activo: escuchar pero no responder
+    if is_bot_manual_mode():
+        logger.info(f"Modo manual activo – mensaje de {customer_phone} recibido sin respuesta automática")
+        return True
 
     # ── DETECCIÓN DE CANCELACIÓN GLOBAL ───────────────────────
     if body:
