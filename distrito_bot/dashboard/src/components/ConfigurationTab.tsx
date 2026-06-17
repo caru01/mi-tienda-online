@@ -149,6 +149,46 @@ export default function ConfigurationTab() {
         </div>
       </div>
 
+      {/* Catálogo e Imagen */}
+      <div className="glass rounded-xl p-6 border border-white/10 shadow-xl space-y-4">
+        <h3 className="text-xl font-bold text-distrito-accent mb-4">Imagen del Catálogo</h3>
+        
+        <div className="flex items-center justify-between p-4 bg-black/20 rounded-lg">
+          <div>
+            <p className="font-bold text-white">Activar Imagen de Catálogo</p>
+            <p className="text-sm text-gray-400">Si se activa, el bot enviará esta imagen junto con la lista de opciones de combos.</p>
+          </div>
+          <button
+            onClick={() => setSettings({ ...settings, catalog_image_enabled: settings.catalog_image_enabled !== false ? false : true })}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+              settings.catalog_image_enabled !== false ? 'bg-green-500' : 'bg-gray-600'
+            }`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+              settings.catalog_image_enabled !== false ? 'translate-x-6' : 'translate-x-1'
+            }`} />
+          </button>
+        </div>
+
+        {settings.catalog_image_enabled !== false && (
+          <div>
+            <label className="block text-sm text-gray-400 mb-1">URL de la Imagen (Debe ser un enlace público)</label>
+            <input 
+              type="text" 
+              placeholder="https://ejemplo.com/imagen.jpg"
+              value={settings.catalog_image_url || ''}
+              onChange={(e) => setSettings({...settings, catalog_image_url: e.target.value})}
+              className="w-full bg-distrito-dark/50 border border-white/10 rounded-lg p-2 text-white mb-2"
+            />
+            {settings.catalog_image_url && (
+              <div className="mt-2 w-32 h-32 rounded-lg overflow-hidden border border-white/10">
+                <img src={settings.catalog_image_url} alt="Preview" className="w-full h-full object-cover" />
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Textos del Bot Principales */}
       <div className="glass rounded-xl p-6 border border-white/10 shadow-xl space-y-4">
         <h3 className="text-xl font-bold text-distrito-accent mb-4">Mensajes Principales</h3>

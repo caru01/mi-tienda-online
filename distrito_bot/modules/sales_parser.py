@@ -15,10 +15,11 @@ from modules.inventory_manager import deduct_inventory_for_order
 logger = logging.getLogger(__name__)
 
 SALE_TRIGGER_PATTERN = re.compile(r"(pago\s+confirmado|pedido\s+ya\s+ha\s+sido\s+preparado)", re.IGNORECASE)
+MANUAL_SALE_PATTERN = re.compile(r"tu\s+pedido\s+va\s+en\s+camino\s*(\d*)", re.IGNORECASE)
 
 def is_sale_message(text: str) -> bool:
-    """Retorna True si el mensaje saliente es una confirmación de pago."""
-    return bool(SALE_TRIGGER_PATTERN.search(text))
+    """Retorna True si el mensaje saliente es una confirmación de pago o manual."""
+    return bool(SALE_TRIGGER_PATTERN.search(text)) or bool(MANUAL_SALE_PATTERN.search(text))
 
 async def process_sale(customer_phone: str, message_body: str) -> None:
     """
@@ -27,7 +28,7 @@ async def process_sale(customer_phone: str, message_body: str) -> None:
     if not is_sale_message(message_body):
         return
 
-    logger.info(f"💰 Confirmación de pago detectada para {customer_phone}")
+    logger.info(f"💰 Confirmación de pago/venta detectada para {customer_phone}")
     db = get_supabase()
 
     try:
@@ -40,56 +41,69 @@ async def process_sale(customer_phone: str, message_body: str) -> None:
             .execute()
         )
         
-        if not session_res.data:
-            logger.warning(f"⚠️ No se encontró sesión para {customer_phone} al registrar venta.")
-            return
+        session = session_res.data[0] if session_res.data else {}
+        
+        manual_match = MANUAL_SALE_PATTERN.search(message_body)
+        
+        if manual_match:
+            # Registro manual desde "Tu pedido va en camino [Monto]"
+            amount_str = manual_match.group(1)
+            order_total = int(amount_str) if amount_str else 0
+            order_detail = "Venta Manual (WhatsApp)"
+            customer_name = session.get("customer_name", "").strip() or "Cliente"
+            combo_quantity = 1
+            payment_method = "manual"
+            delivery_type = "manual"
+            delivery_barrio = ""
+        else:
+            if not session:
+                logger.warning(f"⚠️ No se encontró sesión para {customer_phone} al registrar venta.")
+                return
+                
+            # Validar que haya datos reales antes de insertar
+            order_detail = session.get("order_items_text", "").strip()
+            order_total = session.get("order_total", 0)
+            customer_name = session.get("customer_name", "").strip()
+            combo_quantity = session.get("combo_quantity", 0)
+            payment_method = session.get("payment_method", "")
+            delivery_type = session.get("delivery_type", "")
+            delivery_barrio = session.get("delivery_barrio", "")
             
-        session = session_res.data[0]
-        
-        # Validar que haya datos reales antes de insertar
-        order_detail = session.get("order_items_text", "").strip()
-        order_total = session.get("order_total", 0)
-        customer_name = session.get("customer_name", "").strip()
-        
-        if not order_detail or not order_total or order_total <= 0:
-            logger.warning(
-                f"⚠️ Sesión incompleta para {customer_phone}: "
-                f"order_detail='{order_detail}', total={order_total}. Venta NO registrada."
-            )
-            return
+            if not order_detail or not order_total or order_total <= 0:
+                logger.warning(
+                    f"⚠️ Sesión incompleta para {customer_phone}: "
+                    f"order_detail='{order_detail}', total={order_total}. Venta NO registrada."
+                )
+                return
         
         # Insertar venta en BD
         db.table("sales").insert({
             "customer_phone": customer_phone,
             "order_detail": order_detail,
             "total_amount": order_total,
-            "combo_quantity": session.get("combo_quantity", 0),
+            "combo_quantity": combo_quantity,
             "customer_name": customer_name,
-            "payment_method": session.get("payment_method", ""),
-            "delivery_type": session.get("delivery_type", ""),
-            "delivery_barrio": session.get("delivery_barrio", ""),
+            "payment_method": payment_method,
+            "delivery_type": delivery_type,
+            "delivery_barrio": delivery_barrio,
             "raw_message": message_body
         }).execute()
 
         logger.info(f"✅ Venta registrada correctamente para {customer_phone}")
         
-        # Descontar inventario (El combo quantity total puede ser inexacto si compró varios combos diferentes,
-        # pero como no tenemos el desglose por combo id guardado fácilmente, asumiremos que pidio del last selected_combo_id.
-        # Mejor: Deberiamos parsear order_items_text si queremos exactitud, pero por ahora tomaremos el selected_combo_id.)
-        # Parse order_items_text to find combos and quantities
-        items_text = session.get("order_items_text", "")
-        # Format is "✨ 2x PARCHE — $60,000"
-        import re
-        for line in items_text.split('\n'):
-            match = re.search(r"(\d+)x\s+(.+?)\s+—", line)
-            if match:
-                qty = int(match.group(1))
-                c_name = match.group(2).strip()
-                # Find product_id by name
-                prod_res = db.table("products").select("id").eq("name", c_name).execute()
-                if prod_res.data:
-                    c_id = prod_res.data[0]["id"]
-                    await deduct_inventory_for_order(c_id, qty, customer_phone)
+        # Descontar inventario solo si no es venta manual
+        if not manual_match:
+            items_text = session.get("order_items_text", "")
+            import re
+            for line in items_text.split('\n'):
+                match = re.search(r"(\d+)x\s+(.+?)\s+—", line)
+                if match:
+                    qty = int(match.group(1))
+                    c_name = match.group(2).strip()
+                    prod_res = db.table("products").select("id").eq("name", c_name).execute()
+                    if prod_res.data:
+                        c_id = prod_res.data[0]["id"]
+                        await deduct_inventory_for_order(c_id, qty, customer_phone)
         
     except Exception as e:
         logger.error(f"❌ Error al registrar venta en BD para {customer_phone}: {e}")

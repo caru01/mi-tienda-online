@@ -144,15 +144,14 @@ async def _get_session(customer_phone: str) -> dict:
 async def _update_session(customer_phone: str, updates: dict) -> bool:
     """Retorna True si el update fue exitoso."""
     db = get_supabase()
-    updates["customer_phone"] = customer_phone
     updates["updated_at"] = datetime.now(timezone.utc).isoformat()
     # Reset retry_count on state change if not explicitly overridden
     if "state" in updates and "retry_count" not in updates:
         updates["retry_count"] = 0
     try:
-        db.table("conversation_sessions").upsert(
-            updates, on_conflict="customer_phone"
-        ).execute()
+        # Usamos update en lugar de upsert para evitar errores de constraints NOT NULL
+        # en las columnas omitidas durante la fase INSERT del upsert de PostgreSQL.
+        db.table("conversation_sessions").update(updates).eq("customer_phone", customer_phone).execute()
         return True
     except Exception as e:
         logger.error(f"Error actualizando sesion de {customer_phone}: {e}")
@@ -161,7 +160,9 @@ async def _update_session(customer_phone: str, updates: dict) -> bool:
 
 async def reset_session(customer_phone: str) -> None:
     """Pública: resetea la sesión a idle. Usada también por el scheduler."""
-    await _update_session(customer_phone, {
+    db = get_supabase()
+    payload = {
+        "customer_phone": customer_phone,
         "state": "idle",
         "selected_combo_id": None, "selected_combo_name": None,
         "combo_price": None, "combo_quantity": None,
@@ -169,7 +170,13 @@ async def reset_session(customer_phone: str) -> None:
         "observations": None, "customer_name": None,
         "delivery_type": None, "delivery_address": None,
         "delivery_barrio": None, "payment_method": None,
-    })
+        "retry_count": 0,
+        "updated_at": datetime.now(timezone.utc).isoformat()
+    }
+    try:
+        db.table("conversation_sessions").upsert(payload, on_conflict="customer_phone").execute()
+    except Exception as e:
+        logger.error(f"Error reseteando sesion de {customer_phone}: {e}")
 
 
 async def _save_customer(customer_phone: str, session: dict) -> bool:
@@ -376,13 +383,42 @@ def _build_summary(session: dict, customer_phone: str) -> str:
 # ─────────────────────────────────────────────────────────────
 
 async def _send_welcome(phone: str) -> None:
-    buttons = [
-        {"id": "ver_combos", "title": "🍔 VER COMBOS"},
-        {"id": "hablar_asesor", "title": "👨‍💼 HABLAR CON ASESOR"}
-    ]
-    
     from services.supabase_client import get_supabase
     db = get_supabase()
+    
+    buttons = []
+    try:
+        # Obtener categorías activas
+        res = db.table("products").select("category").eq("is_active", True).execute()
+        cats = sorted({row["category"] for row in (res.data or []) if row.get("category")})
+        
+        # Obtener categorías ocultas
+        settings_res = db.table("bot_settings").select("welcome_hidden_categories").eq("id", 1).single().execute()
+        hidden_raw = (settings_res.data or {}).get("welcome_hidden_categories", "") or ""
+        hidden = {c.strip() for c in hidden_raw.split(",") if c.strip()}
+        
+        visible_cats = [c for c in cats if c not in hidden]
+        
+        for c in visible_cats[:3]:
+            # Emoji por defecto según la categoría para que se vea bien
+            emoji = "🍔" if "combo" in c.lower() or "burger" in c.lower() else "🍟" if "papa" in c.lower() else "🥤" if "bebida" in c.lower() else "✨"
+            buttons.append({"id": f"ver_cat_{c}", "title": f"{emoji} {c.upper()}"[:20]})
+            
+        if len(buttons) < 3:
+            buttons.append({"id": "hablar_asesor", "title": "👨‍💼 ASESOR"})
+            
+        if not buttons:
+            buttons = [
+                {"id": "ver_combos", "title": "🍔 VER COMBOS"},
+                {"id": "hablar_asesor", "title": "👨‍💼 ASESOR"}
+            ]
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error cargando categorias para welcome: {e}")
+        buttons = [
+            {"id": "ver_combos", "title": "🍔 VER COMBOS"},
+            {"id": "hablar_asesor", "title": "👨‍💼 ASESOR"}
+        ]
     customer_name = ""
     try:
         cust = db.table("customers").select("customer_name").eq("customer_phone", phone).single().execute()
@@ -424,10 +460,19 @@ async def _send_combos_list(phone: str, category: str = None) -> None:
     # Enviar imagen de combos si la categoría es Combos o no se especificó (catálogo general)
     from services.ycloud_client import send_image_message
     if not category or category.lower() == "combos":
-        # Usamos la URL pública de Render para la imagen
-        image_url = "https://distrito.onrender.com/media/COMBOS.jpeg"
+        # Usamos la configuración de la base de datos
+        from services.supabase_client import get_supabase
         try:
-            await send_image_message(phone, image_url, caption="🍔 Nuestros increíbles combos")
+            db = get_supabase()
+            settings_res = db.table("bot_settings").select("catalog_image_enabled, catalog_image_url").eq("id", 1).single().execute()
+            config = settings_res.data or {}
+            
+            # Si no existe la columna en DB, config devuelve un dict sin esas claves. Asumimos enabled por defecto
+            is_enabled = config.get("catalog_image_enabled", True)
+            image_url = config.get("catalog_image_url") or "https://distrito.onrender.com/media/COMBOS.jpeg"
+            
+            if is_enabled and image_url:
+                await send_image_message(phone, image_url, caption="🍔 Nuestros increíbles combos")
         except Exception as e:
             logger.error(f"No se pudo enviar la imagen de combos: {e}")
 
