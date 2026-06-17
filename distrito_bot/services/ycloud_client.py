@@ -12,8 +12,14 @@ logger = logging.getLogger(__name__)
 
 YCLOUD_API_BASE = "https://api.ycloud.com/v2"
 
-
 def _headers() -> dict:
+    from config.dynamic_settings import get_whatsapp_token
+    token = get_whatsapp_token()
+    if token:
+        return {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
     return {
         "Content-Type": "application/json",
         "X-API-Key": get_ycloud_api_key(),
@@ -21,11 +27,28 @@ def _headers() -> dict:
 
 
 async def _post(payload: dict) -> dict:
-    """Función interna para enviar cualquier payload a la API de YCloud."""
+    """Función interna para enviar cualquier payload. Soporta YCloud o Meta Cloud API."""
+    from config.dynamic_settings import get_whatsapp_token
+    token = get_whatsapp_token()
+    
+    url = f"{YCLOUD_API_BASE}/whatsapp/messages"
+    if token:
+        # Si hay token, usar la API oficial de Meta
+        # El phone_id debe ser numérico en este caso
+        phone_id = payload.get("from")
+        url = f"https://graph.facebook.com/v18.0/{phone_id}/messages"
+        
+        # Meta usa "messaging_product": "whatsapp" y "recipient_type": "individual"
+        payload["messaging_product"] = "whatsapp"
+        payload["recipient_type"] = "individual"
+        # Remover el from, Meta lo toma de la URL
+        if "from" in payload:
+            del payload["from"]
+
     async with httpx.AsyncClient(timeout=15.0) as client:
         try:
             response = await client.post(
-                f"{YCLOUD_API_BASE}/whatsapp/messages",
+                url,
                 headers=_headers(),
                 json=payload,
             )
@@ -42,7 +65,7 @@ async def _post(payload: dict) -> dict:
             )
             raise
         except httpx.RequestError as e:
-            logger.error(f"Error de red al contactar YCloud: {e}")
+            logger.error(f"Error de red al contactar API: {e}")
             raise
 
 

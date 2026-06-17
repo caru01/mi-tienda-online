@@ -505,8 +505,45 @@ async def update_customer_notes(payload: dict) -> Dict[str, Any]:
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+from fastapi import BackgroundTasks
+
+async def _run_broadcast_task(campaign_name: str, message_body: str, target_segment: str, image_url: str, interval: float, customers: list):
+    from services.ycloud_client import send_text_message, send_image_message
+    import asyncio
+    import logging
+    from services.supabase_client import get_supabase
+    
+    logger = logging.getLogger(__name__)
+    db = get_supabase()
+    sent_count = 0
+    
+    for c in customers:
+        phone = c.get("customer_phone")
+        if phone:
+            try:
+                if image_url:
+                    await send_image_message(phone, image_url)
+                if message_body:
+                    await send_text_message(phone, message_body)
+                sent_count += 1
+                await asyncio.sleep(interval) # Intervalo para evitar spam
+            except Exception as ex:
+                logger.error(f"Error enviando broadcast a {phone}: {ex}")
+
+    # Registrar la campaña al finalizar
+    try:
+        db.table("crm_campaigns").insert({
+            "campaign_name": campaign_name,
+            "message_body": message_body,
+            "target_segment": target_segment,
+            "sent_count": sent_count,
+            "status": "completed"
+        }).execute()
+    except Exception as e:
+        logger.error(f"Error guardando crm_campaigns: {e}")
+
 @router.post("/api/dashboard/crm/broadcast")
-async def send_crm_broadcast(payload: dict) -> Dict[str, Any]:
+async def send_crm_broadcast(payload: dict, background_tasks: BackgroundTasks) -> Dict[str, Any]:
     """Envía un mensaje masivo a un segmento de clientes y registra la campaña."""
     db = get_supabase()
     try:
@@ -582,35 +619,18 @@ async def send_crm_broadcast(payload: dict) -> Dict[str, Any]:
         if not customers:
             return {"status": "error", "message": "No hay clientes en este segmento."}
 
-        # Enviar mensaje a cada cliente
-        from services.ycloud_client import send_text_message, send_image_message
-        import asyncio
+        # Lanzar envío en segundo plano para evitar timeout de HTTP
+        background_tasks.add_task(
+            _run_broadcast_task, 
+            campaign_name, 
+            message_body, 
+            target_segment, 
+            image_url, 
+            interval, 
+            customers
+        )
         
-        sent_count = 0
-        for c in customers:
-            phone = c.get("customer_phone")
-            if phone:
-                try:
-                    if image_url:
-                        await send_image_message(phone, image_url)
-                    if message_body:
-                        await send_text_message(phone, message_body)
-                    sent_count += 1
-                    await asyncio.sleep(interval) # Intervalo para evitar spam
-                except Exception as ex:
-                    import logging
-                    logging.getLogger(__name__).error(f"Error enviando broadcast a {phone}: {ex}")
-
-        # Registrar la campaña
-        db.table("crm_campaigns").insert({
-            "campaign_name": campaign_name,
-            "message_body": message_body,
-            "target_segment": target_segment,
-            "sent_count": sent_count,
-            "status": "completed"
-        }).execute()
-        
-        return {"status": "success", "sent_count": sent_count}
+        return {"status": "success", "sent_count": len(customers), "message": "Campaña iniciada en segundo plano."}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
