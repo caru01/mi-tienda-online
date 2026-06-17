@@ -337,16 +337,32 @@ export default function CatalogTab() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1">Categoría</label>
-                  <input
-                    className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white"
-                    placeholder="Combos"
-                    list="category-list"
-                    value={editingProduct.category}
-                    onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
-                  />
-                  <datalist id="category-list">
-                    {categories.map(c => <option key={c.name} value={c.name} />)}
-                  </datalist>
+                  <div className="flex gap-2">
+                    <select
+                      className={`bg-black/40 border border-white/10 rounded-xl p-3 text-white appearance-none ${!categories.some(c => c.name === editingProduct.category) ? 'w-1/2' : 'w-full'}`}
+                      value={categories.some(c => c.name === editingProduct.category) ? editingProduct.category : '__new__'}
+                      onChange={e => {
+                        if (e.target.value !== '__new__') {
+                          setEditingProduct({ ...editingProduct, category: e.target.value })
+                        } else {
+                          setEditingProduct({ ...editingProduct, category: '' })
+                        }
+                      }}
+                    >
+                      {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                      <option value="__new__">+ Crear Nueva</option>
+                    </select>
+                    
+                    {!categories.some(c => c.name === editingProduct.category) && (
+                      <input
+                        className="w-1/2 bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:ring-2 focus:ring-distrito-accent outline-none"
+                        placeholder="Nombre de categoría..."
+                        value={editingProduct.category}
+                        onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                        autoFocus
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

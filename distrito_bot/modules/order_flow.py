@@ -381,9 +381,28 @@ async def _send_welcome(phone: str) -> None:
         {"id": "hablar_asesor", "title": "👨‍💼 HABLAR CON ASESOR"}
     ]
     
+    from services.supabase_client import get_supabase
+    db = get_supabase()
+    customer_name = ""
+    try:
+        cust = db.table("customers").select("customer_name").eq("customer_phone", phone).single().execute()
+        if cust.data and cust.data.get("customer_name"):
+            customer_name = cust.data.get("customer_name").split(" ")[0].title()
+    except Exception:
+        pass
+
+    welcome_text = get_welcome_message()
+    if customer_name:
+        if "¡Hola! 👋" in welcome_text:
+            welcome_text = welcome_text.replace("¡Hola! 👋", f"¡Hola! {customer_name}👋", 1)
+        elif "¡Hola! " in welcome_text:
+            welcome_text = welcome_text.replace("¡Hola! ", f"¡Hola! {customer_name} ", 1)
+        else:
+            welcome_text = f"¡Hola! {customer_name}👋\n{welcome_text}"
+
     await send_button_message(
         to=phone,
-        body_text=get_welcome_message(),
+        body_text=welcome_text,
         buttons=buttons,
     )
 
@@ -633,10 +652,17 @@ async def handle_customer_message(
                     await _send_combos_list(customer_phone, cat)
                     await _update_session(customer_phone, {"state": "waiting_combo_selection"})
                     return True
-            await reset_session(customer_phone)
-            await _send_welcome(customer_phone)
-            await _update_session(customer_phone, {"state": "waiting_combo_selection"})
-        return True
+            elif interactive_type == "list_reply":
+                # Seleccionaron un combo estando inactivos (ej. de un menú antiguo)
+                await _update_session(customer_phone, {"state": "waiting_combo_selection"})
+                state = "waiting_combo_selection"
+                # No retornamos True, dejamos que caiga al bloque de abajo para procesar el combo seleccionado
+            
+            if state != "waiting_combo_selection":
+                await reset_session(customer_phone)
+                await _send_welcome(customer_phone)
+                await _update_session(customer_phone, {"state": "waiting_combo_selection"})
+                return True
 
     # ── SELECCIÓN DE COMBO ────────────────────────────────────
     if state == "waiting_combo_selection":
