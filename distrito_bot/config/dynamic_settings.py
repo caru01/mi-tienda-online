@@ -16,6 +16,11 @@ _cache = {}
 _cache_time = 0
 CACHE_TTL = 60
 
+def clear_cache():
+    global _cache, _cache_time
+    _cache = {}
+    _cache_time = 0
+
 def _get_dynamic_settings() -> dict:
     global _cache, _cache_time
     now = datetime.now().timestamp()

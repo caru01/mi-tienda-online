@@ -24,6 +24,7 @@ export default function CrmTab() {
   const [uploadingImage, setUploadingImage] = useState(false)
   const [intervalSecs, setIntervalSecs] = useState(2.0)
   const [sendingBroadcast, setSendingBroadcast] = useState(false)
+  const [customNumbersText, setCustomNumbersText] = useState('')
 
   const fetchCustomers = async () => {
     try {
@@ -106,7 +107,14 @@ export default function CrmTab() {
 
   const handleSendBroadcast = async () => {
     if (!messageBody || !campaignName) return
-    if (!confirm(`¿Seguro que deseas enviar este mensaje a ${filteredCustomers.length} clientes en el segmento "${filter}"?`)) return
+    let targetCount = filter === 'custom_numbers' ? (customNumbersText.match(/\+?\d{7,15}/g)?.length || 0) : filteredCustomers.length;
+    
+    if (filter === 'custom_numbers' && targetCount === 0) {
+      alert("Por favor pega al menos un número válido.")
+      return
+    }
+
+    if (!confirm(`¿Seguro que deseas enviar este mensaje a ${targetCount} clientes en el segmento "${filter}"?`)) return
     
     setSendingBroadcast(true)
     const payload = { 
@@ -114,7 +122,8 @@ export default function CrmTab() {
       message_body: messageBody, 
       target_segment: filter,
       image_url: imageUrl,
-      interval: intervalSecs
+      interval: intervalSecs,
+      custom_numbers_text: customNumbersText
     }
     const res = await fetch(`${API_URL}/crm/broadcast`, {
       method: 'POST',
@@ -130,6 +139,7 @@ export default function CrmTab() {
       setCampaignName('')
       setMessageBody('')
       setImageUrl('')
+      setCustomNumbersText('')
       fetchCustomers() // Para actualizar el contador de mensajes
     } else {
       alert(`Error al enviar: ${data.message}`)
@@ -179,6 +189,7 @@ export default function CrmTab() {
                 <option value="vip">Clientes VIP ({customers.filter(c => c.total_orders >= 5).length})</option>
                 <option value="new">Clientes Nuevos ({customers.filter(c => c.total_orders === 1).length})</option>
                 <option value="dormant">Inactivos +30 días ({customers.filter(c => c.last_order_at ? new Date(c.last_order_at) < new Date(Date.now() - 30*24*60*60*1000) : true).length})</option>
+                <option value="custom_numbers">Números Manuales (Pegar Lista)</option>
               </select>
             </div>
             <div>
@@ -218,6 +229,19 @@ export default function CrmTab() {
               />
               <p className="text-[10px] text-gray-500 mt-1">Tiempo de espera entre cada mensaje para evitar baneos por Spam (Recomendado: 2s)</p>
             </div>
+            
+            {filter === 'custom_numbers' && (
+              <div className="col-span-full">
+                <label className="block text-xs text-gray-400 mb-1">Pega la lista de números (separados por comas o saltos de línea)</label>
+                <textarea 
+                  value={customNumbersText} onChange={e => setCustomNumbersText(e.target.value)}
+                  placeholder="Ej: +573001234567, 3119876543, ..." 
+                  rows={3}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-white resize-y"
+                />
+                <p className="text-[10px] text-gray-500 mt-1">Números detectados: {customNumbersText.match(/\+?\d{7,15}/g)?.length || 0}</p>
+              </div>
+            )}
           </div>
           <div className="mb-4">
             <label className="block text-xs text-gray-400 mb-1">Cuerpo del Mensaje (Soporta *negrita*, _cursiva_ y emojis)</label>
@@ -249,7 +273,7 @@ export default function CrmTab() {
               disabled={sendingBroadcast || !messageBody || !campaignName}
               className="bg-green-500 text-white font-bold px-6 py-3 rounded-xl hover:bg-green-400 disabled:opacity-50 transition-all flex items-center gap-2"
             >
-              {sendingBroadcast ? 'Enviando...' : `Enviar a ${filteredCustomers.length} clientes`}
+              {sendingBroadcast ? 'Enviando...' : `Enviar a ${filter === 'custom_numbers' ? (customNumbersText.match(/\+?\d{7,15}/g)?.length || 0) : filteredCustomers.length} clientes`}
             </button>
           </div>
         </div>

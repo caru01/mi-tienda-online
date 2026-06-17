@@ -144,8 +144,8 @@ async def toggle_category_visibility(payload: dict) -> Dict[str, Any]:
         db.table("bot_settings").update({"welcome_hidden_categories": new_hidden}).eq("id", 1).execute()
 
         # Invalidar caché
-        from config.dynamic_settings import _cache
-        _cache.clear()
+        from config.dynamic_settings import clear_cache
+        clear_cache()
 
         return {"status": "ok", "hidden_categories": list(hidden)}
     except Exception as e:
@@ -283,8 +283,8 @@ async def save_settings(payload: dict) -> Dict[str, Any]:
         db.table("bot_settings").update(payload).eq("id", 1).execute()
         
         # Invalidate cache locally
-        from config.dynamic_settings import _cache, is_restaurant_open
-        _cache.clear()
+        from config.dynamic_settings import clear_cache, is_restaurant_open
+        clear_cache()
         
         return {
             "status": "success",
@@ -297,8 +297,9 @@ async def save_settings(payload: dict) -> Dict[str, Any]:
 async def add_product(payload: dict) -> Dict[str, Any]:
     db = get_supabase()
     try:
-        if "id" in payload:
-            del payload["id"]
+        import uuid
+        payload["id"] = uuid.uuid4().hex
+        
         if "category" not in payload or not payload["category"]:
             payload["category"] = "Combos"
             
@@ -520,21 +521,63 @@ async def send_crm_broadcast(payload: dict) -> Dict[str, Any]:
             return {"status": "error", "message": "El mensaje o la imagen no pueden estar vacíos."}
 
         # Obtener los clientes según el segmento
-        query = db.table("customers").select("customer_phone, total_orders, last_order_at")
-        
-        if target_segment == "vip":
-            query = query.gte("total_orders", 5)
-        elif target_segment == "dormant":
-            # Más de 30 días sin interactuar (mensajes)
-            from datetime import datetime, timedelta, timezone
-            thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-            query = query.lte("last_interaction_at", thirty_days_ago)
-        elif target_segment == "new":
-            # Solo 1 compra
-            query = query.eq("total_orders", 1)
+        customers = []
+        if target_segment == "custom_numbers":
+            raw_text = payload.get("custom_numbers_text", "")
+            import re
+            matches = re.findall(r'\+?\d{7,15}', raw_text)
             
-        res = query.execute()
-        customers = res.data or []
+            unique_phones = set()
+            for m in matches:
+                clean = m.strip()
+                if not clean.startswith('+'):
+                    clean = "+" + clean
+                unique_phones.add(clean)
+                
+            customers = [{"customer_phone": p} for p in unique_phones]
+            
+            # Guardar en base de datos si no existen
+            from datetime import datetime, timezone
+            now_iso = datetime.now(timezone.utc).isoformat()
+            
+            if unique_phones:
+                try:
+                    existing_res = db.table("customers").select("customer_phone").in_("customer_phone", list(unique_phones)).execute()
+                    existing_phones = {row["customer_phone"] for row in (existing_res.data or [])}
+                    
+                    new_inserts = []
+                    for p in unique_phones:
+                        if p not in existing_phones:
+                            new_inserts.append({
+                                "customer_phone": p,
+                                "customer_name": "",
+                                "total_orders": 0,
+                                "first_order_at": now_iso,
+                                "last_interaction_at": now_iso,
+                                "whatsapp_label": p,
+                                "notes": "Agregado via campaña manual"
+                            })
+                    if new_inserts:
+                        db.table("customers").insert(new_inserts).execute()
+                except Exception as ex:
+                    import logging
+                    logging.getLogger(__name__).error(f"Error guardando nuevos números: {ex}")
+        else:
+            query = db.table("customers").select("customer_phone, total_orders, last_order_at")
+            
+            if target_segment == "vip":
+                query = query.gte("total_orders", 5)
+            elif target_segment == "dormant":
+                # Más de 30 días sin interactuar (mensajes)
+                from datetime import datetime, timedelta, timezone
+                thirty_days_ago = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+                query = query.lte("last_interaction_at", thirty_days_ago)
+            elif target_segment == "new":
+                # Solo 1 compra
+                query = query.eq("total_orders", 1)
+                
+            res = query.execute()
+            customers = res.data or []
         
         if not customers:
             return {"status": "error", "message": "No hay clientes en este segmento."}

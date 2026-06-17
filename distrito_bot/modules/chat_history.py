@@ -10,8 +10,7 @@ Responsabilidades:
 import logging
 from services.ycloud_client import send_text_message
 
-# In‑memory cache to avoid volver a preguntar al mismo número en una ejecución
-PROGRESSIVE_PROFILE_PROMPTED = set()
+
 from datetime import datetime, timezone
 
 from services.supabase_client import get_supabase
@@ -96,14 +95,6 @@ async def update_pending_reply(customer_phone: str, direction: str) -> None:
 
     try:
         if direction == "inbound":
-            # 1️⃣ Perfilado progresivo: preguntar nombre si falta y no se ha preguntado ya
-            cust = db.table("customers").select("customer_name").eq("customer_phone", customer_phone).single().execute()
-            if cust.data and not cust.data.get("customer_name") and customer_phone not in PROGRESSIVE_PROFILE_PROMPTED:
-                await send_text_message(
-                    customer_phone,
-                    "¡Hola! Veo que ya has pedido antes, pero no tengo tu nombre registrado. ¿Cómo te llamas?"
-                )
-                PROGRESSIVE_PROFILE_PROMPTED.add(customer_phone)
             # El cliente escribió → marcar como no resuelto y actualizar timestamp
             db.table("pending_replies").upsert(
                 {
