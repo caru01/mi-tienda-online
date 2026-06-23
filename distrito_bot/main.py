@@ -18,6 +18,7 @@ import os
 
 from api.webhook import router as webhook_router
 from api.dashboard import router as dashboard_router
+from api.pedidos import router as pedidos_router
 from scheduler.pending_replies import start_scheduler
 
 # ── Configuración de logging ─────────────────────────────────────────────────
@@ -87,6 +88,7 @@ async def strip_distrito_prefix(request: Request, call_next):
 # Registrar rutas
 app.include_router(webhook_router)
 app.include_router(dashboard_router)
+app.include_router(pedidos_router)
 
 # Montar carpeta de medios del bot
 media_path = os.path.join(os.path.dirname(__file__), "assets")

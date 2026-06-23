@@ -9,7 +9,8 @@ import RecipeTab from './components/RecipeTab'
 import OrdersTab from './components/OrdersTab'
 import CatalogTab from './components/CatalogTab'
 import CrmTab from './components/CrmTab'
-import { Users } from 'lucide-react'
+import AppPedidosTab from './components/AppPedidosTab'
+import { Users, Smartphone } from 'lucide-react'
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
 
@@ -155,6 +156,7 @@ function App() {
     { key: 'reports',   icon: <TrendingUp size={20}/>,      label: 'Reportes (BI)' },
     { key: 'inventory', icon: <PackageSearch size={20}/>,   label: 'Inventario' },
     { key: 'recipes',   icon: <ChefHat size={20}/>,         label: 'Recetas' },
+    { key: 'app_pedidos', icon: <Smartphone size={20}/>,    label: 'App de Pedidos' },
     { key: 'settings',  icon: <Settings size={20}/>,        label: 'Configuración' },
   ]
 
@@ -232,8 +234,8 @@ function App() {
         {[
           { key: 'sales',     icon: <LayoutDashboard size={20}/>, label: 'Órdenes' },
           { key: 'catalog',   icon: <ClipboardList size={20}/>,   label: 'Menú' },
+          { key: 'app_pedidos', icon: <Smartphone size={20}/>,    label: 'App' },
           { key: 'crm',       icon: <Users size={20}/>,           label: 'CRM' },
-          { key: 'schedules', icon: <Clock size={20}/>,           label: 'Horarios' },
           { key: 'settings',  icon: <Settings size={20}/>,        label: 'Config.' },
         ].map(item => (
           <button key={item.key} onClick={() => setActiveTab(item.key)}
@@ -268,6 +270,8 @@ function App() {
             <RecipeTab data={data} />
           ) : activeTab === 'schedules' ? (
             <SchedulesTab />
+          ) : activeTab === 'app_pedidos' ? (
+            <AppPedidosTab />
           ) : activeTab === 'settings' ? (
             <ConfigurationTab />
           ) : null}
