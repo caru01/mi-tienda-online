@@ -26,7 +26,7 @@ async def get_pedidos_init_data() -> Dict[str, Any]:
             settings.update(bot_settings_res.data)
         
         # Obtener productos activos de la app de pedidos
-        products_res = db.table("pedidos_app_products").select("*").eq("is_active", True).execute()
+        products_res = db.table("pedidos_app_products").select("*").execute()
         products = products_res.data or []
         
         return {
