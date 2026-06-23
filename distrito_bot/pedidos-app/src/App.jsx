@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Minus, Trash2, ShoppingBag, ShoppingCart, Copy, Check } from 'lucide-react';
+import { Plus, Minus, Trash2, ShoppingBag, ShoppingCart, Copy, Check, X, ArrowLeft } from 'lucide-react';
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/pedidos' : 'http://localhost:8000/api/pedidos';
 
@@ -12,6 +12,10 @@ function App() {
   const [settings, setSettings] = useState({ whatsapp_number: '', nequi_number: '', bancolombia_number: '' });
   const [loading, setLoading] = useState(true);
 
+  // UI State
+  const [checkoutStep, setCheckoutStep] = useState(1); // 1 = Cart, 2 = Checkout Form
+  const [isCartOpenMobile, setIsCartOpenMobile] = useState(false);
+
   // Form State
   const [customer, setCustomer] = useState({ 
     name: '', 
@@ -19,8 +23,8 @@ function App() {
     address: '',
     barrio: '',
     comment: '',
-    deliveryType: 'domicilio', // 'domicilio' | 'recoger'
-    paymentMethod: 'efectivo', // 'efectivo' | 'transferencia'
+    deliveryType: 'domicilio',
+    paymentMethod: 'efectivo',
     cashAmount: ''
   });
 
@@ -70,12 +74,13 @@ function App() {
         return newQty > 0 ? { ...item, qty: newQty } : item;
       }
       return item;
-    }));
+    }).filter(item => item.qty > 0)); // also remove if 0
   };
 
   const removeItem = (id) => setCart(prev => prev.filter(item => item.id !== id));
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+  const cartTotalItems = cart.reduce((sum, item) => sum + item.qty, 0);
   const formatter = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 });
 
   const copyToClipboard = (text, type) => {
@@ -136,6 +141,12 @@ function App() {
 
   return (
     <div className="app-container">
+      {/* Botón flotante para móviles */}
+      <button className="mobile-cart-btn" onClick={() => setIsCartOpenMobile(true)}>
+        <ShoppingCart size={24} />
+        {cartTotalItems > 0 && <span className="mobile-cart-badge">{cartTotalItems}</span>}
+      </button>
+
       {/* Main Area */}
       <main className="main-content">
         <header className="header">
@@ -158,153 +169,182 @@ function App() {
 
         {/* Product Grid */}
         <div className="product-grid">
-          {filteredProducts.map(product => (
-            <div key={product.id} className="product-card">
-              <div className="product-image-container">
-                {product.image ? (
-                  <img src={product.image} alt={product.title} className="product-image" />
-                ) : (
-                  <div className="product-placeholder">Sin Imagen</div>
-                )}
-              </div>
-              <div className="product-info">
-                <h3 className="product-title">{product.title}</h3>
-                <p className="product-desc">{product.description}</p>
-                <div className="product-footer">
-                  <span className="product-price">{formatter.format(product.price)}</span>
-                  <button className="add-btn" onClick={() => addToCart(product)}>
-                    <Plus size={20} />
-                  </button>
+          {filteredProducts.map(product => {
+            const cartItem = cart.find(i => i.id === product.id);
+            return (
+              <div key={product.id} className="product-card">
+                <div className="product-image-container">
+                  {product.image ? (
+                    <img src={product.image} alt={product.title} className="product-image" />
+                  ) : (
+                    <div className="product-placeholder">Sin Imagen</div>
+                  )}
+                </div>
+                <div className="product-info">
+                  <h3 className="product-title">{product.title}</h3>
+                  <p className="product-desc">{product.description}</p>
+                  <div className="product-footer">
+                    <span className="product-price">{formatter.format(product.price)}</span>
+                    {cartItem ? (
+                      <div className="product-qty-controls">
+                        <button className="qty-btn-sm" onClick={() => updateQty(product.id, -1)}><Minus size={16}/></button>
+                        <span className="qty-text">{cartItem.qty}</span>
+                        <button className="qty-btn-sm" onClick={() => updateQty(product.id, 1)}><Plus size={16}/></button>
+                      </div>
+                    ) : (
+                      <button className="add-btn" onClick={() => addToCart(product)}>
+                        <Plus size={20} />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
           {filteredProducts.length === 0 && (
             <div className="no-products">No hay productos en esta categoría.</div>
           )}
         </div>
       </main>
 
-      {/* Sidebar / Cart */}
-      <aside className="cart-sidebar">
+      {/* Sidebar / Cart Overlay para móviles */}
+      <div className={`cart-overlay ${isCartOpenMobile ? 'open' : ''}`} onClick={() => setIsCartOpenMobile(false)}></div>
+
+      <aside className={`cart-sidebar ${isCartOpenMobile ? 'open' : ''}`}>
         <div className="cart-header">
-          <h2>Mi Pedido</h2>
-          <span className="cart-count">
-            {cart.reduce((sum, item) => sum + item.qty, 0)} items
-          </span>
+          <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+            {checkoutStep === 2 && (
+              <button className="back-btn" onClick={() => setCheckoutStep(1)}>
+                <ArrowLeft size={20} />
+              </button>
+            )}
+            <h2>{checkoutStep === 1 ? 'Mi Pedido' : 'Datos de Envío'}</h2>
+          </div>
+          <button className="close-cart-btn" onClick={() => setIsCartOpenMobile(false)}>
+            <X size={24} />
+          </button>
         </div>
 
-        <div className="cart-items">
-          {cart.length === 0 ? (
-            <div className="empty-cart">
-              <ShoppingCart size={48} opacity={0.3} />
-              <p>Tu carrito está vacío. ¡Agrega algunos productos!</p>
+        <div className="cart-content-scroll">
+          {checkoutStep === 1 ? (
+            <div className="cart-items">
+              {cart.length === 0 ? (
+                <div className="empty-cart">
+                  <ShoppingCart size={48} opacity={0.3} />
+                  <p>Tu carrito está vacío. ¡Agrega algunos productos!</p>
+                </div>
+              ) : (
+                cart.map(item => (
+                  <div key={item.id} className="cart-item">
+                    {item.image ? (
+                      <img src={item.image} alt={item.title} className="cart-item-img" />
+                    ) : (
+                      <div className="cart-item-img placeholder"></div>
+                    )}
+                    <div className="cart-item-details">
+                      <h4 className="cart-item-title">{item.title}</h4>
+                      <p className="cart-item-price">{formatter.format(item.price)}</p>
+                      <div className="cart-item-actions">
+                        <button className="qty-btn" onClick={() => updateQty(item.id, -1)}><Minus size={14} /></button>
+                        <span className="qty">{item.qty}</span>
+                        <button className="qty-btn" onClick={() => updateQty(item.id, 1)}><Plus size={14} /></button>
+                        <button className="qty-btn" onClick={() => removeItem(item.id)} style={{marginLeft: 'auto', color: '#ff4757'}}><Trash2 size={16} /></button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           ) : (
-            cart.map(item => (
-              <div key={item.id} className="cart-item">
-                <div className="cart-item-details">
-                  <h4 className="cart-item-title">{item.title}</h4>
-                  <p className="cart-item-price">{formatter.format(item.price)}</p>
-                  <div className="cart-item-actions">
-                    <button className="qty-btn" onClick={() => updateQty(item.id, -1)}><Minus size={14} /></button>
-                    <span className="qty">{item.qty}</span>
-                    <button className="qty-btn" onClick={() => updateQty(item.id, 1)}><Plus size={14} /></button>
-                    <button className="qty-btn" onClick={() => removeItem(item.id)} style={{marginLeft: 'auto', color: '#ff4757'}}><Trash2 size={16} /></button>
-                  </div>
-                </div>
+            <div className="customer-form">
+              <h3 className="form-section-title">Datos del Cliente</h3>
+              <div className="form-group">
+                <input type="text" className="form-input" placeholder="Nombre y Apellido" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} />
               </div>
-            ))
+              <div className="form-group">
+                <input type="tel" className="form-input" placeholder="Teléfono (WhatsApp)" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} />
+              </div>
+
+              <h3 className="form-section-title">Forma de Entrega</h3>
+              <div className="radio-group">
+                <label className="radio-label">
+                  <input type="radio" name="deliveryType" checked={customer.deliveryType === 'domicilio'} onChange={() => setCustomer({...customer, deliveryType: 'domicilio'})} />
+                  A Domicilio
+                </label>
+                <label className="radio-label">
+                  <input type="radio" name="deliveryType" checked={customer.deliveryType === 'recoger'} onChange={() => setCustomer({...customer, deliveryType: 'recoger'})} />
+                  Recoger Local
+                </label>
+              </div>
+
+              {customer.deliveryType === 'domicilio' && (
+                <>
+                  <div className="form-group">
+                    <input type="text" className="form-input" placeholder="Dirección completa" value={customer.address} onChange={e => setCustomer({...customer, address: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <input type="text" className="form-input" placeholder="Barrio" value={customer.barrio} onChange={e => setCustomer({...customer, barrio: e.target.value})} />
+                  </div>
+                </>
+              )}
+
+              <div className="form-group">
+                <input type="text" className="form-input" placeholder="Comentario (opcional)" value={customer.comment} onChange={e => setCustomer({...customer, comment: e.target.value})} />
+              </div>
+
+              <h3 className="form-section-title">Forma de Pago</h3>
+              <div className="radio-group">
+                <label className="radio-label">
+                  <input type="radio" name="payment" checked={customer.paymentMethod === 'efectivo'} onChange={() => setCustomer({...customer, paymentMethod: 'efectivo'})} />
+                  Efectivo
+                </label>
+                <label className="radio-label">
+                  <input type="radio" name="payment" checked={customer.paymentMethod === 'transferencia'} onChange={() => setCustomer({...customer, paymentMethod: 'transferencia'})} />
+                  Transferencia
+                </label>
+              </div>
+
+              {customer.paymentMethod === 'efectivo' && (
+                <div className="form-group animate-in fade-in">
+                  <input type="number" className="form-input" placeholder="¿Con cuánto vas a pagar?" value={customer.cashAmount} onChange={e => setCustomer({...customer, cashAmount: e.target.value})} />
+                </div>
+              )}
+
+              {customer.paymentMethod === 'transferencia' && (
+                <div className="transfer-info animate-in fade-in">
+                  <p className="transfer-desc">Haz clic para copiar el número de cuenta:</p>
+                  
+                  <button className="copy-btn" onClick={() => copyToClipboard(settings.nequi_number, 'nequi')}>
+                    <span className="copy-text">Nequi: {settings.nequi_number || 'No config'}</span>
+                    {copiedNequi ? <Check size={16} color="green" /> : <Copy size={16} color="#999" />}
+                  </button>
+                  
+                  <button className="copy-btn" onClick={() => copyToClipboard(settings.bancolombia_number, 'banco')}>
+                    <span className="copy-text">Bancolombia: {settings.bancolombia_number || 'No config'}</span>
+                    {copiedBanco ? <Check size={16} color="green" /> : <Copy size={16} color="#999" />}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
         <div className="cart-footer">
-          <div className="customer-form">
-            <h3 style={{margin: '0 0 10px 0', fontSize: '14px', borderBottom: '1px solid #eee', paddingBottom: '5px'}}>Datos del Cliente</h3>
-            <div className="form-group">
-              <input type="text" className="form-input" placeholder="Nombre y Apellido" value={customer.name} onChange={e => setCustomer({...customer, name: e.target.value})} />
-            </div>
-            <div className="form-group">
-              <input type="tel" className="form-input" placeholder="Teléfono (WhatsApp)" value={customer.phone} onChange={e => setCustomer({...customer, phone: e.target.value})} />
-            </div>
-
-            <h3 style={{margin: '15px 0 10px 0', fontSize: '14px', borderBottom: '1px solid #eee', paddingBottom: '5px'}}>Forma de Entrega</h3>
-            <div className="radio-group" style={{display: 'flex', gap: '15px', marginBottom: '10px'}}>
-              <label style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '14px'}}>
-                <input type="radio" name="deliveryType" checked={customer.deliveryType === 'domicilio'} onChange={() => setCustomer({...customer, deliveryType: 'domicilio'})} />
-                A Domicilio
-              </label>
-              <label style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '14px'}}>
-                <input type="radio" name="deliveryType" checked={customer.deliveryType === 'recoger'} onChange={() => setCustomer({...customer, deliveryType: 'recoger'})} />
-                Recoger Local
-              </label>
-            </div>
-
-            {customer.deliveryType === 'domicilio' && (
-              <>
-                <div className="form-group">
-                  <input type="text" className="form-input" placeholder="Dirección completa" value={customer.address} onChange={e => setCustomer({...customer, address: e.target.value})} />
-                </div>
-                <div className="form-group">
-                  <input type="text" className="form-input" placeholder="Barrio" value={customer.barrio} onChange={e => setCustomer({...customer, barrio: e.target.value})} />
-                </div>
-              </>
-            )}
-
-            <div className="form-group">
-              <input type="text" className="form-input" placeholder="Comentario (opcional)" value={customer.comment} onChange={e => setCustomer({...customer, comment: e.target.value})} />
-            </div>
-
-            <h3 style={{margin: '15px 0 10px 0', fontSize: '14px', borderBottom: '1px solid #eee', paddingBottom: '5px'}}>Forma de Pago</h3>
-            <div className="radio-group" style={{display: 'flex', gap: '15px', marginBottom: '10px'}}>
-              <label style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '14px'}}>
-                <input type="radio" name="payment" checked={customer.paymentMethod === 'efectivo'} onChange={() => setCustomer({...customer, paymentMethod: 'efectivo'})} />
-                Efectivo
-              </label>
-              <label style={{display: 'flex', alignItems: 'center', gap: '5px', fontSize: '14px'}}>
-                <input type="radio" name="payment" checked={customer.paymentMethod === 'transferencia'} onChange={() => setCustomer({...customer, paymentMethod: 'transferencia'})} />
-                Transferencia
-              </label>
-            </div>
-
-            {customer.paymentMethod === 'efectivo' && (
-              <div className="form-group animate-in fade-in">
-                <input type="number" className="form-input" placeholder="¿Con cuánto vas a pagar?" value={customer.cashAmount} onChange={e => setCustomer({...customer, cashAmount: e.target.value})} />
-              </div>
-            )}
-
-            {customer.paymentMethod === 'transferencia' && (
-              <div className="transfer-info animate-in fade-in" style={{background: '#f9f9f9', padding: '10px', borderRadius: '8px', marginBottom: '10px'}}>
-                <p style={{fontSize: '12px', color: '#666', marginBottom: '8px'}}>Haz clic para copiar el número de cuenta:</p>
-                
-                <button 
-                  onClick={() => copyToClipboard(settings.nequi_number, 'nequi')}
-                  style={{display: 'flex', justifyContent: 'space-between', width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '6px', background: '#fff', marginBottom: '5px', cursor: 'pointer', alignItems: 'center'}}
-                >
-                  <span style={{fontSize: '13px', fontWeight: 'bold'}}>Nequi: {settings.nequi_number || 'No configurado'}</span>
-                  {copiedNequi ? <Check size={16} color="green" /> : <Copy size={16} color="#999" />}
-                </button>
-                
-                <button 
-                  onClick={() => copyToClipboard(settings.bancolombia_number, 'banco')}
-                  style={{display: 'flex', justifyContent: 'space-between', width: '100%', padding: '8px', border: '1px solid #ddd', borderRadius: '6px', background: '#fff', cursor: 'pointer', alignItems: 'center'}}
-                >
-                  <span style={{fontSize: '13px', fontWeight: 'bold'}}>Bancolombia/bre-b: {settings.bancolombia_number || 'No config'}</span>
-                  {copiedBanco ? <Check size={16} color="green" /> : <Copy size={16} color="#999" />}
-                </button>
-              </div>
-            )}
-          </div>
-
           <div className="summary-row summary-total">
             <span>Total:</span>
             <span>{formatter.format(subtotal)}</span>
           </div>
 
-          <button className="checkout-btn" disabled={cart.length === 0} onClick={handleCheckout}>
-            <ShoppingBag size={20} />
-            Confirmar por WhatsApp
-          </button>
+          {checkoutStep === 1 ? (
+            <button className="checkout-btn" disabled={cart.length === 0} onClick={() => setCheckoutStep(2)}>
+              Confirmar Orden
+            </button>
+          ) : (
+            <button className="checkout-btn" disabled={cart.length === 0} onClick={handleCheckout}>
+              <ShoppingBag size={20} />
+              Confirmar por WhatsApp
+            </button>
+          )}
         </div>
       </aside>
     </div>
