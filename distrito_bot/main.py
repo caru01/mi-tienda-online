@@ -104,6 +104,11 @@ async def root():
         "docs": "/docs",
     }
 
+# ── Servir el Panel de Pedidos (Frontend React) ──────────────────────────────
+pedidos_app_path = os.path.join(os.path.dirname(__file__), "pedidos-app", "dist")
+if os.path.exists(pedidos_app_path):
+    app.mount("/pedidos-app", StaticFiles(directory=pedidos_app_path, html=True), name="pedidos_app")
+
 # ── Servir el Dashboard (Frontend React) ─────────────────────────────────────
 # Montamos la carpeta dist de React. Debe ejecutarse `npm run build` en dashboard/ primero.
 frontend_path = os.path.join(os.path.dirname(__file__), "dashboard", "dist")
