@@ -155,28 +155,26 @@ function App() {
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
     
-    // 1. Enviar la orden al backend (Dashboard CRM/Ventas)
-    try {
-      await fetch(`${API_URL}/checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customer,
-          cart,
-          total: subtotal
-        })
-      });
-    } catch (error) {
-      console.error("Error guardando orden en dashboard:", error);
-    }
-    
-    // 2. Abrir WhatsApp
+    // Abrir WhatsApp INMEDIATAMENTE para evitar el bloqueo del navegador
     window.open(whatsappUrl, '_blank');
     
-    // Recargar la página después de 1 segundo para limpiar el carrito
+    // 1. Enviar la orden al backend (Dashboard CRM/Ventas) de forma asíncrona (sin await)
+    fetch(`${API_URL}/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer,
+        cart,
+        total: subtotal
+      })
+    }).catch(error => {
+      console.error("Error guardando orden en dashboard:", error);
+    });
+    
+    // Recargar la página después de 1.5 segundos para limpiar el carrito
     setTimeout(() => {
       window.location.reload();
-    }, 1000);
+    }, 1500);
   };
 
   if (loading) return <div className="loading-screen">Cargando menú...</div>;
@@ -225,6 +223,10 @@ function App() {
                 </div>
                 <div className="product-info">
                   <h3 className="product-title">{product.title}</h3>
+                  <div className="product-rating">
+                    <span className="stars">★★★★★</span>
+                    <span className="rating-count">({Math.floor(Math.random() * 100) + 50})</span>
+                  </div>
                   <p className="product-desc">{product.description}</p>
                   <div className="product-footer">
                     <span className="product-price">{formatter.format(product.price)}</span>
@@ -236,7 +238,7 @@ function App() {
                       </div>
                     ) : (
                       <button className="add-btn" onClick={() => addToCart(product)}>
-                        <Plus size={20} />
+                        + AGREGAR
                       </button>
                     )}
                   </div>
