@@ -91,7 +91,7 @@ function App() {
     if (type === 'banco') { setCopiedBanco(true); setTimeout(() => setCopiedBanco(false), 2000); }
   };
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (!customer.name || !customer.phone) {
       alert("Por favor ingresa nombre y teléfono.");
       return;
@@ -154,6 +154,23 @@ function App() {
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+    
+    // 1. Enviar la orden al backend (Dashboard CRM/Ventas)
+    try {
+      await fetch(`${API_URL}/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer,
+          cart,
+          total: subtotal
+        })
+      });
+    } catch (error) {
+      console.error("Error guardando orden en dashboard:", error);
+    }
+    
+    // 2. Abrir WhatsApp
     window.open(whatsappUrl, '_blank');
     
     // Recargar la página después de 1 segundo para limpiar el carrito

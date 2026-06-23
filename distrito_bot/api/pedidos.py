@@ -32,6 +32,67 @@ async def get_pedidos_init_data() -> Dict[str, Any]:
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@router.post("/api/pedidos/checkout")
+async def process_checkout(payload: dict) -> Dict[str, Any]:
+    """
+    Recibe la orden desde la App de Pedidos, la registra en 'sales' 
+    y actualiza/crea al cliente en 'customers'.
+    """
+    db = get_supabase()
+    try:
+        from datetime import datetime, timezone
+        now_str = datetime.now(timezone.utc).isoformat()
+        
+        customer = payload.get("customer", {})
+        cart = payload.get("cart", [])
+        total = payload.get("total", 0)
+        
+        phone = customer.get("phone", "").strip()
+        name = customer.get("name", "").strip()
+        
+        # 1. UPSERT Customer
+        if phone:
+            cust_res = db.table("customers").select("*").eq("customer_phone", phone).execute()
+            if cust_res.data:
+                existing = cust_res.data[0]
+                new_total_orders = existing.get("total_orders", 0) + 1
+                new_total_spent = float(existing.get("total_spent", 0)) + float(total)
+                db.table("customers").update({
+                    "customer_name": name,
+                    "last_order_at": now_str,
+                    "total_orders": new_total_orders,
+                    "total_spent": new_total_spent
+                }).eq("customer_phone", phone).execute()
+            else:
+                db.table("customers").insert({
+                    "customer_phone": phone,
+                    "customer_name": name,
+                    "first_seen_at": now_str,
+                    "last_order_at": now_str,
+                    "total_orders": 1,
+                    "total_spent": float(total),
+                    "tags": ""
+                }).execute()
+        
+        # 2. INSERT Sale
+        delivery_type = customer.get("deliveryType", "domicilio")
+        payment_method = customer.get("paymentMethod", "efectivo")
+        
+        db.table("sales").insert({
+            "customer_phone": phone,
+            "customer_name": name,
+            "total_amount": float(total),
+            "payment_method": payment_method,
+            "delivery_type": delivery_type,
+            "status": "pendiente",
+            "order_detail": cart,
+            "created_at": now_str
+        }).execute()
+        
+        return {"status": "success"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
 # ==========================================
 # ENDPOINTS PARA EL DASHBOARD (Administración)
 # ==========================================

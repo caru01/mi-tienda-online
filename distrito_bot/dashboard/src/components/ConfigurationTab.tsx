@@ -57,60 +57,6 @@ export default function ConfigurationTab() {
         </div>
       )}
 
-      {/* ── SWITCH PRINCIPAL: Desactivar mensajes automáticos ─────────────── */}
-      <div className={`p-5 rounded-2xl border-2 transition-all duration-300 ${
-        settings.bot_mode_manual
-          ? 'bg-orange-500/10 border-orange-500/50 shadow-[0_0_20px_rgba(249,115,22,0.15)]'
-          : 'bg-green-500/10 border-green-500/30'
-      }`}>
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className={`text-3xl transition-all ${settings.bot_mode_manual ? 'grayscale-0' : ''}`}>
-              {settings.bot_mode_manual ? '🔇' : '🤖'}
-            </div>
-            <div>
-              <h4 className={`font-black text-lg ${settings.bot_mode_manual ? 'text-orange-400' : 'text-green-400'}`}>
-                {settings.bot_mode_manual ? 'Bot SILENCIADO — Modo Escucha' : 'Bot ACTIVO — Modo Automático'}
-              </h4>
-              <p className="text-sm text-gray-400 mt-0.5">
-                {settings.bot_mode_manual
-                  ? '⚠️ El bot NO enviará ningún mensaje automático. Solo escucha y registra los mensajes y números.'
-                  : 'El bot responde automáticamente a los clientes con mensajes y flujo de pedido.'}
-              </p>
-            </div>
-          </div>
-          {/* Toggle switch */}
-          <button
-            onClick={async () => {
-              const newVal = !settings.bot_mode_manual
-              setSettings({ ...settings, bot_mode_manual: newVal })
-              try {
-                await fetch(`${API_URL}/settings`, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ ...settings, bot_mode_manual: newVal })
-                })
-              } catch (e) { console.error(e) }
-            }}
-            className={`relative flex-shrink-0 w-16 h-8 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent ${
-              settings.bot_mode_manual
-                ? 'bg-orange-500 focus:ring-orange-500'
-                : 'bg-green-500 focus:ring-green-500'
-            }`}
-          >
-            <span className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-lg transition-all duration-300 ${
-              settings.bot_mode_manual ? 'left-9' : 'left-1'
-            }`} />
-          </button>
-        </div>
-
-        {settings.bot_mode_manual && (
-          <div className="mt-4 p-3 bg-orange-500/10 border border-orange-500/30 rounded-xl text-sm text-orange-300">
-            <strong>📋 Modo Escucha activo:</strong> Todos los mensajes entrantes siguen siendo registrados en la base de datos. Los números de WhatsApp y sus mensajes quedan guardados. Solo se bloquea el envío de respuestas automáticas.
-          </div>
-        )}
-      </div>
-
       {/* Variables de Entorno */}
       <div className="glass rounded-xl p-6 border border-white/10 shadow-xl space-y-4">
         <h3 className="text-xl font-bold text-distrito-accent mb-4">Credenciales y Conexión</h3>
