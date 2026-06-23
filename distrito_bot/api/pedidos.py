@@ -21,23 +21,13 @@ async def get_pedidos_init_data() -> Dict[str, Any]:
         settings = settings_res.data or {}
         
         # Obtener configuración general (Horarios)
-        bot_settings_res = db.table("settings").select("open_time,close_time,business_days,is_open_manual").eq("id", 1).single().execute()
+        bot_settings_res = db.table("bot_settings").select("open_time,close_time,business_days,is_open_manual").eq("id", 1).single().execute()
         if bot_settings_res.data:
             settings.update(bot_settings_res.data)
         
-        # Obtener productos activos de la tabla principal
-        products_res = db.table("products").select("*").eq("is_active", True).execute()
-        products_raw = products_res.data or []
-        products = []
-        for p in products_raw:
-            products.append({
-                "id": p.get("id"),
-                "title": p.get("name"),
-                "description": p.get("description", ""),
-                "price": p.get("price", 0),
-                "category": p.get("category", "Otros"),
-                "image": p.get("image_url", "")
-            })
+        # Obtener productos activos de la app de pedidos
+        products_res = db.table("pedidos_app_products").select("*").eq("is_active", True).execute()
+        products = products_res.data or []
         
         return {
             "status": "ok",
