@@ -109,7 +109,19 @@ async def root():
 # ── Servir el Panel de Pedidos (Frontend React) ──────────────────────────────
 pedidos_app_path = os.path.join(os.path.dirname(__file__), "pedidos-app", "dist")
 if os.path.exists(pedidos_app_path):
-    app.mount("/pedidos-app", StaticFiles(directory=pedidos_app_path, html=True), name="pedidos_app")
+    app.mount("/pedidos-app/assets", StaticFiles(directory=os.path.join(pedidos_app_path, "assets")), name="pedidos_assets")
+    
+    @app.get("/pedidos-app")
+    @app.get("/pedidos-app/")
+    @app.get("/pedidos-app/{catchall:path}")
+    async def serve_pedidos_app(catchall: str = ""):
+        if catchall.startswith("api/") or catchall == "docs" or catchall == "openapi.json":
+            return {"error": "Not found"}
+        
+        file_path = os.path.join(pedidos_app_path, catchall)
+        if catchall and os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(pedidos_app_path, "index.html"))
 
 # ── Servir el Dashboard (Frontend React) ─────────────────────────────────────
 # Montamos la carpeta dist de React. Debe ejecutarse `npm run build` en dashboard/ primero.

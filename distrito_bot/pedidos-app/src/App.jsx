@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Minus, Trash2, ShoppingBag, ShoppingCart, Copy, Check, X, ArrowLeft } from 'lucide-react';
+import logoImg from './assets/logo.png';
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/pedidos' : 'http://localhost:8000/api/pedidos';
 
@@ -149,9 +150,10 @@ function App() {
 
       {/* Main Area */}
       <main className="main-content">
-        <header className="header">
-          <h1>Toma tu Pedido</h1>
-          <p>Selecciona los productos deliciosos que deseas hoy.</p>
+        <header className="header" style={{textAlign: 'center'}}>
+          <img src={logoImg} alt="Distrito Burger" style={{maxHeight: '120px', margin: '0 auto 10px'}} />
+          <p style={{color: '#747d8c', fontSize: '0.95rem', marginBottom: '0.2rem'}}>📍 Calle 7c #21-18 la esperanza</p>
+          <p style={{color: '#747d8c', fontSize: '0.95rem'}}>🕒 Miércoles a domingo 06:00 pm a 10:00 pm</p>
         </header>
 
         {/* Categories */}
@@ -320,7 +322,7 @@ function App() {
                   </button>
                   
                   <button className="copy-btn" onClick={() => copyToClipboard(settings.bancolombia_number, 'banco')}>
-                    <span className="copy-text">Bancolombia: {settings.bancolombia_number || 'No config'}</span>
+                    <span className="copy-text">Llave Bre-B: {settings.bancolombia_number || 'No config'}</span>
                     {copiedBanco ? <Check size={16} color="green" /> : <Copy size={16} color="#999" />}
                   </button>
                 </div>

@@ -93,6 +93,30 @@ export default function AppPedidosTab() {
     }
   };
 
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    try {
+      // Use the dashboard CRM upload endpoint
+      const res = await fetch(`${API_URL.replace('/pedidos', '/dashboard')}/crm/upload`, {
+        method: 'POST',
+        body: formData
+      });
+      const data = await res.json();
+      if (data.status === 'success') {
+        setCurrentProduct({...currentProduct, image: data.url});
+      } else {
+        alert('Error al subir imagen: ' + data.message);
+      }
+    } catch (err) {
+      alert('Error de conexión al subir imagen');
+    }
+  };
+
   const toggleProductActive = async (product: any) => {
     try {
       await fetch(`${API_URL}/pedidos/products`, {
@@ -290,14 +314,18 @@ export default function AppPedidosTab() {
                 </div>
               </div>
               <div>
-                <label className="block text-sm text-gray-400 mb-1">URL de la Imagen</label>
-                <input 
-                  type="text" 
-                  value={currentProduct.image || ''}
-                  onChange={e => setCurrentProduct({...currentProduct, image: e.target.value})}
-                  placeholder="https://..."
-                  className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white"
-                />
+                <label className="block text-sm text-gray-400 mb-1">Imagen del Producto</label>
+                <div className="flex gap-2 items-center">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white file:mr-4 file:py-1 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-distrito-accent file:text-black hover:file:bg-distrito-accent/80"
+                  />
+                  {currentProduct.image && (
+                    <img src={currentProduct.image} alt="Preview" className="w-10 h-10 rounded-lg object-cover" />
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2 mt-2">
                 <input 
