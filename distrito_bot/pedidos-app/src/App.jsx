@@ -189,23 +189,67 @@ function App() {
 
       {/* Main Area */}
       <main className="main-content">
-        <header className="header" style={{textAlign: 'center'}}>
-          <img src={logoImg} alt="Distrito Burger" style={{maxHeight: '100px', margin: '0 auto 10px'}} />
-          <p style={{color: '#747d8c', fontSize: '0.95rem', marginBottom: '0.2rem'}}>📍 Calle 7c #21-18 la esperanza</p>
-          <p style={{color: '#747d8c', fontSize: '0.95rem'}}>🕒 Miércoles a domingo 06:00 pm a 10:00 pm</p>
-        </header>
+        {/* Top Navbar */}
+        <nav className="top-navbar">
+          <div className="nav-logo">
+            <img src={logoImg} alt="Distrito BG" />
+          </div>
+          <div className="nav-links">
+            <a href="#" className="active">INICIO</a>
+            <a href="#">MENÚ</a>
+            <a href="#">PROMOCIONES</a>
+            <a href="#">NOSOTROS</a>
+          </div>
+          <div className="nav-status">
+            <div className="status-indicator">
+              <span className="dot"></span>
+              <div>
+                <strong>Abierto ahora</strong>
+                <span>Cierra a las 10:00 PM</span>
+              </div>
+            </div>
+            <button className="desktop-cart-icon" onClick={() => setIsCartOpenMobile(true)}>
+              <ShoppingCart size={20} color="white" />
+              {cartTotalItems > 0 && <span className="badge">{cartTotalItems}</span>}
+            </button>
+          </div>
+        </nav>
+
+        {/* Hero Banner */}
+        <section className="hero-banner">
+          <div className="hero-content">
+            <h1>MÁS QUE<br/><span className="highlight">HAMBURGUESAS,</span><br/>UNA EXPERIENCIA</h1>
+            <div className="hero-features">
+              <div className="feature"><span className="icon">🐄</span> CARNE<br/>100% RES</div>
+              <div className="feature"><span className="icon">🥬</span> INGREDIENTES<br/>FRESCOS</div>
+              <div className="feature"><span className="icon">🔥</span> PREPARACIÓN<br/>AL MOMENTO</div>
+            </div>
+            <button className="hero-btn">ORDENAR AHORA ➔</button>
+          </div>
+        </section>
+
+        <h2 className="section-title">NUESTRO MENÚ</h2>
 
         {/* Categories */}
         <div className="categories">
-          {categories.map(cat => (
-            <button 
-              key={cat.id} 
-              className={`category-btn ${activeCategory === cat.id ? 'active' : ''}`}
-              onClick={() => setActiveCategory(cat.id)}
-            >
-              {cat.name}
-            </button>
-          ))}
+          {categories.map(cat => {
+            let icon = '🍔';
+            if (cat.name.toLowerCase().includes('papa')) icon = '🍟';
+            if (cat.name.toLowerCase().includes('bebida')) icon = '🥤';
+            if (cat.name.toLowerCase().includes('promo')) icon = '🔥';
+            if (cat.id === 'all') icon = '⭐';
+
+            return (
+              <button 
+                key={cat.id} 
+                className={`category-btn ${activeCategory === cat.id ? 'active' : ''}`}
+                onClick={() => setActiveCategory(cat.id)}
+              >
+                <span className="cat-icon">{icon}</span>
+                {cat.name.toUpperCase()}
+              </button>
+            )
+          })}
         </div>
 
         {/* Product Grid */}
@@ -290,10 +334,12 @@ function App() {
                       <h4 className="cart-item-title">{item.title}</h4>
                       <p className="cart-item-price">{formatter.format(item.price)}</p>
                       <div className="cart-item-actions">
-                        <button className="qty-btn" onClick={() => updateQty(item.id, -1)}><Minus size={14} /></button>
-                        <span className="qty">{item.qty}</span>
-                        <button className="qty-btn" onClick={() => updateQty(item.id, 1)}><Plus size={14} /></button>
-                        <button className="qty-btn" onClick={() => removeItem(item.id)} style={{marginLeft: 'auto', color: '#ff4757'}}><Trash2 size={16} /></button>
+                        <div className="cart-qty-pill">
+                          <button className="qty-btn" onClick={() => updateQty(item.id, -1)}><Minus size={14} /></button>
+                          <span className="qty">{item.qty}</span>
+                          <button className="qty-btn" onClick={() => updateQty(item.id, 1)}><Plus size={14} /></button>
+                        </div>
+                        <button className="delete-btn" onClick={() => removeItem(item.id)}><Trash2 size={16} /></button>
                       </div>
                     </div>
                   </div>
@@ -389,23 +435,55 @@ function App() {
           )}
         </div>
 
-        <div className="cart-footer">
-          <div className="summary-row summary-total">
-            <span>Total:</span>
-            <span>{formatter.format(subtotal)}</span>
-          </div>
-
-          {checkoutStep === 1 ? (
-            <button className="checkout-btn" disabled={cart.length === 0} onClick={() => setCheckoutStep(2)}>
-              Confirmar Orden
-            </button>
-          ) : (
-            <button className="checkout-btn" disabled={cart.length === 0} onClick={handleCheckout}>
-              <ShoppingBag size={20} />
-              Confirmar por WhatsApp
-            </button>
-          )}
-        </div>
+            <div className="cart-footer">
+              <div className="cart-summary">
+                <span>Subtotal</span>
+                <span>{formatter.format(subtotal)}</span>
+              </div>
+              <div className="cart-summary">
+                <span>Domicilio</span>
+                <span>$ 3.000</span>
+              </div>
+              <div className="cart-total">
+                <span>TOTAL</span>
+                <span>{formatter.format(subtotal + 3000)}</span>
+              </div>
+              
+              {checkoutStep === 1 ? (
+                <button 
+                  className="checkout-btn" 
+                  onClick={() => setCheckoutStep(2)}
+                  disabled={cart.length === 0}
+                >
+                  CONTINUAR
+                </button>
+              ) : (
+                <button 
+                  className="checkout-btn" 
+                  onClick={handleCheckout}
+                  disabled={cart.length === 0}
+                >
+                  Confirmar por WhatsApp
+                </button>
+              )}
+              
+              {cart.length > 0 && checkoutStep === 1 && (
+                <button 
+                  className="empty-cart-btn" 
+                  onClick={() => setCart([])}
+                >
+                  <Trash2 size={16} /> VACÍAR PEDIDO
+                </button>
+              )}
+              
+              {checkoutStep === 1 && (
+                <div className="promo-banner">
+                  <h4>¿QUIERES AGREGAR ALGO MÁS?</h4>
+                  <p>Papas + Gaseosa <br/><span className="promo-price">$ 8.000</span></p>
+                  <button className="promo-add-btn">AGREGAR</button>
+                </div>
+              )}
+            </div>
       </aside>
     </div>
   );
