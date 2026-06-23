@@ -149,14 +149,15 @@ body {
 }
 
 .product-title {
-  font-size: 1.2rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.3rem;
+  line-height: 1.2;
 }
 
 .product-desc {
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   margin-bottom: 1rem;
   line-height: 1.4;
   flex: 1;
@@ -619,9 +620,26 @@ body {
   }
 
   /* Mejorar botones en tarjetas de producto para móvil */
+  .product-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.8rem;
+  }
+  
+  .product-price {
+    margin-bottom: 0.2rem;
+  }
+
   .product-qty-controls {
     padding: 0.5rem;
     gap: 0.8rem;
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .add-btn {
+    width: 100%;
+    border-radius: 12px;
   }
   
   .qty-btn-sm {

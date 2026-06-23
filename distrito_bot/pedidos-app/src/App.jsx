@@ -106,51 +106,60 @@ function App() {
     }
     
     const phoneNumber = settings.whatsapp_number || "573000000000";
-    const orderNumber = Math.random().toString(36).substring(2, 6).toUpperCase();
+    
+    // Obtener y actualizar número de orden local
+    let currentOrderNum = parseInt(localStorage.getItem('distrito_order_num') || '1');
+    const orderNumber = String(currentOrderNum).padStart(4, '0');
+    localStorage.setItem('distrito_order_num', (currentOrderNum + 1).toString());
 
-    let message = `NUEVA ORDEN (${orderNumber})\n`;
+    let message = `*NUEVA ORDEN (${orderNumber})*\n`;
     
     if (customer.deliveryType === 'domicilio') {
-      message += `hola Distrito BG soy ${customer.name}, me gustaria hacer un pedido\n\n`;
-      message += `Cliente: ${customer.name}\n`;
-      message += `Teléfono: ${customer.phone}\n`;
-      message += `Entrega: 🛵 A Domicilio\n`;
-      message += `Dirección: ${customer.address}\n`;
-      message += `Barrio: ${customer.barrio}\n\n`;
+      message += `Hola Distrito BG soy ${customer.name}, me gustaría hacer un pedido\n\n`;
+      message += `*Cliente:* ${customer.name}\n`;
+      message += `*Teléfono:* ${customer.phone}\n`;
+      message += `*Entrega:* 🛵 A Domicilio\n`;
+      message += `*Dirección:* ${customer.address}\n`;
+      message += `*Barrio:* ${customer.barrio}\n\n`;
     } else {
-      message += `hola Distrito BG soy ${customer.name}, me gustaria hacer un pedido para recoger en el local\n\n`;
-      message += `Cliente: ${customer.name}\n`;
-      message += `Teléfono: ${customer.phone}\n`;
-      message += `Entrega: 🏪 Recoger Local\n\n`;
+      message += `Hola Distrito BG soy ${customer.name}, me gustaría hacer un pedido para recoger en el local\n\n`;
+      message += `*Cliente:* ${customer.name}\n`;
+      message += `*Teléfono:* ${customer.phone}\n`;
+      message += `*Entrega:* 🏪 Recoger Local\n\n`;
     }
     
-    message += `Detalle del pedido:\n`;
+    message += `*Detalle del pedido:*\n`;
     cart.forEach(item => {
       message += `- ${item.qty}x ${item.title} (${formatter.format(item.price * item.qty)})\n`;
     });
     
     if (customer.comment) {
-      message += `Comentarios: ${customer.comment}\n`;
+      message += `*Comentarios:* ${customer.comment}\n`;
     }
     
-    message += `\nMedio de Pago: ${customer.paymentMethod === 'efectivo' ? '💵 Efectivo' : '💳 Transferencia'}\n`;
+    message += `\n*Medio de Pago:* ${customer.paymentMethod === 'efectivo' ? '💵 Efectivo' : '💳 Transferencia'}\n`;
     
     if (customer.paymentMethod === 'efectivo') {
-      message += `Paga con: ${formatter.format(customer.cashAmount)}\n`;
+      message += `*Paga con:* ${formatter.format(customer.cashAmount)}\n`;
       const change = customer.cashAmount - subtotal;
-      message += `Cambio sugerido: ${change > 0 ? formatter.format(change) : '$0'}\n`;
+      message += `*Cambio sugerido:* ${change > 0 ? formatter.format(change) : '$0'}\n`;
     } else {
       const isNequi = customer.transferBank === 'nequi';
-      message += `Banco : ${isNequi ? 'Nequi' : 'Llave Bre-B'}\n`;
-      message += `numero de cuenta : ${isNequi ? settings.nequi_number : settings.bancolombia_number}\n`;
+      message += `*Banco:* ${isNequi ? 'Nequi' : 'Llave Bre-B'}\n`;
+      message += `*Número de cuenta:* ${isNequi ? settings.nequi_number : settings.bancolombia_number}\n`;
     }
 
-    message += `Total a pagar: ${formatter.format(subtotal)}\n`;
+    message += `*Total a pagar:* ${formatter.format(subtotal)}\n`;
     message += `Gracias.`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
     window.open(whatsappUrl, '_blank');
+    
+    // Recargar la página después de 1 segundo para limpiar el carrito
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
   };
 
   if (loading) return <div className="loading-screen">Cargando menú...</div>;
