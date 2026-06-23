@@ -177,6 +177,48 @@ function App() {
     }, 1500);
   };
 
+  const { isOpen, closeTimeStr, openTimeStr } = useMemo(() => {
+    if (!settings.open_time || !settings.close_time) {
+      return { isOpen: true, closeTimeStr: '10:00 PM', openTimeStr: '06:00 PM' };
+    }
+
+    const now = new Date();
+    const currentDayMap = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const currentDay = currentDayMap[now.getDay()];
+    
+    const isOpenDay = settings.business_days ? settings.business_days.includes(currentDay) : true;
+    const [openH, openM] = settings.open_time.split(':').map(Number);
+    const [closeH, closeM] = settings.close_time.split(':').map(Number);
+    
+    const currentTime = now.getHours() * 60 + now.getMinutes();
+    const openTimeMins = openH * 60 + openM;
+    let closeTimeMins = closeH * 60 + closeM;
+    
+    if (closeTimeMins < openTimeMins) {
+      closeTimeMins += 24 * 60; // Pasa la medianoche
+    }
+    
+    let currentCheckTime = currentTime;
+    if (currentTime < openTimeMins && currentTime < (closeH * 60 + closeM)) {
+       currentCheckTime += 24 * 60;
+    }
+
+    const isWithinHours = currentCheckTime >= openTimeMins && currentCheckTime <= closeTimeMins;
+    const openStatus = settings.is_open_manual ? true : (isOpenDay && isWithinHours);
+
+    const formatTime = (h, m) => {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      const fh = h % 12 || 12;
+      return `${fh}:${m.toString().padStart(2, '0')} ${ampm}`;
+    };
+
+    return { 
+      isOpen: openStatus, 
+      closeTimeStr: formatTime(closeH, closeM),
+      openTimeStr: formatTime(openH, openM)
+    };
+  }, [settings]);
+
   if (loading) return <div className="loading-screen">Cargando menú...</div>;
 
   return (
@@ -202,10 +244,10 @@ function App() {
           </div>
           <div className="nav-status">
             <div className="status-indicator">
-              <span className="dot"></span>
+              <span className="dot" style={{ backgroundColor: isOpen ? '#4ade80' : '#ff4757' }}></span>
               <div>
-                <strong>Abierto ahora</strong>
-                <span>Cierra a las 10:00 PM</span>
+                <strong>{isOpen ? 'Abierto ahora' : 'Cerrado ahora'}</strong>
+                <span>{isOpen ? `Cierra a las ${closeTimeStr}` : `Abre a las ${openTimeStr}`}</span>
               </div>
             </div>
             <button className="desktop-cart-icon" onClick={() => setIsCartOpenMobile(true)}>
@@ -294,6 +336,34 @@ function App() {
             <div className="no-products">No hay productos en esta categoría.</div>
           )}
         </div>
+
+        {/* Why Choose Us Section */}
+        <section className="why-choose-us">
+          <h2 className="why-title">¿Por qué elegir Distrito BG?</h2>
+          <p className="why-subtitle">Ofrecemos la mejor experiencia en cada bocado, con ingredientes de alta calidad y un servicio inigualable.</p>
+          <div className="why-grid">
+            <div className="why-card">
+              <div className="why-icon">🐄</div>
+              <h3 className="why-card-title">Carne 100% Res</h3>
+              <p className="why-card-desc">Seleccionamos cortes de primera calidad para garantizar el mejor sabor y textura en cada hamburguesa.</p>
+            </div>
+            <div className="why-card">
+              <div className="why-icon">🥬</div>
+              <h3 className="why-card-title">Ingredientes Frescos</h3>
+              <p className="why-card-desc">Vegetales frescos y pan artesanal horneado a diario para crear la combinación perfecta.</p>
+            </div>
+            <div className="why-card">
+              <div className="why-icon">🔥</div>
+              <h3 className="why-card-title">Preparación al Momento</h3>
+              <p className="why-card-desc">Cada pedido se prepara al instante para asegurar frescura, jugosidad y temperatura ideal.</p>
+            </div>
+            <div className="why-card">
+              <div className="why-icon">🛵</div>
+              <h3 className="why-card-title">Entrega Rápida</h3>
+              <p className="why-card-desc">Llevamos tu comida caliente y en tiempo récord directo a la puerta de tu casa.</p>
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Sidebar / Cart Overlay para móviles */}
@@ -307,7 +377,8 @@ function App() {
                 <ArrowLeft size={20} />
               </button>
             )}
-            <h2>{checkoutStep === 1 ? 'Mi Pedido' : 'Datos de Envío'}</h2>
+            <h2>{checkoutStep === 1 ? '🛒 Tu Pedido' : 'Datos de Envío'}</h2>
+            {checkoutStep === 1 && <span className="cart-count">{cartTotalItems}</span>}
           </div>
           <button className="close-cart-btn" onClick={() => setIsCartOpenMobile(false)}>
             <X size={24} />

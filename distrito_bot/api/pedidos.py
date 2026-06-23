@@ -16,9 +16,14 @@ async def get_pedidos_init_data() -> Dict[str, Any]:
     """
     db = get_supabase()
     try:
-        # Obtener configuración
+        # Obtener configuración de la App de pedidos
         settings_res = db.table("pedidos_app_settings").select("*").eq("id", 1).single().execute()
         settings = settings_res.data or {}
+        
+        # Obtener configuración general (Horarios)
+        bot_settings_res = db.table("settings").select("open_time,close_time,business_days,is_open_manual").eq("id", 1).single().execute()
+        if bot_settings_res.data:
+            settings.update(bot_settings_res.data)
         
         # Obtener productos activos
         products_res = db.table("pedidos_app_products").select("*").eq("is_active", True).execute()
