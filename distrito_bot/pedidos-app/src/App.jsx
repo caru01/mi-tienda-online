@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Plus, Minus, Trash2, ShoppingBag, ShoppingCart, Copy, Check, X, ArrowLeft } from 'lucide-react';
-import logoImg from './assets/logo.png';
+import logoImg from './assets/logo-horizontal.png';
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/pedidos' : 'http://localhost:8000/api/pedidos';
 
@@ -26,7 +26,8 @@ function App() {
     comment: '',
     deliveryType: 'domicilio',
     paymentMethod: 'efectivo',
-    cashAmount: ''
+    cashAmount: '',
+    transferBank: 'nequi' // 'nequi' | 'banco'
   });
 
   const [copiedNequi, setCopiedNequi] = useState(false);
@@ -105,33 +106,47 @@ function App() {
     }
     
     const phoneNumber = settings.whatsapp_number || "573000000000";
+    const orderNumber = Math.random().toString(36).substring(2, 6).toUpperCase();
 
-    let message = `*NUEVO PEDIDO* 🛍️\n\n`;
-    message += `*Cliente:* ${customer.name}\n`;
-    message += `*Teléfono:* ${customer.phone}\n`;
-    message += `*Entrega:* ${customer.deliveryType === 'domicilio' ? '🛵 A Domicilio' : '🏪 Recoger en Local'}\n`;
+    let message = `NUEVA ORDEN (${orderNumber})\n`;
     
     if (customer.deliveryType === 'domicilio') {
-      message += `*Dirección:* ${customer.address}\n`;
-      message += `*Barrio:* ${customer.barrio}\n`;
+      message += `hola Distrito BG soy ${customer.name}, me gustaria hacer un pedido\n\n`;
+      message += `Cliente: ${customer.name}\n`;
+      message += `Teléfono: ${customer.phone}\n`;
+      message += `Entrega: 🛵 A Domicilio\n`;
+      message += `Dirección: ${customer.address}\n`;
+      message += `Barrio: ${customer.barrio}\n\n`;
+    } else {
+      message += `hola Distrito BG soy ${customer.name}, me gustaria hacer un pedido para recoger en el local\n\n`;
+      message += `Cliente: ${customer.name}\n`;
+      message += `Teléfono: ${customer.phone}\n`;
+      message += `Entrega: 🏪 Recoger Local\n\n`;
     }
     
-    message += `*Medio de Pago:* ${customer.paymentMethod === 'efectivo' ? '💵 Efectivo' : '💳 Transferencia'}\n`;
-    if (customer.paymentMethod === 'efectivo') {
-      message += `*Paga con:* ${formatter.format(customer.cashAmount)}\n`;
-      const change = customer.cashAmount - subtotal;
-      message += `*Cambio sugerido:* ${change > 0 ? formatter.format(change) : '$0'}\n`;
-    }
-
-    if (customer.comment) {
-      message += `*Comentarios:* ${customer.comment}\n`;
-    }
-
-    message += `\n*Detalle del pedido:*\n`;
+    message += `Detalle del pedido:\n`;
     cart.forEach(item => {
       message += `- ${item.qty}x ${item.title} (${formatter.format(item.price * item.qty)})\n`;
     });
-    message += `\n*Total a pagar: ${formatter.format(subtotal)}*`;
+    
+    if (customer.comment) {
+      message += `Comentarios: ${customer.comment}\n`;
+    }
+    
+    message += `\nMedio de Pago: ${customer.paymentMethod === 'efectivo' ? '💵 Efectivo' : '💳 Transferencia'}\n`;
+    
+    if (customer.paymentMethod === 'efectivo') {
+      message += `Paga con: ${formatter.format(customer.cashAmount)}\n`;
+      const change = customer.cashAmount - subtotal;
+      message += `Cambio sugerido: ${change > 0 ? formatter.format(change) : '$0'}\n`;
+    } else {
+      const isNequi = customer.transferBank === 'nequi';
+      message += `Banco : ${isNequi ? 'Nequi' : 'Llave Bre-B'}\n`;
+      message += `numero de cuenta : ${isNequi ? settings.nequi_number : settings.bancolombia_number}\n`;
+    }
+
+    message += `Total a pagar: ${formatter.format(subtotal)}\n`;
+    message += `Gracias.`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
@@ -151,7 +166,7 @@ function App() {
       {/* Main Area */}
       <main className="main-content">
         <header className="header" style={{textAlign: 'center'}}>
-          <img src={logoImg} alt="Distrito Burger" style={{maxHeight: '120px', margin: '0 auto 10px'}} />
+          <img src={logoImg} alt="Distrito Burger" style={{maxHeight: '100px', margin: '0 auto 10px'}} />
           <p style={{color: '#747d8c', fontSize: '0.95rem', marginBottom: '0.2rem'}}>📍 Calle 7c #21-18 la esperanza</p>
           <p style={{color: '#747d8c', fontSize: '0.95rem'}}>🕒 Miércoles a domingo 06:00 pm a 10:00 pm</p>
         </header>
@@ -314,17 +329,32 @@ function App() {
 
               {customer.paymentMethod === 'transferencia' && (
                 <div className="transfer-info animate-in fade-in">
-                  <p className="transfer-desc">Haz clic para copiar el número de cuenta:</p>
+                  <p className="transfer-desc" style={{marginBottom: '10px', fontWeight: 'bold'}}>Selecciona el banco al que transferiste:</p>
                   
-                  <button className="copy-btn" onClick={() => copyToClipboard(settings.nequi_number, 'nequi')}>
-                    <span className="copy-text">Nequi: {settings.nequi_number || 'No config'}</span>
-                    {copiedNequi ? <Check size={16} color="green" /> : <Copy size={16} color="#999" />}
-                  </button>
+                  <div className="radio-group" style={{marginBottom: '15px'}}>
+                    <label className="radio-label">
+                      <input type="radio" name="transferBank" checked={customer.transferBank === 'nequi'} onChange={() => setCustomer({...customer, transferBank: 'nequi'})} />
+                      Nequi
+                    </label>
+                    <label className="radio-label">
+                      <input type="radio" name="transferBank" checked={customer.transferBank === 'banco'} onChange={() => setCustomer({...customer, transferBank: 'banco'})} />
+                      Llave Bre-B
+                    </label>
+                  </div>
+
+                  {customer.transferBank === 'nequi' && (
+                    <button className="copy-btn" onClick={() => copyToClipboard(settings.nequi_number, 'nequi')}>
+                      <span className="copy-text">Nequi: {settings.nequi_number || 'No config'}</span>
+                      {copiedNequi ? <Check size={16} color="green" /> : <Copy size={16} color="#999" />}
+                    </button>
+                  )}
                   
-                  <button className="copy-btn" onClick={() => copyToClipboard(settings.bancolombia_number, 'banco')}>
-                    <span className="copy-text">Llave Bre-B: {settings.bancolombia_number || 'No config'}</span>
-                    {copiedBanco ? <Check size={16} color="green" /> : <Copy size={16} color="#999" />}
-                  </button>
+                  {customer.transferBank === 'banco' && (
+                    <button className="copy-btn" onClick={() => copyToClipboard(settings.bancolombia_number, 'banco')}>
+                      <span className="copy-text">Llave Bre-B: {settings.bancolombia_number || 'No config'}</span>
+                      {copiedBanco ? <Check size={16} color="green" /> : <Copy size={16} color="#999" />}
+                    </button>
+                  )}
                 </div>
               )}
             </div>

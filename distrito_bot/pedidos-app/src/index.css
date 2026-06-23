@@ -617,6 +617,28 @@ body {
     cursor: pointer;
     transition: var(--transition);
   }
+
+  /* Mejorar botones en tarjetas de producto para móvil */
+  .product-qty-controls {
+    padding: 0.5rem;
+    gap: 0.8rem;
+  }
+  
+  .qty-btn-sm {
+    width: 34px;
+    height: 34px;
+  }
+  
+  .qty-text {
+    font-size: 1.1rem;
+    min-width: 24px;
+  }
+  
+  .checkout-btn {
+    padding: 1rem;
+    font-size: 1.05rem;
+    margin-bottom: 2rem; /* Espacio extra al fondo en móviles */
+  }
   
   .mobile-cart-btn:hover {
     transform: scale(1.05);
