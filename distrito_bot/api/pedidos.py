@@ -25,9 +25,19 @@ async def get_pedidos_init_data() -> Dict[str, Any]:
         if bot_settings_res.data:
             settings.update(bot_settings_res.data)
         
-        # Obtener productos activos
-        products_res = db.table("pedidos_app_products").select("*").eq("is_active", True).execute()
-        products = products_res.data or []
+        # Obtener productos activos de la tabla principal
+        products_res = db.table("products").select("*").eq("is_active", True).execute()
+        products_raw = products_res.data or []
+        products = []
+        for p in products_raw:
+            products.append({
+                "id": p.get("id"),
+                "title": p.get("name"),
+                "description": p.get("description", ""),
+                "price": p.get("price", 0),
+                "category": p.get("category", "Otros"),
+                "image": p.get("image_url", "")
+            })
         
         return {
             "status": "ok",

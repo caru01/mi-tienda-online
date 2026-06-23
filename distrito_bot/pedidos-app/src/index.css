@@ -959,8 +959,8 @@ body {
   }
   
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1.5rem;
   }
   
   .product-image-container {
@@ -1023,7 +1023,7 @@ body {
   .checkout-btn {
     padding: 1rem;
     font-size: 1.05rem;
-    margin-bottom: 2rem; /* Espacio extra al fondo en móviles */
+    margin-bottom: 0;
   }
   
   .mobile-cart-btn:hover {
@@ -1085,7 +1085,7 @@ body {
   
   .cart-content-scroll {
     padding: 1.5rem 1rem;
-    padding-bottom: 8rem;
+    min-height: 0;
   }
   
   .cart-header {
