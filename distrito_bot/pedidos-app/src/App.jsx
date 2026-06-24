@@ -17,7 +17,7 @@ function App() {
   const [checkoutStep, setCheckoutStep] = useState(1); // 1 = Cart, 2 = Checkout Form
   const [isCartOpenMobile, setIsCartOpenMobile] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [categories, setCategories] = useState([]);
+  
 
   // Form State
   const [customer, setCustomer] = useState({ 
