@@ -1059,9 +1059,6 @@ body {
   .sidebar-wrapper {
     position: sticky;
     top: 20px;
-    height: max-content;
-    max-height: calc(100vh - 40px);
-    overflow-y: auto;
     width: 400px;
     flex-shrink: 0;
     display: flex;
@@ -1073,8 +1070,7 @@ body {
     box-shadow: -5px 0 20px rgba(0,0,0,0.5);
     border-radius: 20px;
     overflow: hidden;
-    flex: 1;
-    min-height: 750px;
+    height: 550px;
   }
 }
 
