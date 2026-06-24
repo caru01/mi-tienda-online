@@ -10,9 +10,25 @@ import OrdersTab from './components/OrdersTab'
 import CatalogTab from './components/CatalogTab'
 import CrmTab from './components/CrmTab'
 import AppPedidosTab from './components/AppPedidosTab'
-import { Users, Smartphone } from 'lucide-react'
+import Login from './components/Login'
+import { Users, Smartphone, LogOut } from 'lucide-react'
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/dashboard' : 'http://localhost:8000/api/dashboard'
+
+// ─── Interceptor de Fetch para inyectar Token ─────────────────
+const originalFetch = window.fetch;
+window.fetch = async (...args) => {
+  let [resource, config] = args;
+  if (typeof resource === 'string' && resource.startsWith(API_URL) && !resource.endsWith('/login')) {
+    const token = localStorage.getItem('admin_token');
+    config = config || {};
+    config.headers = {
+      ...config.headers,
+      'Authorization': `Bearer ${token}`
+    };
+  }
+  return originalFetch(resource, config);
+};
 
 // ─── Genera un beep sintetizado (no necesita archivo externo) ─────────────────
 function playAlertBeep() {
@@ -36,6 +52,7 @@ function playAlertBeep() {
 }
 
 function App() {
+  const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('admin_token'))
   const [activeTab, setActiveTab] = useState('sales')
   const [data, setData] = useState({
     total_revenue: 0,
@@ -58,6 +75,10 @@ function App() {
   const fetchDashboardData = useCallback(async (isPolling = false) => {
     try {
       const res = await fetch(`${API_URL}/stats`)
+      if (res.status === 401) {
+        handleLogout()
+        return
+      }
       const json = await res.json()
       if (json.status !== 'ok') return
 
@@ -137,14 +158,28 @@ function App() {
   }
 
   useEffect(() => {
-    fetchDashboardData()
-    fetchStoreStatus()
-    const interval = setInterval(() => fetchDashboardData(true), 10000)
-    return () => {
-      clearInterval(interval)
-      if (alertTimerRef.current) clearInterval(alertTimerRef.current)
+    if (authToken) {
+      fetchDashboardData()
+      fetchStoreStatus()
+      const interval = setInterval(() => fetchDashboardData(true), 10000)
+      return () => {
+        clearInterval(interval)
+        if (alertTimerRef.current) clearInterval(alertTimerRef.current)
+      }
     }
-  }, [fetchDashboardData, fetchStoreStatus])
+  }, [authToken, fetchDashboardData, fetchStoreStatus])
+
+  const handleLogout = () => {
+    localStorage.removeItem('admin_token')
+    setAuthToken(null)
+  }
+
+  if (!authToken) {
+    return <Login API_URL={API_URL} onLoginSuccess={(token) => {
+      localStorage.setItem('admin_token', token)
+      setAuthToken(token)
+    }} />
+  }
 
   // ── Sidebar nav items en el orden correcto ──────────────────────────────────
   const navItems = [
@@ -170,11 +205,16 @@ function App() {
 
       {/* Sidebar — desktop */}
       <aside className="hidden md:flex fixed left-0 top-0 w-64 h-full glass border-r border-white/10 p-6 z-10 flex-col">
-        <div className="flex items-center gap-3 mb-8">
-          <Utensils className="text-distrito-accent w-7 h-7" />
-          <h1 className="text-xl font-black tracking-tighter">
-            DISTRITO<span className="text-distrito-accent">.</span>BOT
-          </h1>
+        <div className="flex items-center gap-3 mb-8 justify-between">
+          <div className="flex items-center gap-3">
+            <Utensils className="text-distrito-accent w-7 h-7" />
+            <h1 className="text-xl font-black tracking-tighter">
+              DISTRITO<span className="text-distrito-accent">.</span>BOT
+            </h1>
+          </div>
+          <button onClick={handleLogout} className="text-red-400 hover:text-red-300 transition-colors" title="Cerrar sesión">
+            <LogOut size={20} />
+          </button>
         </div>
 
         {/* Botón Abrir/Cerrar tienda */}
