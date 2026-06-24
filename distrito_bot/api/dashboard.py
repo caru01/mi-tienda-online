@@ -2,13 +2,41 @@
 api/dashboard.py
 Endpoints para el Dashboard Web.
 """
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, UploadFile, Depends, HTTPException, status, Header
 from services.supabase_client import get_supabase
 from typing import Dict, Any
+from pydantic import BaseModel
+import hashlib
 
 router = APIRouter()
 
-@router.get("/api/dashboard/stats")
+ADMIN_EMAIL = "distrito@gmail.com"
+ADMIN_PASS_HASH = "83218ac34c1834c26781fe4bde918e70fc5f172bd91bf3e8dce7bc961de2db01"
+SECRET_TOKEN = "distrito_secret_admin_token_2026"
+
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@router.post("/api/dashboard/login")
+async def login(req: LoginRequest):
+    pwd_hash = hashlib.sha256(req.password.encode()).hexdigest()
+    if req.email == ADMIN_EMAIL and pwd_hash == ADMIN_PASS_HASH:
+        return {"status": "ok", "token": SECRET_TOKEN}
+    return {"status": "error", "message": "Credenciales incorrectas"}
+
+def verify_token(authorization: str = Header(None)):
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing")
+    token = authorization.split(" ")[1]
+    if token != SECRET_TOKEN:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    return True
+
+# Aplicamos la seguridad a TODA LA APLICACIÓN
+secure_router = APIRouter(dependencies=[Depends(verify_token)])
+
+@secure_router.get("/api/dashboard/stats")
 async def get_dashboard_stats() -> Dict[str, Any]:
     db = get_supabase()
     from datetime import datetime, timezone
