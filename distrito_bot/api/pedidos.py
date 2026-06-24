@@ -28,6 +28,7 @@ async def get_pedidos_init_data() -> Dict[str, Any]:
         # Obtener productos activos de la app de pedidos
         products_res = db.table("pedidos_app_products").select("*").execute()
         products = products_res.data or []
+        # No fallback – usar solo pedidos_app_products
         
         return {
             "status": "ok",
