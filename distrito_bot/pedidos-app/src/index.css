@@ -234,7 +234,7 @@ body {
 /* Product Cards */
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1.5rem;
   padding: 0 4rem 4rem;
 }
@@ -1035,21 +1035,33 @@ body {
     display: none;
   }
   .app-container {
-    display: flex;
+    display: block;
   }
   .main-content {
+    margin-right: 0;
+  }
+  .shop-layout {
+    display: flex;
+    align-items: flex-start;
+    padding-right: 4rem;
+  }
+  .shop-products {
     flex: 1;
-    margin-right: 400px; /* Space for the fixed sidebar */
+  }
+  .product-grid {
+    padding-right: 2rem;
   }
   .cart-sidebar {
-    position: fixed;
-    right: 0;
-    top: 0;
-    height: 100vh;
+    position: sticky;
+    top: 20px;
+    height: calc(100vh - 40px);
     width: 400px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     box-shadow: -5px 0 20px rgba(0,0,0,0.5);
+    border-radius: 20px;
+    overflow: hidden;
   }
 }
 

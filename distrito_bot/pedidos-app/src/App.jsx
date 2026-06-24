@@ -583,6 +583,8 @@ function App() {
               )}
             </div>
       </aside>
+        </div>
+      </main>
     </div>
   );
 }
