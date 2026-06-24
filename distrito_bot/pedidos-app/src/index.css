@@ -954,9 +954,9 @@ body {
 .form-section-title {
   margin: 1.5rem 0 0.8rem 0;
   font-size: 1rem;
-  border-bottom: 2px solid #f1f2f6;
+  border-bottom: 2px solid #333333;
   padding-bottom: 0.5rem;
-  color: var(--text-main);
+  color: #ffffff;
 }
 
 .radio-group {
@@ -1059,7 +1059,9 @@ body {
   .sidebar-wrapper {
     position: sticky;
     top: 20px;
-    height: calc(100vh - 40px);
+    height: max-content;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
     width: 400px;
     flex-shrink: 0;
     display: flex;
@@ -1072,6 +1074,7 @@ body {
     border-radius: 20px;
     overflow: hidden;
     flex: 1;
+    min-height: 450px;
   }
 }
 
