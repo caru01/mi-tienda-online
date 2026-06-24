@@ -371,8 +371,9 @@ function App() {
       {/* Sidebar / Cart Overlay para móviles */}
       <div className={`cart-overlay ${isCartOpenMobile ? 'open' : ''}`} onClick={() => setIsCartOpenMobile(false)}></div>
 
-      <aside className={`cart-sidebar ${isCartOpenMobile ? 'open' : ''}`}>
-        <div className="cart-header">
+      <div className="sidebar-wrapper">
+        <aside className={`cart-sidebar ${isCartOpenMobile ? 'open' : ''}`}>
+          <div className="cart-header">
           <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
             {checkoutStep === 2 && (
               <button className="back-btn" onClick={() => setCheckoutStep(1)}>
@@ -547,25 +548,27 @@ function App() {
               )}
             </div>
             
-            {/* Payment info placed inside the sidebar but below the footer */}
-            <div className="premium-payment-methods" style={{ background: 'white', borderRadius: '20px', padding: '1.5rem', margin: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-              <h3 className="premium-payment-title" style={{ color: '#000' }}><CreditCard size={20} /> Paga como quieras</h3>
-              <div className="payment-icons-grid">
-                <div className="payment-method-item" style={{ color: '#333' }}><Banknote className="payment-method-icon" size={20} /> Efectivo</div>
-                <div className="payment-method-item" style={{ color: '#333' }}><Smartphone className="payment-method-icon" size={20} /> Nequi</div>
-                <div className="payment-method-item" style={{ color: '#333' }}><Smartphone className="payment-method-icon" size={20} /> Daviplata</div>
-                <div className="payment-method-item" style={{ color: '#333' }}><Wallet className="payment-method-icon" size={20} /> Transferencia</div>
-              </div>
+        </aside>
 
-              <div className="premium-trust-section" style={{ color: '#333', borderColor: '#eee' }}>
-                <Lock className="icon" size={24} />
-                <div className="premium-trust-text">
-                  <strong>Compra 100% segura</strong>
-                  <p>Tu información está protegida y el proceso de compra es totalmente seguro.</p>
-                </div>
-              </div>
+        {/* Payment info placed outside the cart-sidebar */}
+        <div className="premium-payment-methods" style={{ background: 'white', borderRadius: '20px', padding: '1.5rem', marginTop: '1.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', flexShrink: 0 }}>
+          <h3 className="premium-payment-title" style={{ color: '#000' }}><CreditCard size={20} /> Paga como quieras</h3>
+          <div className="payment-icons-grid">
+            <div className="payment-method-item" style={{ color: '#333' }}><Banknote className="payment-method-icon" size={20} /> Efectivo</div>
+            <div className="payment-method-item" style={{ color: '#333' }}><Smartphone className="payment-method-icon" size={20} /> Nequi</div>
+            <div className="payment-method-item" style={{ color: '#333' }}><Smartphone className="payment-method-icon" size={20} /> Daviplata</div>
+            <div className="payment-method-item" style={{ color: '#333' }}><Wallet className="payment-method-icon" size={20} /> Transferencia</div>
+          </div>
+
+          <div className="premium-trust-section" style={{ color: '#333', borderColor: '#eee' }}>
+            <Lock className="icon" size={24} />
+            <div className="premium-trust-text">
+              <strong>Compra 100% segura</strong>
+              <p>Tu información está protegida y el proceso de compra es totalmente seguro.</p>
             </div>
-      </aside>
+          </div>
+        </div>
+      </div>
         </div>
       </main>
     </div>
