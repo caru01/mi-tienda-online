@@ -312,7 +312,13 @@ function App() {
                 <div className="product-info">
                   <h3 className="product-title">{product.title}</h3>
                   <div className="product-rating">
-                    <span className="stars">★★★★★</span>
+                    <span className="stars">
+                      <span style={{ color: '#D4A017' }}>★★★★</span>
+                      <span style={{ position: 'relative', display: 'inline-block', color: '#555' }}>
+                        ★
+                        <span style={{ position: 'absolute', left: 0, top: 0, overflow: 'hidden', width: '50%', color: '#D4A017' }}>★</span>
+                      </span>
+                    </span>
                     <span className="rating-count">({Math.floor(Math.random() * 100) + 50})</span>
                   </div>
                   <p className="product-desc">{product.description}</p>
