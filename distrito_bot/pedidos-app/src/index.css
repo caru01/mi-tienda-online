@@ -1090,18 +1090,25 @@ body {
   }
   
   .top-navbar {
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 
+      "logo cart"
+      "status status"
+      "links links";
     gap: 1rem;
     padding: 1rem;
   }
 
-  .nav-links {
-    flex-wrap: wrap;
-    justify-content: center;
-  }
+  .nav-logo { grid-area: logo; }
+  .nav-links { grid-area: links; flex-wrap: wrap; justify-content: center; }
+  .nav-status { display: contents; }
+  .status-indicator { grid-area: status; justify-self: center; }
+  .desktop-cart-icon { grid-area: cart; display: flex !important; }
 
   .hero-banner {
-    height: 300px;
+    height: auto;
+    min-height: 300px;
     padding: 2rem 1rem;
   }
 
@@ -1110,23 +1117,42 @@ body {
   }
   
   .hero-features {
-    flex-direction: column;
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .hero-features .feature {
+    font-size: 0.75rem;
+    padding: 0.5rem;
+  }
+  
+  .hero-btn {
+    margin: 0 auto;
+    display: block;
+  }
+  
+  .categories {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    padding: 0.5rem 1rem 1.5rem;
+    overflow-x: visible;
   }
   
   .product-grid {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-    gap: 1.5rem;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    padding: 0 1rem 2rem;
   }
   
   .product-image-container {
-    height: 140px;
+    height: 120px;
   }
   
   /* Botón Flotante del Carrito */
   .mobile-cart-btn {
-    display: flex;
-    position: fixed;
+    display: none !important;
     bottom: 2rem;
     right: 2rem;
     width: 65px;
