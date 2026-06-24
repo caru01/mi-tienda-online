@@ -63,6 +63,10 @@ body {
   color: white;
 }
 
+.mobile-menu-btn {
+  display: none;
+}
+
 .nav-logo img {
   height: 60px;
 }
@@ -1070,7 +1074,7 @@ body {
     box-shadow: -5px 0 20px rgba(0,0,0,0.5);
     border-radius: 20px;
     overflow: hidden;
-    height: 550px;
+    height: 750px;
   }
 }
 
@@ -1091,19 +1095,23 @@ body {
   
   .top-navbar {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto 1fr auto;
     grid-template-areas: 
-      "logo cart"
-      "status status"
-      "links links";
+      "menu logo cart"
+      "status status status"
+      "links links links";
     gap: 1rem;
     padding: 1rem;
+    align-items: center;
   }
 
-  .nav-logo { grid-area: logo; }
-  .nav-links { grid-area: links; flex-wrap: wrap; justify-content: center; }
+  .mobile-menu-btn { grid-area: menu; display: flex !important; background: none; border: none; cursor: pointer; }
+  .nav-logo { grid-area: logo; justify-self: center; }
+  .nav-links { display: none; grid-area: links; flex-direction: column; gap: 1rem; background: #111; padding: 1rem; border-radius: 10px; width: 100%; text-align: center; }
+  .nav-links.open { display: flex; }
   .nav-status { display: contents; }
   .status-indicator { grid-area: status; justify-self: center; }
+  .status-text-row { display: flex; gap: 0.5rem; align-items: center; white-space: nowrap; font-size: 0.75rem; }
   .desktop-cart-icon { grid-area: cart; display: flex !important; }
 
   .hero-banner {
@@ -1113,7 +1121,7 @@ body {
   }
 
   .hero-content h1 {
-    font-size: 2rem;
+    font-size: 1.5rem;
   }
   
   .hero-features {
@@ -1123,8 +1131,10 @@ body {
   }
   
   .hero-features .feature {
-    font-size: 0.75rem;
-    padding: 0.5rem;
+    font-size: 0.65rem;
+    padding: 0.2rem;
+    word-break: break-word;
+    text-align: center;
   }
   
   .hero-btn {
@@ -1150,7 +1160,16 @@ body {
     height: 120px;
   }
   
-  /* Botón Flotante del Carrito */
+  .section-title {
+    font-size: 1.5rem;
+    margin: 1.5rem 0;
+  }
+  
+  .product-title {
+    font-size: 0.9rem;
+  }
+  
+  /* Ocultar el Botón Flotante porque movimos el carrito al header */
   .mobile-cart-btn {
     display: none !important;
     bottom: 2rem;

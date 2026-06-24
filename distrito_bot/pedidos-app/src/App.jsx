@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Minus, Trash2, ShoppingBag, ShoppingCart, Copy, Check, X, ArrowLeft, Lock, CreditCard, Wallet, Smartphone, Banknote } from 'lucide-react';
+import { Plus, Minus, Trash2, ShoppingBag, ShoppingCart, Copy, Check, X, ArrowLeft, Lock, CreditCard, Wallet, Smartphone, Banknote, Menu } from 'lucide-react';
 import logoImg from './assets/logo-horizontal.png';
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/pedidos' : 'http://localhost:8000/api/pedidos';
@@ -16,6 +16,8 @@ function App() {
   // UI State
   const [checkoutStep, setCheckoutStep] = useState(1); // 1 = Cart, 2 = Checkout Form
   const [isCartOpenMobile, setIsCartOpenMobile] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [categories, setCategories] = useState([]);
 
   // Form State
   const [customer, setCustomer] = useState({ 
@@ -233,20 +235,26 @@ function App() {
       <main className="main-content">
         {/* Top Navbar */}
         <nav className="top-navbar">
+          <button className="mobile-menu-btn" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+            <Menu size={24} color="white" />
+          </button>
+          
           <div className="nav-logo">
             <img src={logoImg} alt="Distrito BG" />
           </div>
-          <div className="nav-links">
-            <a href="#" className="active">INICIO</a>
-            <a href="#">MENÚ</a>
-            <a href="#">PROMOCIONES</a>
-            <a href="#">NOSOTROS</a>
+          
+          <div className={`nav-links ${isMobileMenuOpen ? 'open' : ''}`}>
+            <a href="#" className="active" onClick={() => setIsMobileMenuOpen(false)}>INICIO</a>
+            <a href="#" onClick={() => setIsMobileMenuOpen(false)}>MENÚ</a>
+            <a href="#" onClick={() => setIsMobileMenuOpen(false)}>PROMOCIONES</a>
+            <a href="#" onClick={() => setIsMobileMenuOpen(false)}>NOSOTROS</a>
           </div>
+          
           <div className="nav-status">
             <div className="status-indicator">
               <span className="dot" style={{ backgroundColor: isOpen ? '#4ade80' : '#ff4757' }}></span>
-              <div>
-                <strong>{isOpen ? 'Abierto ahora' : 'Cerrado ahora'}</strong>
+              <div className="status-text-row">
+                <strong>{isOpen ? 'Abierto' : 'Cerrado'}</strong>
                 <span>{isOpen ? `Cierra a las ${closeTimeStr}` : `Abre a las ${openTimeStr}`}</span>
               </div>
             </div>
