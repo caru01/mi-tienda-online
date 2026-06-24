@@ -272,8 +272,10 @@ function App() {
 
         <h2 className="section-title">NUESTRO MENÚ</h2>
 
-        {/* Categories */}
-        <div className="categories">
+        <div className="shop-layout">
+          <div className="shop-products">
+            {/* Categories */}
+            <div className="categories">
           {categories.map(cat => {
             let icon = '🍔';
             if (cat.name.toLowerCase().includes('papa')) icon = '🍟';
