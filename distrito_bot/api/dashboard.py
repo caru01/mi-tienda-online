@@ -16,13 +16,15 @@ async def get_dashboard_stats() -> Dict[str, Any]:
 
     # Solo ventas de hoy para KPIs (liviano)
     today = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-    sales_today_res = db.table("sales").select("total_amount, payment_method, delivery_type, status").gte("created_at", f"{today}T00:00:00Z").execute()
-    sales_today = sales_today_res.data or []
+    sales_today_res = db.table("sales").select("total_amount, payment_method, delivery_type, status, raw_message").gte("created_at", f"{today}T00:00:00Z").execute()
+    # Filtrar solo las de la App (raw_message is null)
+    sales_today = [s for s in (sales_today_res.data or []) if s.get("raw_message") is None]
+    
     total_revenue = sum([s.get("total_amount", 0) for s in sales_today])
     total_orders = len(sales_today)
 
     # Ultimas 200 ventas para historial y graficos (paginado)
-    all_sales_res = db.table("sales").select("*").order("created_at", desc=True).limit(200).execute()
+    all_sales_res = db.table("sales").select("*").is_("raw_message", "null").order("created_at", desc=True).limit(200).execute()
 
     # Obtener inventario
     inventory = db.table("inventory_items").select("*").execute()
@@ -30,8 +32,8 @@ async def get_dashboard_stats() -> Dict[str, Any]:
     # Obtener catalogo
     products = db.table("products").select("*").execute()
 
-    # Obtener ordenes activas (excluye entregadas y canceladas)
-    active_sales_res = db.table("sales").select("*").not_.in_("status", ["entregado", "cancelado"]).order("created_at", desc=True).execute()
+    # Obtener pedidos pendientes/en preparación (solo de la App)
+    active_sales_res = db.table("sales").select("*").is_("raw_message", "null").not_.in_("status", ["entregado", "cancelado"]).order("created_at", desc=True).execute()
 
     return {
         "status": "ok",
@@ -52,7 +54,7 @@ async def get_recovery_stats() -> Dict[str, Any]:
     
     try:
         # Pedidos Confirmados: Ventas creadas hoy
-        sales_res = db.table("sales").select("id").gte("created_at", f"{today}T00:00:00Z").execute()
+        sales_res = db.table("sales").select("id").is_("raw_message", "null").gte("created_at", f"{today}T00:00:00Z").execute()
         confirmados = len(sales_res.data or [])
 
         # Pedidos Abandonados y Recuperados: de abandoned_orders_log
@@ -95,8 +97,8 @@ async def get_sales_history(start_date: str = None, end_date: str = None) -> Dic
         if end_date:
             query = query.lte("created_at", f"{end_date}T23:59:59Z")
             
-        # Solo devolvemos los finalizados / cancelados, ordenados
-        query = query.in_("status", ["entregado", "cancelado"]).order("created_at", desc=True)
+        # Solo devolvemos los finalizados / cancelados, ordenados, y SOLO de la App
+        query = query.is_("raw_message", "null").in_("status", ["entregado", "cancelado"]).order("created_at", desc=True)
         res = query.execute()
         
         return {"status": "ok", "sales": res.data or []}

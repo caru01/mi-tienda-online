@@ -27,10 +27,14 @@ async def get_pedidos_init_data() -> Dict[str, Any]:
             pass # Ignorar si la tabla no existe
             
         # Obtener configuración general (Horarios)
+        from config.dynamic_settings import is_restaurant_open
         try:
-            bot_settings_res = db.table("bot_settings").select("open_time,close_time,business_days,is_open_manual").eq("id", 1).execute()
+            bot_settings_res = db.table("bot_settings").select("open_time,close_time,business_days,business_open_hour,business_open_minute,business_close_hour,business_close_minute,is_open").eq("id", 1).execute()
             if bot_settings_res.data:
                 settings.update(bot_settings_res.data[0])
+            
+            # Override con el estado real
+            settings["is_store_open"] = is_restaurant_open()
         except Exception:
             pass # Ignorar si la tabla no existe
             

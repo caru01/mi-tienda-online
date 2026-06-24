@@ -18,6 +18,12 @@
   font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+html, body {
+  overflow-x: hidden;
+  margin: 0;
+  padding: 0;
+}
+
 body {
   background-color: var(--bg-color);
   color: var(--text-main);
@@ -1074,7 +1080,7 @@ body {
     box-shadow: -5px 0 20px rgba(0,0,0,0.5);
     border-radius: 20px;
     overflow: hidden;
-    height: 750px;
+    height: 1250px;
   }
 }
 
@@ -1169,23 +1175,50 @@ body {
     font-size: 0.9rem;
   }
   
-  /* Ocultar el Botón Flotante porque movimos el carrito al header */
+  /* Ocultar el Botón Flotante antiguo */
   .mobile-cart-btn {
     display: none !important;
-    bottom: 2rem;
-    right: 2rem;
-    width: 65px;
-    height: 65px;
+  }
+  
+  /* Nueva barra flotante del carrito en móvil */
+  .mobile-cart-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
     background-color: var(--primary-color);
-    color: white;
-    border: none;
+    color: var(--text-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    z-index: 100;
+    cursor: pointer;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
+    font-weight: bold;
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+  }
+  
+  .mobile-cart-bar-items {
+    background-color: white;
+    color: var(--primary-color);
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
+    display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 10px 25px rgba(255, 71, 87, 0.4);
-    z-index: 40;
-    cursor: pointer;
-    transition: var(--transition);
+    font-size: 1rem;
+  }
+  
+  .mobile-cart-bar-text {
+    font-size: 1.1rem;
+    text-transform: uppercase;
+  }
+  
+  .mobile-cart-bar-total {
+    font-size: 1.1rem;
   }
 
   /* Mejorar botones en tarjetas de producto para móvil */

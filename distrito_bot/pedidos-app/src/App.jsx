@@ -206,7 +206,7 @@ function App() {
     }
 
     const isWithinHours = currentCheckTime >= openTimeMins && currentCheckTime <= closeTimeMins;
-    const openStatus = settings.is_open_manual ? true : (isOpenDay && isWithinHours);
+    const openStatus = settings.is_store_open !== undefined ? settings.is_store_open : (isOpenDay && isWithinHours);
 
     const formatTime = (h, m) => {
       const ampm = h >= 12 ? 'PM' : 'AM';
@@ -225,11 +225,16 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* Botón flotante para móviles */}
-      <button className="mobile-cart-btn" onClick={() => setIsCartOpenMobile(true)}>
-        <ShoppingCart size={24} />
-        {cartTotalItems > 0 && <span className="mobile-cart-badge">{cartTotalItems}</span>}
-      </button>
+      {/* Botón flotante estilo barra para móviles */}
+      {cartTotalItems > 0 && (
+        <div className="mobile-cart-bar" onClick={() => setIsCartOpenMobile(true)}>
+          <div className="mobile-cart-bar-items">
+            <span className="badge-count">{cartTotalItems}</span>
+          </div>
+          <span className="mobile-cart-bar-text">Ver pedido</span>
+          <span className="mobile-cart-bar-total">{formatter.format(subtotal)}</span>
+        </div>
+      )}
 
       {/* Main Area */}
       <main className="main-content">
