@@ -226,7 +226,7 @@ function App() {
   return (
     <div className="app-container">
       {/* Botón flotante estilo barra para móviles */}
-      {cartTotalItems > 0 && (
+      {cartTotalItems > 0 && !isCartOpenMobile && (
         <div className="mobile-cart-bar" onClick={() => setIsCartOpenMobile(true)}>
           <div className="mobile-cart-bar-items">
             <span className="badge-count">{cartTotalItems}</span>
@@ -564,7 +564,6 @@ function App() {
                 >
                   Vaciar Pedido
                 </button>
-              )}
               )}
             </div>
             

@@ -18,6 +18,7 @@ export default function CatalogTab() {
   const [editingProduct, setEditingProduct] = useState<any>(EMPTY_PRODUCT)
   const [saving, setSaving] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showCatEmojiPicker, setShowCatEmojiPicker] = useState(false)
 
   const FOOD_EMOJIS = ['🍔', '🍕', '🌭', '🍟', '🌮', '🌯', '🥗', '🍗', '🥩', '🥓', '🥪', '🥙', '🥤', '🍺', '🍻', '🍹', '🍷', '☕', '🍩', '🍪', '🍰', '🧁', '🍦', '🍨', '🍧', '🥞', '🧇', '🥑', '🌶️', '🧀']
 
@@ -354,13 +355,47 @@ export default function CatalogTab() {
                     </select>
                     
                     {!categories.some(c => c.name === editingProduct.category) && (
-                      <input
-                        className="w-1/2 bg-black/40 border border-white/10 rounded-xl p-3 text-white focus:ring-2 focus:ring-distrito-accent outline-none"
-                        placeholder="Nombre de categoría..."
-                        value={editingProduct.category}
-                        onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
-                        autoFocus
-                      />
+                      <div className="relative flex w-1/2">
+                        <input
+                          className="flex-1 bg-black/40 border border-white/10 rounded-l-xl p-3 text-white focus:ring-2 focus:ring-distrito-accent outline-none"
+                          placeholder="Nombre..."
+                          value={editingProduct.category}
+                          onChange={e => setEditingProduct({ ...editingProduct, category: e.target.value })}
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCatEmojiPicker(!showCatEmojiPicker)}
+                          className="bg-black/40 border border-white/10 border-l-0 rounded-r-xl px-3 hover:bg-white/10 text-xl"
+                        >
+                          😀
+                        </button>
+                        
+                        {showCatEmojiPicker && (
+                          <div className="absolute top-full right-0 mt-2 bg-gray-800 border border-white/10 rounded-xl p-3 shadow-2xl z-50 w-64">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs text-gray-400 font-bold">Añadir emoji</span>
+                              <button type="button" onClick={() => setShowCatEmojiPicker(false)} className="text-gray-500 hover:text-white"><X size={14}/></button>
+                            </div>
+                            <div className="grid grid-cols-6 gap-2">
+                              {FOOD_EMOJIS.map(em => (
+                                <button
+                                  key={em}
+                                  type="button"
+                                  onClick={() => {
+                                    const current = editingProduct.category || '';
+                                    setEditingProduct({ ...editingProduct, category: (current ? current + ' ' : '') + em });
+                                    setShowCatEmojiPicker(false);
+                                  }}
+                                  className="text-xl hover:bg-white/10 rounded-lg p-1 transition-colors"
+                                >
+                                  {em}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 </div>
