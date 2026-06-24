@@ -364,7 +364,7 @@ function App() {
             </div>
           </div>
         </section>
-      </main>
+          </div>
 
       {/* Sidebar / Cart Overlay para móviles */}
       <div className={`cart-overlay ${isCartOpenMobile ? 'open' : ''}`} onClick={() => setIsCartOpenMobile(false)}></div>
