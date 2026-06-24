@@ -16,20 +16,32 @@ async def get_pedidos_init_data() -> Dict[str, Any]:
     """
     db = get_supabase()
     try:
+        settings = {}
+        
         # Obtener configuración de la App de pedidos
-        settings_res = db.table("pedidos_app_settings").select("*").eq("id", 1).single().execute()
-        settings = settings_res.data or {}
-        
+        try:
+            settings_res = db.table("pedidos_app_settings").select("*").eq("id", 1).execute()
+            if settings_res.data:
+                settings = settings_res.data[0]
+        except Exception:
+            pass # Ignorar si la tabla no existe
+            
         # Obtener configuración general (Horarios)
-        bot_settings_res = db.table("bot_settings").select("open_time,close_time,business_days,is_open_manual").eq("id", 1).single().execute()
-        if bot_settings_res.data:
-            settings.update(bot_settings_res.data)
-        
+        try:
+            bot_settings_res = db.table("bot_settings").select("open_time,close_time,business_days,is_open_manual").eq("id", 1).execute()
+            if bot_settings_res.data:
+                settings.update(bot_settings_res.data[0])
+        except Exception:
+            pass # Ignorar si la tabla no existe
+            
         # Obtener productos activos de la app de pedidos
-        products_res = db.table("pedidos_app_products").select("*").execute()
-        products = products_res.data or []
-        # No fallback – usar solo pedidos_app_products
-        
+        try:
+            products_res = db.table("pedidos_app_products").select("*").execute()
+            products = products_res.data or []
+        except Exception as e:
+            products = []
+            print(f"Error cargando productos: {e}")
+            
         return {
             "status": "ok",
             "settings": settings,
@@ -107,8 +119,8 @@ async def process_checkout(payload: dict) -> Dict[str, Any]:
 async def get_pedidos_settings() -> Dict[str, Any]:
     db = get_supabase()
     try:
-        res = db.table("pedidos_app_settings").select("*").eq("id", 1).single().execute()
-        return {"status": "ok", "settings": res.data or {}}
+        res = db.table("pedidos_app_settings").select("*").eq("id", 1).execute()
+        return {"status": "ok", "settings": res.data[0] if res.data else {}}
     except Exception as e:
         return {"status": "error", "message": str(e)}
 

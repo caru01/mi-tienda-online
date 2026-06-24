@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plus, Minus, Trash2, ShoppingBag, ShoppingCart, Copy, Check, X, ArrowLeft } from 'lucide-react';
+import { Plus, Minus, Trash2, ShoppingBag, ShoppingCart, Copy, Check, X, ArrowLeft, Lock, CreditCard, Wallet, Smartphone, Banknote } from 'lucide-react';
 import logoImg from './assets/logo-horizontal.png';
 
 const API_URL = import.meta.env.PROD ? '/distrito/api/pedidos' : 'http://localhost:8000/api/pedidos';
@@ -516,7 +516,7 @@ function App() {
                 <span>$ 3.000</span>
               </div>
               <div className="cart-total">
-                <span>TOTAL</span>
+                <span>Total</span>
                 <span>{formatter.format(subtotal + 3000)}</span>
               </div>
               
@@ -526,7 +526,7 @@ function App() {
                   onClick={() => setCheckoutStep(2)}
                   disabled={cart.length === 0}
                 >
-                  CONTINUAR
+                  Continuar Pedido
                 </button>
               ) : (
                 <button 
@@ -543,16 +543,43 @@ function App() {
                   className="empty-cart-btn" 
                   onClick={() => setCart([])}
                 >
-                  <Trash2 size={16} /> VACÍAR PEDIDO
+                  Vaciar Pedido
                 </button>
               )}
               
               {checkoutStep === 1 && (
-                <div className="promo-banner">
-                  <h4>¿QUIERES AGREGAR ALGO MÁS?</h4>
-                  <p>Papas + Gaseosa <br/><span className="promo-price">$ 8.000</span></p>
-                  <button className="promo-add-btn">AGREGAR</button>
-                </div>
+                <>
+                  <div className="premium-cross-sell">
+                    <h4 className="premium-cross-sell-title">¿Quieres agregar algo más?</h4>
+                    <div className="premium-cross-sell-content">
+                      {/* En un caso real, esto puede venir de la base de datos o carpeta public. Usamos un div gris como placeholder si no hay foto */}
+                      <div style={{width:'80px', height:'80px', borderRadius:'12px', background:'#222'}}></div>
+                      <div className="premium-cross-sell-info">
+                        <h4>PAPAS + GASEOSA</h4>
+                        <div className="premium-cross-sell-price">$ 8.000</div>
+                        <button className="add-btn-small">Agregar</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="premium-payment-methods">
+                    <h3 className="premium-payment-title"><CreditCard size={20} /> Paga como quieras</h3>
+                    <div className="payment-icons-grid">
+                      <div className="payment-method-item"><Banknote className="payment-method-icon" size={20} /> Efectivo</div>
+                      <div className="payment-method-item"><Smartphone className="payment-method-icon" size={20} /> Nequi</div>
+                      <div className="payment-method-item"><Smartphone className="payment-method-icon" size={20} /> Daviplata</div>
+                      <div className="payment-method-item"><Wallet className="payment-method-icon" size={20} /> Transferencia</div>
+                    </div>
+
+                    <div className="premium-trust-section">
+                      <Lock className="icon" size={24} />
+                      <div className="premium-trust-text">
+                        <strong>Compra 100% segura</strong>
+                        <p>Tu información está protegida y el proceso de compra es totalmente seguro.</p>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
       </aside>
