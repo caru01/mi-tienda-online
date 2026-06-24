@@ -14,14 +14,18 @@ ADMIN_EMAIL = "distrito@gmail.com"
 ADMIN_PASS_HASH = "83218ac34c1834c26781fe4bde918e70fc5f172bd91bf3e8dce7bc961de2db01"
 SECRET_TOKEN = "distrito_secret_admin_token_2026"
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
+from fastapi import Request
 
 @router.post("/api/dashboard/login")
-async def login(req: LoginRequest):
-    pwd_hash = hashlib.sha256(req.password.encode()).hexdigest()
-    if req.email == ADMIN_EMAIL and pwd_hash == ADMIN_PASS_HASH:
+async def login(req: Request):
+    try:
+        data = await req.json()
+    except Exception:
+        data = {}
+    email = data.get("email")
+    password = data.get("password", "")
+    pwd_hash = hashlib.sha256(password.encode()).hexdigest()
+    if email == ADMIN_EMAIL and pwd_hash == ADMIN_PASS_HASH:
         return {"status": "ok", "token": SECRET_TOKEN}
     return {"status": "error", "message": "Credenciales incorrectas"}
 
